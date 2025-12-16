@@ -157,7 +157,7 @@ task "action:version" do
     release_body = <<~BODY
       Download "mmw4uc-#{version_raw}-setup.exe" or "MikuMikuWorld.zip".
 
-      Full Changelog: #{prev_tag}..#{tag}
+      **Full Changelog**: https://github.com/UntitledCharts/MikuMikuWorld4UC/compare/#{prev_tag}...#{tag}
     BODY
   end
 
