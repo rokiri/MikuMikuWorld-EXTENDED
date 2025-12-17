@@ -59,8 +59,9 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		if (mmw::Application::windowState.windowDragging &&
 		    wParam == mmw::Application::windowState.windowTimerId)
 		{
-			// grabbing the glfw window blocks the message queue causing the application to stop
-			// rendering so we handle the message ourselves and update the UI explicitly
+			// Due to glfw implementation, grabbing/resizing the window blocks the message queue
+			// causing the whole application to stop responding. As workaround, we create a timer
+			// that update fast to simulate a regular program loops
 			if (app.getGlfwWindow())
 				app.update();
 
@@ -69,11 +70,18 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_ENTERSIZEMOVE:
+		// Register the timer to update our application
 		mmw::Application::windowState.windowDragging = true;
+		mmw::Application::windowState.windowTimerId = ::SetTimer(
+		    hwnd, reinterpret_cast<UINT_PTR>(&mmw::Application::windowState.windowTimerId),
+		    USER_TIMER_MINIMUM, nullptr);
 		break;
 
 	case WM_EXITSIZEMOVE:
+		// Remove the timer
 		mmw::Application::windowState.windowDragging = false;
+		mmw::Application::windowState.windowTimerId = ::KillTimer(
+		    hwnd, reinterpret_cast<UINT_PTR>(&mmw::Application::windowState.windowTimerId));
 		break;
 
 	case WM_DROPFILES:

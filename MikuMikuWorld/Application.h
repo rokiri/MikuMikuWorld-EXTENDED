@@ -11,7 +11,6 @@
 
 #include "ScoreEditor.h"
 #include "ImGuiManager.h"
-#include <Windows.h>
 
 LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

@@ -359,6 +359,7 @@ namespace MikuMikuWorld
 	void Application::run()
 	{
 		HWND hwnd = glfwGetWin32Window(window);
+		windowState.windowHandle = hwnd;
 
 		/*
 		    Override the current GLFW/Imgui window procedure and store it in the GLFW window user
@@ -369,13 +370,9 @@ namespace MikuMikuWorld
 		*/
 		glfwSetWindowUserPointer(window, (void*)::GetWindowLongPtrW(hwnd, GWLP_WNDPROC));
 		::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)wndProc);
-
-		windowState.windowHandle = hwnd;
-		windowState.windowTimerId =
-		    ::SetTimer(hwnd, reinterpret_cast<UINT_PTR>(&windowState.windowTimerId),
-		               USER_TIMER_MINIMUM, nullptr);
-
 		::DragAcceptFiles(hwnd, TRUE);
+
+		glfwShowWindow(window);
 
 		while (!glfwWindowShouldClose(window))
 		{
