@@ -44,9 +44,11 @@ namespace MikuMikuWorld
 		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, !enabled);
 		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1 - (0.5f * !enabled));
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+		ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, repeat);
 
-		bool pressed = ImGui::ButtonEx(txt, size, (repeat ? ImGuiButtonFlags_Repeat : 0));
+		bool pressed = ImGui::ButtonEx(txt, size);
 
+		ImGui::PopItemFlag();
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
 		ImGui::PopItemFlag();
@@ -283,8 +285,7 @@ namespace MikuMikuWorld
 		{
 			float txtWidth = ImGui::CalcTextSize(label).x + (ImGui::GetStyle().WindowPadding.x * 2);
 			ImGui::SetNextWindowSize(ImVec2(std::min(txtWidth, 250.0f), -1));
-			ImGui::BeginTooltipEx(ImGuiTooltipFlags_OverridePreviousTooltip,
-			                      ImGuiWindowFlags_NoResize);
+			ImGui::BeginTooltipEx(ImGuiTooltipFlags_OverridePrevious, ImGuiWindowFlags_NoResize);
 			ImGui::TextWrapped("%s", label);
 			ImGui::EndTooltip();
 		}
@@ -379,7 +380,7 @@ namespace MikuMikuWorld
 
 	bool UI::zoomControl(const char* label, float& value, float min, float max, float width)
 	{
-		ImGui::PushButtonRepeat(true);
+		ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
 		bool act = false;
 		if (UI::transparentButton(ICON_FA_SEARCH_MINUS, UI::btnSmall, true, value > min))
@@ -400,7 +401,7 @@ namespace MikuMikuWorld
 			value += 0.25f;
 			act = true;
 		}
-		ImGui::PopButtonRepeat();
+		ImGui::PopItemFlag();
 
 		return act;
 	}
@@ -479,9 +480,9 @@ namespace MikuMikuWorld
 
 		if (selected)
 		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_TabActive]);
+			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-			                      ImGui::GetStyle().Colors[ImGuiCol_TabActive]);
+			                      ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
 		}
 
 		bool activated = ImGui::Button(icon, UI::toolbarBtnSize);
@@ -529,14 +530,14 @@ namespace MikuMikuWorld
 
 		if (selected)
 		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_TabActive]);
+			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-			                      ImGui::GetStyle().Colors[ImGuiCol_TabActive]);
+			                      ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
 		}
 
-		bool activated =
-		    ImGui::ImageButton(lblId.c_str(), (void*)ResourceManager::textures[texIndex].getID(),
-		                       UI::toolbarBtnImgSize);
+		bool activated = ImGui::ImageButton(
+		    lblId.c_str(), ResourceManager::textures[texIndex].getID(),
+		    UI::toolbarBtnImgSize);
 
 		std::string tooltipLabel = label;
 		if (shortcut && strlen(shortcut))

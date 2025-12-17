@@ -49,6 +49,7 @@ namespace MikuMikuWorld
 
 		imgui->setBaseTheme(config.baseTheme);
 		imgui->applyAccentColor(config.accentColor);
+		imgui->buildFonts();
 
 		loadResources();
 
@@ -196,15 +197,11 @@ namespace MikuMikuWorld
 		float dpiScale = (dpiX + dpiY) * 0.5f;
 		if (dpiScale != windowState.lastDpiScale)
 		{
-			imgui->buildFonts(dpiScale);
+			UI::updateBtnSizesDpiScaling(dpiScale);
 			windowState.lastDpiScale = dpiScale;
 		}
 
 		imgui->begin();
-
-		// Inform ImGui of dpi changes
-		ImGui::GetMainViewport()->DpiScale = dpiX;
-		UI::updateBtnSizesDpiScaling(dpiScale);
 
 		if (!windowState.dragDropHandled)
 			handlePendingOpenFiles();

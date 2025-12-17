@@ -593,8 +593,8 @@ namespace MikuMikuWorld
 				    UI::addSelectProperty(getString("hi_speed_ease"), ease, hiSpeedEaseNames,
 				                          arrayLength(hiSpeedEaseNames));
 				speedEdited |=
-				    UI::addFloatProperty(getString("hi_speed_skip_beat"), skip, 
-					IO::formatString("%%.3f %s", getString("beat")).c_str());
+				    UI::addFloatProperty(getString("hi_speed_skip_beat"), skip,
+				                         IO::formatString("%%.3f %s", getString("beat")).c_str());
 				speedEdited |= UI::addCheckboxProperty(getString("hi_speed_hide_notes"), hideNotes);
 				UI::endPropertyColumns();
 			}
@@ -676,7 +676,8 @@ namespace MikuMikuWorld
 			UI::addFloatProperty(getString("hi_speed_speed"), edit.hiSpeed, "%gx");
 			UI::addSelectProperty(getString("hi_speed_ease"), edit.hiSpeedEase, hiSpeedEaseNames,
 			                      arrayLength(hiSpeedEaseNames));
-			UI::addFloatProperty(getString("hi_speed_skip_beat"), edit.hiSpeedSkip, IO::formatString("%%.3f %s", getString("beat")).c_str());
+			UI::addFloatProperty(getString("hi_speed_skip_beat"), edit.hiSpeedSkip,
+			                     IO::formatString("%%.3f %s", getString("beat")).c_str());
 			UI::addCheckboxProperty(getString("hi_speed_hide_notes"), edit.hiSpeedHideNotes);
 			break;
 		}
@@ -693,10 +694,15 @@ namespace MikuMikuWorld
 			                    ImVec2(0, ImGui::GetStyle().ItemSpacing.y));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
 			float filterWidth = ImGui::GetContentRegionAvail().x - UI::btnSmall.x - 2;
-
-			presetFilter.Draw("##preset_filter",
-			                  IO::concat(ICON_FA_SEARCH, getString("search"), " ").c_str(),
-			                  filterWidth);
+			{
+				if (filterWidth != 0.0f)
+					ImGui::SetNextItemWidth(filterWidth);
+				bool value_changed = ImGui::InputTextWithHint(
+				    "##preset_filter", IO::concat(ICON_FA_SEARCH, getString("search"), " ").c_str(),
+				    presetFilter.InputBuf, IM_ARRAYSIZE(presetFilter.InputBuf));
+				if (value_changed)
+					presetFilter.Build();
+			}
 			ImGui::SameLine();
 			if (ImGui::Button(ICON_FA_TIMES, UI::btnSmall))
 				presetFilter.Clear();
@@ -1189,7 +1195,7 @@ namespace MikuMikuWorld
 		                                   ImGuiTableFlags_RowBg;
 
 		const ImGuiSelectableFlags selectionFlags =
-		    ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
+		    ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap;
 		int rowHeight = ImGui::GetFrameHeight() + 5;
 
 		if (ImGui::BeginTable("##commands_table", 2, tableFlags, size))
@@ -1329,20 +1335,20 @@ namespace MikuMikuWorld
 				for (int key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_MouseLeft; ++key)
 				{
 					bool isCtrl = key == ImGuiKey_LeftCtrl || key == ImGuiKey_RightCtrl ||
-					              key == ImGuiKey_ModCtrl;
+					              key == ImGuiMod_Ctrl;
 					bool isShift = key == ImGuiKey_LeftShift || key == ImGuiKey_RightShift ||
-					               key == ImGuiKey_ModShift;
-					bool isAlt = key == ImGuiKey_LeftAlt || key == ImGuiKey_RightAlt ||
-					             key == ImGuiKey_ModAlt;
+					               key == ImGuiMod_Shift;
+					bool isAlt =
+					    key == ImGuiKey_LeftAlt || key == ImGuiKey_RightAlt || key == ImGuiMod_Alt;
 					bool isSuper = key == ImGuiKey_LeftSuper || key == ImGuiKey_RightSuper ||
-					               key == ImGuiKey_ModSuper;
+					               key == ImGuiMod_Super;
 
 					// execute if a non-modifier key is tapped
 					if (ImGui::IsKeyPressed((ImGuiKey)key) && !isCtrl && !isShift && !isAlt &&
 					    !isSuper)
 					{
 						bindings[selectedBindingIndex]->bindings[editBindingIndex] =
-						    InputBinding((ImGuiKey)key, (ImGuiModFlags_)ImGui::GetIO().KeyMods);
+						    InputBinding((ImGuiKey)key, ImGui::GetIO().KeyMods);
 						listeningForInput = false;
 						editBindingIndex = -1;
 					}

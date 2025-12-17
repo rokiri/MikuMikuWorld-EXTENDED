@@ -565,7 +565,7 @@ namespace MikuMikuWorld
 
 			ImGui::Separator();
 			if (ImGui::MenuItem(getString("exit"),
-			                    ToShortcutString(ImGuiKey_F4, ImGuiModFlags_Alt)))
+			                    ToShortcutString(ImGuiKey_F4, ImGuiMod_Alt)))
 				Application::windowState.closing = true;
 
 			ImGui::EndMenu();

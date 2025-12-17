@@ -175,7 +175,7 @@ namespace MikuMikuWorld
 		ImGui::SetCursorScreenPos(windowEndTop);
 		ImGui::InvisibleButton("##scroll_background",
 		                       ImVec2{ scrollbarWidth, scrollHeight + handleHeight },
-		                       ImGuiButtonFlags_AllowItemOverlap);
+		                       ImGuiButtonFlags_AllowOverlap);
 		if (ImGui::IsItemActivated())
 		{
 			float yPos = std::clamp(ImGui::GetMousePos().y, windowEndTop.y,
@@ -445,7 +445,7 @@ namespace MikuMikuWorld
 			const float bgHeight = static_cast<float>(background.getHeight());
 			ImVec2 bgPos{ position.x - (abs(bgWidth - size.x) / 2.0f),
 				          position.y - (abs(bgHeight - size.y) / 2.0f) };
-			drawList->AddImage((ImTextureID)background.getTextureID(), bgPos,
+			drawList->AddImage(background.getTextureID(), bgPos,
 			                   bgPos + ImVec2{ bgWidth, bgHeight });
 		}
 
@@ -1100,7 +1100,7 @@ namespace MikuMikuWorld
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		ImDrawList* drawList = ImGui::GetWindowDrawList();
-		drawList->AddImage((void*)framebuffer->getTexture(), position, position + size);
+		drawList->AddImage(framebuffer->getTexture(), position, position + size);
 
 		// draw hold step outlines
 		for (const auto& data : drawSteps)

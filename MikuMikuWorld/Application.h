@@ -1,6 +1,6 @@
 #pragma once
 
-#define IMGUI_DEFINE_MATH_OPERATORS
+//#define IMGUI_DEFINE_MATH_OPERATORS
 #define NOMINMAX
 
 #include <glad/glad.h>
