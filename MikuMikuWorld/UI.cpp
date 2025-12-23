@@ -452,14 +452,14 @@ namespace MikuMikuWorld
 		return edit;
 	}
 
-	void UI::setWindowTitle(std::string title)
-	{
-		GLFWwindow* window = glfwGetCurrentContext();
-		if (!window)
-			return;
+	//void UI::setWindowTitle(std::string title)
+	//{
+	//	GLFWwindow* window = glfwGetCurrentContext();
+	//	if (!window)
+	//		return;
 
-		glfwSetWindowTitle(window, IO::formatString("%s - %s", APP_NAME, title.c_str()).c_str());
-	}
+	//	glfwSetWindowTitle(window, IO::formatString("%s - %s", APP_NAME, title.c_str()).c_str());
+	//}
 
 	void UI::updateBtnSizesDpiScaling(float scale)
 	{

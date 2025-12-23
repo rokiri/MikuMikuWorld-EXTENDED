@@ -1395,10 +1395,10 @@ namespace MikuMikuWorld
 			score = history.undo();
 			clearSelection();
 
-			UI::setWindowTitle((workingData.filename.size()
-			                        ? File::getFilename(workingData.filename)
-			                        : windowUntitled) +
-			                   "*");
+			//UI::setWindowTitle((workingData.filename.size()
+			//                        ? File::getFilename(workingData.filename)
+			//                        : windowUntitled) +
+			//                   "*");
 			upToDate = false;
 
 			scoreStats.calculateStats(score);
@@ -1412,10 +1412,10 @@ namespace MikuMikuWorld
 			score = history.redo();
 			clearSelection();
 
-			UI::setWindowTitle((workingData.filename.size()
-			                        ? File::getFilename(workingData.filename)
-			                        : windowUntitled) +
-			                   "*");
+			//UI::setWindowTitle((workingData.filename.size()
+			//                        ? File::getFilename(workingData.filename)
+			//                        : windowUntitled) +
+			//                   "*");
 			upToDate = false;
 
 			scoreStats.calculateStats(score);
@@ -1489,9 +1489,9 @@ void ScoreContext::convertHoldToGuide(GuideColor color)
 	{
 		history.pushHistory(description, prev, curr);
 
-		UI::setWindowTitle((workingData.filename.size() ? File::getFilename(workingData.filename)
-		                                                : windowUntitled) +
-		                   "*");
+		//UI::setWindowTitle((workingData.filename.size() ? File::getFilename(workingData.filename)
+		//                                                : windowUntitled) +
+		//                   "*");
 		scoreStats.calculateStats(score);
 
 		upToDate = false;

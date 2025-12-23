@@ -12,10 +12,9 @@
 
 namespace MikuMikuWorld
 {
+	Application* Application::instance;
 	std::string Application::version;
 	std::string Application::appDir;
-	std::string Application::pendingLoadScoreFile;
-	WindowState Application::windowState;
 
 	NoteTextures noteTextures{ -1, -1, -1, -1, -1, -1 };
 
@@ -23,7 +22,7 @@ namespace MikuMikuWorld
 	{
 		appDir = "";
 		version = "";
-		language = "";
+		instance = this;
 	}
 
 	Result Application::initialize(const std::string& root)
@@ -47,6 +46,13 @@ namespace MikuMikuWorld
 		if (!result.isOk())
 			return result;
 
+		// Override the current GLFW/Imgui window procedure
+		HWND hwnd = glfwGetWin32Window(window);
+		windowState.windowHandle = hwnd;
+		windowState.defaultWndProc =
+		    (WNDPROC)::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)wndProc);
+		::DragAcceptFiles(hwnd, TRUE);
+
 		imgui->setBaseTheme(config.baseTheme);
 		imgui->applyAccentColor(config.accentColor);
 		imgui->buildFonts();
@@ -54,10 +60,17 @@ namespace MikuMikuWorld
 		loadResources();
 
 		editor = std::make_unique<ScoreEditor>();
-		editor->loadPresets(appDir + "library");
+		// editor->loadPresets(appDir + "library");
 
 		initialized = true;
 		return Result::Ok();
+	}
+
+	Application& Application::getInstance() { return *instance; }
+
+	void* Application::getAppWindowHandle()
+	{
+		return instance ? instance->windowState.windowHandle : nullptr;
 	}
 
 	const std::string& Application::getAppDir() { return appDir; }
@@ -112,6 +125,7 @@ namespace MikuMikuWorld
 			glfwTerminate();
 		}
 		initialized = false;
+		instance = nullptr;
 	}
 
 	void Application::readSettings()
@@ -135,43 +149,44 @@ namespace MikuMikuWorld
 		config.write(appDir + APP_CONFIG_FILENAME);
 	}
 
-	void Application::appendOpenFile(const std::string& filename)
-	{
-		pendingOpenFiles.push_back(filename);
-		windowState.dragDropHandled = false;
-	}
+	// void Application::appendOpenFile(const std::string& filename)
+	//{
+	//	pendingOpenFiles.push_back(filename);
+	//	windowState.dragDropHandled = false;
+	// }
 
-	void Application::handlePendingOpenFiles()
-	{
-		std::string scoreFile{};
-		std::string musicFile{};
+	// void Application::handlePendingOpenFiles()
+	//{
+	//	std::string scoreFile{};
+	//	std::string musicFile{};
 
-		for (auto it = pendingOpenFiles.rbegin(); it != pendingOpenFiles.rend(); ++it)
-		{
-			std::string extension = IO::File::getFileExtension(*it);
-			std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
+	//	for (auto it = pendingOpenFiles.rbegin(); it != pendingOpenFiles.rend(); ++it)
+	//	{
+	//		std::string extension = IO::File::getFileExtension(*it);
+	//		std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
 
-			if (ScoreSerializeController::isValidFormat(ScoreSerializeController::toSerializeFormat(*it)))
-				scoreFile = *it;
-			else if (Audio::isSupportedFileFormat(extension))
-				musicFile = *it;
+	//		if (ScoreSerializeController::isValidFormat(
+	//		        ScoreSerializeController::toSerializeFormat(*it)))
+	//			scoreFile = *it;
+	//		else if (Audio::isSupportedFileFormat(extension))
+	//			musicFile = *it;
 
-			if (!scoreFile.empty() && !musicFile.empty())
-				break;
-		}
+	//		if (!scoreFile.empty() && !musicFile.empty())
+	//			break;
+	//	}
 
-		if (!scoreFile.empty())
-		{
-			windowState.resetting = true;
-			pendingLoadScoreFile = scoreFile;
-		}
+	//	if (!scoreFile.empty())
+	//	{
+	//		windowState.resetting = true;
+	//		// pendingLoadScoreFile = scoreFile;
+	//	}
 
-		if (!musicFile.empty())
-			editor->loadMusic(musicFile);
+	//	if (!musicFile.empty())
+	//		editor->loadMusic(musicFile);
 
-		pendingOpenFiles.clear();
-		windowState.dragDropHandled = true;
-	}
+	//	pendingOpenFiles.clear();
+	//	windowState.dragDropHandled = true;
+	//}
 
 	void Application::update()
 	{
@@ -202,10 +217,6 @@ namespace MikuMikuWorld
 		}
 
 		imgui->begin();
-
-		if (!windowState.dragDropHandled)
-			handlePendingOpenFiles();
-
 		imgui->initializeLayout();
 
 		if (config.accentColor != imgui->getAccentColor())
@@ -217,86 +228,86 @@ namespace MikuMikuWorld
 		if (config.baseTheme != imgui->getBaseTheme())
 			imgui->setBaseTheme(config.baseTheme);
 
-		if ((windowState.closing || windowState.resetting) && !editor->isUpToDate() &&
-		    !unsavedChangesDialog.open)
-		{
-			unsavedChangesDialog.open = true;
-			ImGui::OpenPopup(MODAL_TITLE("unsaved_changes"));
-		}
+		// if ((windowState.closing || windowState.resetting) && !editor->isUpToDate() &&
+		//     !unsavedChangesDialog.open)
+		//{
+		//	unsavedChangesDialog.open = true;
+		//	ImGui::OpenPopup(MODAL_TITLE("unsaved_changes"));
+		// }
 
 		auto unsavedChangesResult = unsavedChangesDialog.update();
 
 		if (windowState.closing)
 		{
-			if (!editor->isUpToDate())
-			{
-				switch (unsavedChangesResult)
-				{
-				case DialogResult::Yes:
-					editor->trySave(editor->getWorkingFilename().data());
-					glfwSetWindowShouldClose(window, 1);
-					break;
+			// if (!editor->isUpToDate())
+			//{
+			//	switch (unsavedChangesResult)
+			//	{
+			//	case DialogResult::Yes:
+			//		editor->trySave(editor->getWorkingFilename().data());
+			//		glfwSetWindowShouldClose(window, 1);
+			//		break;
 
-				case DialogResult::No:
-					glfwSetWindowShouldClose(window, 1);
-					break;
+			//	case DialogResult::No:
+			//		glfwSetWindowShouldClose(window, 1);
+			//		break;
 
-				case DialogResult::Cancel:
-					windowState.closing = false;
-					break;
+			//	case DialogResult::Cancel:
+			//		windowState.closing = false;
+			//		break;
 
-				default:
-					break;
-				}
-			}
-			else
-			{
-				glfwSetWindowShouldClose(window, 1);
-			}
+			//	default:
+			//		break;
+			//	}
+			//}
+			// else
+			//{
+			//	glfwSetWindowShouldClose(window, 1);
+			//}
 		}
 
-		if (windowState.resetting)
-		{
-			if (!editor->isUpToDate())
-			{
-				switch (unsavedChangesResult)
-				{
-				case DialogResult::Yes:
-					editor->trySave(editor->getWorkingFilename().data());
-					break;
+		// if (windowState.resetting)
+		//{
+		//	if (!editor->isUpToDate())
+		//	{
+		//		switch (unsavedChangesResult)
+		//		{
+		//		case DialogResult::Yes:
+		//			editor->trySave(editor->getWorkingFilename().data());
+		//			break;
 
-				case DialogResult::Cancel:
-					windowState.resetting = shouldPickScore = false;
-					pendingLoadScoreFile.clear();
-					break;
+		//		case DialogResult::Cancel:
+		//			windowState.resetting = shouldPickScore = false;
+		//			pendingLoadScoreFile.clear();
+		//			break;
 
-				default:
-					break;
-				}
-			}
+		//		default:
+		//			break;
+		//		}
+		//	}
 
-			// Already saved or clicked save changes or discard changes
-			if (editor->isUpToDate() || (unsavedChangesResult != DialogResult::Cancel &&
-			                             unsavedChangesResult != DialogResult::None))
-			{
-				if (windowState.shouldPickScore)
-				{
-					editor->open();
-					windowState.shouldPickScore = false;
-				}
-				else if (pendingLoadScoreFile.size())
-				{
-					editor->loadScore(pendingLoadScoreFile);
-					pendingLoadScoreFile.clear();
-				}
-				else
-				{
-					editor->create();
-				}
+		//	// Already saved or clicked save changes or discard changes
+		//	if (editor->isUpToDate() || (unsavedChangesResult != DialogResult::Cancel &&
+		//	                             unsavedChangesResult != DialogResult::None))
+		//	{
+		//		if (windowState.shouldPickScore)
+		//		{
+		//			editor->open();
+		//			windowState.shouldPickScore = false;
+		//		}
+		//		else if (pendingLoadScoreFile.size())
+		//		{
+		//			editor->loadScore(pendingLoadScoreFile);
+		//			pendingLoadScoreFile.clear();
+		//		}
+		//		else
+		//		{
+		//			editor->create();
+		//		}
 
-				windowState.resetting = false;
-			}
-		}
+		//		windowState.resetting = false;
+		//	}
+		//}
 
 		editor->update();
 
@@ -352,26 +363,11 @@ namespace MikuMikuWorld
 		noteTextures.guideColors = ResourceManager::getTexture(GUIDE_COLORS_TEX);
 		noteTextures.dummyNotes = ResourceManager::getTexture(DUMMY_RED_CROSS);
 
-
 		Localization::loadLanguages(appDir + "res\\i18n");
 	}
 
 	void Application::run()
 	{
-		HWND hwnd = glfwGetWin32Window(window);
-		windowState.windowHandle = hwnd;
-
-		/*
-		    Override the current GLFW/Imgui window procedure and store it in the GLFW window user
-		   pointer
-
-		    NOTE: For this to be safe, it should be only called AFTER ImGui is initialized
-		    so that the WndProc ImGui is expecting matches with our own WndProc
-		*/
-		glfwSetWindowUserPointer(window, (void*)::GetWindowLongPtrW(hwnd, GWLP_WNDPROC));
-		::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)wndProc);
-		::DragAcceptFiles(hwnd, TRUE);
-
 		glfwShowWindow(window);
 
 		while (!glfwWindowShouldClose(window))
@@ -380,7 +376,70 @@ namespace MikuMikuWorld
 			update();
 		}
 
-		editor->savePresets(appDir + "library");
+		// editor->savePresets(appDir + "library");
 		writeSettings();
 	}
+}
+
+LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	auto& app = MikuMikuWorld::Application::getInstance();
+	auto& windowState = app.getWindowState();
+
+	switch (uMsg)
+	{
+	case WM_TIMER:
+		// Due to glfw implementation, grabbing/resizing the window blocks the message queue
+		// causing the whole application to stop responding. As workaround, we create a timer
+		// that update fast to simulate a regular program loops
+		if (windowState.windowDragging && wParam == windowState.windowTimerId)
+		{
+			if (app.getGlfwWindow())
+				app.update();
+
+			return 0;
+		}
+		break;
+
+	case WM_ENTERSIZEMOVE:
+		// Register the timer to update our application
+		windowState.windowDragging = true;
+		windowState.windowTimerId =
+		    ::SetTimer(hwnd, windowState.windowTimerId, USER_TIMER_MINIMUM, nullptr);
+		break;
+
+	case WM_EXITSIZEMOVE:
+		// Remove the timer
+		windowState.windowDragging = false;
+		::KillTimer(hwnd, windowState.windowTimerId);
+		break;
+
+	case WM_DROPFILES:
+		if (HDROP dropHandle = reinterpret_cast<HDROP>(wParam); dropHandle != NULL)
+		{
+			const UINT filesCount = ::DragQueryFileW(dropHandle, 0xFFFFFFFF, NULL, 0u);
+			for (UINT i = 0; i < filesCount; ++i)
+			{
+				const UINT bufferSize = ::DragQueryFileW(dropHandle, i, NULL, 0u);
+				if (bufferSize > 0)
+				{
+					std::wstring wFilename(bufferSize + 1, 0);
+					if (::DragQueryFileW(dropHandle, i, wFilename.data(),
+					                     static_cast<UINT>(wFilename.size())) != 0)
+					{
+						// app.appendOpenFile(IO::wideStringToMb(wFilename.data()));
+					}
+				}
+			}
+
+			::DragFinish(dropHandle);
+		}
+		break;
+
+	default:
+		// we don't handle this message ourselves so delegate it to the original glfw window's proc
+		if (windowState.defaultWndProc)
+			return ::CallWindowProcW(windowState.defaultWndProc, hwnd, uMsg, wParam, lParam);
+	}
+	return ::DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }

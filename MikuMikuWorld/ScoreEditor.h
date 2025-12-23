@@ -8,24 +8,24 @@ namespace MikuMikuWorld
 	class ScoreEditor
 	{
 	  private:
-		ScoreContext context{};
-		EditArgs edit{};
-		std::unique_ptr<Renderer> renderer;
-		PresetManager presetManager;
+		// ScoreContext context{};
+		// std::vector<std::string> pendingOpenFiles;
+		// PresetManager presetManager;
 
-		ScoreEditorTimeline timeline{};
-		ScorePropertiesWindow propertiesWindow{};
-		ScoreNotePropertiesWindow notePropertiesWindow{};
-		ScoreOptionsWindow optionsWindow{};
-		PresetsWindow presetsWindow{};
-		DebugWindow debugWindow{};
-		LayersWindow layersWindow{};
-		WaypointsWindow waypointsWindow{};
+		// ScoreEditorTimeline timeline{};
+		// ScorePropertiesWindow propertiesWindow{};
+		// ScoreNotePropertiesWindow notePropertiesWindow{};
+		//+ EditArgs edit{};
+		//+ ScoreOptionsWindow optionsWindow{};
+		//+ PresetsWindow presetsWindow{};
+		// DebugWindow debugWindow{};
+		// LayersWindow layersWindow{};
+		// WaypointsWindow waypointsWindow{};
 		SettingsWindow settingsWindow{};
-		RecentFileNotFoundDialog recentFileNotFoundDialog{};
-		AboutDialog aboutDialog{};
-		UpdateAvailableDialog updateAvailableDialog{};
-		ScoreSerializeWindow serializeWindow{};
+		// RecentFileNotFoundDialog recentFileNotFoundDialog{};
+		// AboutDialog aboutDialog{};
+		// UpdateAvailableDialog updateAvailableDialog{};
+		// ScoreSerializeWindow serializeWindow{};
 
 		Stopwatch autoSaveTimer;
 		std::string autoSavePath;
@@ -55,12 +55,12 @@ namespace MikuMikuWorld
 		void drawToolbar();
 		void help();
 
-		inline void loadPresets(std::string path) { presetManager.loadPresets(path); }
-		inline void savePresets(std::string path) { presetManager.savePresets(path); }
+		// inline void loadPresets(std::string path) { presetManager.loadPresets(path); }
+		// inline void savePresets(std::string path) { presetManager.savePresets(path); }
 
 		void writeSettings();
 		void uninitialize();
-		inline std::string_view getWorkingFilename() const { return context.workingData.filename; }
-		constexpr inline bool isUpToDate() const { return context.upToDate; }
+		// inline std::string_view getWorkingFilename() const { return context.workingData.filename; }
+		// constexpr inline bool isUpToDate() const { return context.upToDate; }
 	};
 }

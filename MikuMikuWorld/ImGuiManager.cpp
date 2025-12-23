@@ -189,9 +189,9 @@ namespace MikuMikuWorld
 		fontConfig.OversampleH = 1;
 		fontConfig.RasterizerMultiply = 1.05f;
 
-		ImFontGlyphRangesBuilder rangeBuilder;
-		static ImVector<ImWchar> ranges;
-		rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesDefault());
+		// ImFontGlyphRangesBuilder rangeBuilder;
+		// static ImVector<ImWchar> ranges;
+		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesDefault());
 		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesJapanese());
 		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesKorean());
 		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
@@ -199,10 +199,10 @@ namespace MikuMikuWorld
 		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesChineseFull());
 		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesThai());
 		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesGreek());
-		rangeBuilder.BuildRanges(&ranges);
+		// rangeBuilder.BuildRanges(&ranges);
 
 		auto font = ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size,
-		                                                     &fontConfig, ranges.Data);
+		                                                     &fontConfig);
 		// ImGui::GetIO().Fonts->Build();
 	}
 

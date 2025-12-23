@@ -162,7 +162,7 @@ namespace MikuMikuWorld
 					fileDialog.title = "Export Chart";
 					fileDialog.filters = { getFormatFilter(selectedFormat) };
 					fileDialog.defaultExtension = getFormatDefaultExtension(selectedFormat);
-					fileDialog.parentWindowHandle = Application::windowState.windowHandle;
+					fileDialog.parentWindowHandle = Application::getAppWindowHandle();
 
 					if (fileDialog.saveFile() == IO::FileDialogResult::OK)
 					{
@@ -329,18 +329,18 @@ namespace MikuMikuWorld
 		{
 		case SerializeResult::PartialSerializeSuccess:
 			IO::messageBox(APP_NAME, controller->getErrorMessage(), IO::MessageBoxButtons::Ok,
-			               IO::MessageBoxIcon::Warning, Application::windowState.windowHandle);
+			               IO::MessageBoxIcon::Warning, Application::getAppWindowHandle());
 			controller.reset();
 			break;
 		case SerializeResult::SerializeSuccess:
 			IO::messageBox(APP_NAME, IO::formatString(getString("export_successful")),
 			               IO::MessageBoxButtons::Ok, IO::MessageBoxIcon::Information,
-			               Application::windowState.windowHandle);
+			               Application::getAppWindowHandle());
 			controller.reset();
 			break;
 		case SerializeResult::PartialDeserializeSuccess:
 			IO::messageBox(APP_NAME, controller->getErrorMessage(), IO::MessageBoxButtons::Ok,
-			               IO::MessageBoxIcon::Warning, Application::windowState.windowHandle);
+			               IO::MessageBoxIcon::Warning, Application::getAppWindowHandle());
 			[[fallthrough]];
 		case SerializeResult::DeserializeSuccess:
 			context.clearSelection();
@@ -356,9 +356,9 @@ namespace MikuMikuWorld
 			context.scoreStats.calculateStats(context.score);
 			timeline.calculateMaxOffsetFromScore(context.score);
 
-			UI::setWindowTitle((context.workingData.filename.size()
-			                        ? IO::File::getFilename(context.workingData.filename)
-			                        : windowUntitled));
+			//UI::setWindowTitle((context.workingData.filename.size()
+			//                        ? IO::File::getFilename(context.workingData.filename)
+			//                        : windowUntitled));
 			context.upToDate = true;
 			if (!controller->getFilename().empty())
 				editor.updateRecentFilesList(controller->getFilename());
@@ -368,7 +368,7 @@ namespace MikuMikuWorld
 		default:
 		case SerializeResult::Error:
 			IO::messageBox(APP_NAME, controller->getErrorMessage(), IO::MessageBoxButtons::Ok,
-			               IO::MessageBoxIcon::Error, Application::windowState.windowHandle);
+			               IO::MessageBoxIcon::Error, Application::getAppWindowHandle());
 			controller.reset();
 			break;
 		case SerializeResult::Cancel:

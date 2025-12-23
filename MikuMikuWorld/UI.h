@@ -107,7 +107,7 @@ namespace MikuMikuWorld
 		static void beginNextItemDisabled();
 		static void endNextItemDisabled();
 
-		static void setWindowTitle(std::string title);
+		// static void setWindowTitle(std::string title);
 		static void updateBtnSizesDpiScaling(float scale);
 
 		template <typename T> static void addReadOnlyProperty(const char* label, T val)

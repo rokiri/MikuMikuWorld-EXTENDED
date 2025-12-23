@@ -3,7 +3,6 @@
 #include <iostream>
 
 namespace mmw = MikuMikuWorld;
-mmw::Application app;
 
 int main()
 {
@@ -17,6 +16,7 @@ int main()
 		return 1;
 	}
 
+	mmw::Application app;
 #ifndef DEBUG
 	try
 	{
@@ -27,10 +27,10 @@ int main()
 		if (!result.isOk())
 			throw(std::exception(result.getMessage().c_str()));
 
-		for (int i = 1; i < argc; ++i)
-			app.appendOpenFile(IO::wideStringToMb(args[i]));
+		//for (int i = 1; i < argc; ++i)
+		//	app.appendOpenFile(IO::wideStringToMb(args[i]));
 
-		app.handlePendingOpenFiles();
+		// app.handlePendingOpenFiles();
 		app.run();
 #ifndef DEBUG
 	}
@@ -49,66 +49,4 @@ int main()
 
 	app.dispose();
 	return 0;
-}
-
-LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	switch (uMsg)
-	{
-	case WM_TIMER:
-		if (mmw::Application::windowState.windowDragging &&
-		    wParam == mmw::Application::windowState.windowTimerId)
-		{
-			// Due to glfw implementation, grabbing/resizing the window blocks the message queue
-			// causing the whole application to stop responding. As workaround, we create a timer
-			// that update fast to simulate a regular program loops
-			if (app.getGlfwWindow())
-				app.update();
-
-			return 0;
-		}
-		break;
-
-	case WM_ENTERSIZEMOVE:
-		// Register the timer to update our application
-		mmw::Application::windowState.windowDragging = true;
-		mmw::Application::windowState.windowTimerId = ::SetTimer(
-		    hwnd, reinterpret_cast<UINT_PTR>(&mmw::Application::windowState.windowTimerId),
-		    USER_TIMER_MINIMUM, nullptr);
-		break;
-
-	case WM_EXITSIZEMOVE:
-		// Remove the timer
-		mmw::Application::windowState.windowDragging = false;
-		mmw::Application::windowState.windowTimerId = ::KillTimer(
-		    hwnd, reinterpret_cast<UINT_PTR>(&mmw::Application::windowState.windowTimerId));
-		break;
-
-	case WM_DROPFILES:
-		if (HDROP dropHandle = reinterpret_cast<HDROP>(wParam); dropHandle != NULL)
-		{
-			const UINT filesCount = ::DragQueryFileW(dropHandle, 0xFFFFFFFF, NULL, 0u);
-			for (UINT i = 0; i < filesCount; ++i)
-			{
-				const UINT bufferSize = ::DragQueryFileW(dropHandle, i, NULL, 0u);
-				if (bufferSize > 0)
-				{
-					std::wstring wFilename(bufferSize + 1, 0);
-					if (::DragQueryFileW(dropHandle, i, wFilename.data(),
-					                     static_cast<UINT>(wFilename.size())) != 0)
-						app.appendOpenFile(IO::wideStringToMb(wFilename.data()));
-				}
-			}
-
-			::DragFinish(dropHandle);
-		}
-		break;
-
-	default:
-		// we don't handle this message ourselves so delegate it to the original glfw window's proc
-		return CallWindowProcW((WNDPROC)glfwGetWindowUserPointer(app.getGlfwWindow()), hwnd, uMsg,
-		                       wParam, lParam);
-	}
-
-	return ::DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }

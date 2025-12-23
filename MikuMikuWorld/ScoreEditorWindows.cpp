@@ -32,7 +32,7 @@ namespace MikuMikuWorld
 				IO::FileDialog fileDialog{};
 				fileDialog.title = "Open Image File";
 				fileDialog.filters = { IO::imageFilter, IO::allFilter };
-				fileDialog.parentWindowHandle = Application::windowState.windowHandle;
+				fileDialog.parentWindowHandle = Application::getAppWindowHandle();
 
 				if (fileDialog.openFile() == IO::FileDialogResult::OK)
 					context.workingData.jacket.load(fileDialog.outputFilename);
@@ -62,7 +62,7 @@ namespace MikuMikuWorld
 				IO::FileDialog fileDialog{};
 				fileDialog.title = "Open Audio File";
 				fileDialog.filters = { IO::audioFilter, IO::allFilter };
-				fileDialog.parentWindowHandle = Application::windowState.windowHandle;
+				fileDialog.parentWindowHandle = Application::getAppWindowHandle();
 
 				if (fileDialog.openFile() == IO::FileDialogResult::OK)
 				{
@@ -1508,13 +1508,11 @@ namespace MikuMikuWorld
 
 					if (ImGui::CollapsingHeader(getString("video"), ImGuiTreeNodeFlags_DefaultOpen))
 					{
-						bool vsync = Application::windowState.vsync;
+						bool& vsync = Application::getInstance().getWindowState().vsync;
 						UI::beginPropertyColumns();
-						UI::addCheckboxProperty(getString("vsync"), Application::windowState.vsync);
+						if (UI::addCheckboxProperty(getString("vsync"), vsync))
+							glfwSwapInterval(vsync ? 1 : 0);
 						UI::endPropertyColumns();
-
-						if (vsync != Application::windowState.vsync)
-							glfwSwapInterval(Application::windowState.vsync ? 1 : 0);
 					}
 
 					ImGui::EndTabItem();
@@ -1597,7 +1595,7 @@ namespace MikuMikuWorld
 							IO::FileDialog fileDialog{};
 							fileDialog.title = "Open Image File";
 							fileDialog.filters = { IO::imageFilter, IO::allFilter };
-							fileDialog.parentWindowHandle = Application::windowState.windowHandle;
+							fileDialog.parentWindowHandle = Application::getAppWindowHandle();
 
 							if (fileDialog.openFile() == IO::FileDialogResult::OK)
 							{

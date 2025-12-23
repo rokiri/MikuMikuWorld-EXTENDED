@@ -16,31 +16,39 @@ namespace MikuMikuWorld
 
 	static void windowSizeCallback(GLFWwindow* window, int width, int height)
 	{
-		if (!Application::windowState.maximized)
+		WindowState& windowState =
+		    static_cast<Application*>(glfwGetWindowUserPointer(window))->getWindowState();
+		if (!windowState.maximized)
 		{
-			Application::windowState.size.x = width;
-			Application::windowState.size.y = height;
+			windowState.size.x = width;
+			windowState.size.y = height;
 		}
 	}
 
 	static void windowPositionCallback(GLFWwindow* window, int x, int y)
 	{
-		if (!Application::windowState.maximized)
+		WindowState& windowState =
+		    static_cast<Application*>(glfwGetWindowUserPointer(window))->getWindowState();
+		if (!windowState.maximized)
 		{
-			Application::windowState.position.x = x;
-			Application::windowState.position.y = y;
+			windowState.position.x = x;
+			windowState.position.y = y;
 		}
 	}
 
 	static void windowCloseCallback(GLFWwindow* window)
 	{
+		WindowState& windowState =
+		    static_cast<Application*>(glfwGetWindowUserPointer(window))->getWindowState();
 		glfwSetWindowShouldClose(window, 0);
-		Application::windowState.closing = true;
+		windowState.closing = true;
 	}
 
 	static void windowMaximizeCallback(GLFWwindow* window, int _maximized)
 	{
-		Application::windowState.maximized = _maximized;
+		WindowState& windowState =
+		    static_cast<Application*>(glfwGetWindowUserPointer(window))->getWindowState();
+		windowState.maximized = _maximized;
 	}
 
 	Result Application::initOpenGL()
@@ -80,6 +88,7 @@ namespace MikuMikuWorld
 		// glfwSetWindowPos(window, config.windowPos.x, config.windowPos.y);
 		glfwMakeContextCurrent(window);
 		glfwSetWindowTitle(window, APP_NAME " - Untitled");
+		glfwSetWindowUserPointer(window, this);
 		glfwSetWindowPosCallback(window, windowPositionCallback);
 		glfwSetWindowSizeCallback(window, windowSizeCallback);
 		glfwSetFramebufferSizeCallback(window, frameBufferResizeCallback);
@@ -89,7 +98,7 @@ namespace MikuMikuWorld
 		std::string iconFilename = appDir + "res\\mmw_icon.png";
 		if (IO::File::exists(iconFilename))
 		{
-			GLFWimage image;
+			GLFWimage image{};
 			image.pixels =
 			    stbi_load(iconFilename.c_str(), &image.width, &image.height, 0, 4); // rgba channels
 			glfwSetWindowIcon(window, 1, &image);
