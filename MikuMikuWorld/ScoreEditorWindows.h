@@ -16,6 +16,27 @@ namespace MikuMikuWorld
 		Retry
 	};
 
+	struct ScoreEditorState;
+	struct EditorToolbar
+	{
+		std::string bindingLabel(const MultiInputBinding& shortcuts);
+		std::string bindingLabel(const char* label, const MultiInputBinding& shortcuts);
+
+		bool iconButton(const char* icon, const char* label, const MultiInputBinding& shortcuts,
+		                bool enabled = true, bool selected = false);
+		bool imageButton(const Texture* texture, const Sprite* sprite, const char* label,
+		                 const MultiInputBinding& shortcuts, bool enabled = true,
+		                 bool selected = false);
+
+	  public:
+		static constexpr const char* windowName = "(Main toolbar)###app_toolbar";
+		static constexpr const char* popUpName = "##extended_mode_selector";
+		void update(ScoreEditorState& state, ScoreContext& context, EditArgs& edit);
+
+	  private:
+		int insertModePopup{};
+	};
+
 	class ScorePropertiesWindow
 	{
 	  public:
@@ -33,7 +54,7 @@ namespace MikuMikuWorld
 	class ScoreOptionsWindow
 	{
 	  public:
-		void update(ScoreContext& context, EditArgs& edit, TimelineMode currentMode);
+		void update(ScoreContext& context, EditArgs& edit);
 	};
 
 	class PresetsWindow

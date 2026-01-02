@@ -1,31 +1,8 @@
 #pragma once
-#include <stdint.h>
+#include <cstdint>
 
 namespace MikuMikuWorld
 {
-	enum class TimelineMode : uint8_t
-	{
-		Select,
-		InsertTap,
-		InsertLong,
-		InsertLongMid,
-		InsertFlick,
-		MakeCritical,
-		MakeFriction,
-		InsertGuide,
-		InsertDamage,
-		MakeDummy,
-		InsertBPM,
-		InsertTimeSign,
-		InsertHiSpeed,
-		TimelineModeMax
-	};
-
-	constexpr const char* timelineModes[]{ "select",  "tap",      "hold",  "hold_step",
-		                                   "flick",   "critical", "trace", "guide",
-		                                   "damage",  "dummy",  "bpm",   "time_signature",
-		                                   "hi_speed" };
-
 	constexpr int divisions[]{ 4, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 1920 };
 
 	enum class SnapMode : uint8_t

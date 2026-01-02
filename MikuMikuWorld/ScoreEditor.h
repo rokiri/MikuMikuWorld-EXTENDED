@@ -7,17 +7,27 @@
 
 namespace MikuMikuWorld
 {
+	struct ScoreEditorState
+	{
+		bool wantCreateScore{ false };
+		bool wantOpenScore{ false };
+		bool wantExportScore{ false };
+		bool wantSaveScore{ false };
+	};
+
 	class ScoreEditor
 	{
 	  private:
-		// ScoreContext context{};
+		ScoreEditorState state;
+		ScoreContext context{};
 		// std::vector<std::string> pendingOpenFiles;
 		// PresetManager presetManager;
-
+		std::unique_ptr<Renderer> renderer;
+		EditorToolbar toolbar;
 		// ScoreEditorTimeline timeline{};
 		// ScorePropertiesWindow propertiesWindow{};
 		// ScoreNotePropertiesWindow notePropertiesWindow{};
-		//+ EditArgs edit{};
+		EditArgs edit{};
 		//+ ScoreOptionsWindow optionsWindow{};
 		//+ PresetsWindow presetsWindow{};
 		// DebugWindow debugWindow{};
@@ -29,9 +39,9 @@ namespace MikuMikuWorld
 		// UpdateAvailableDialog updateAvailableDialog{};
 		// ScoreSerializeWindow serializeWindow{};
 
-		Stopwatch autoSaveTimer;
+		// Stopwatch autoSaveTimer;
 		std::string autoSavePath;
-		bool showImGuiDemoWindow;
+		bool showImGuiDemoWindow{ false };
 
 		bool save(std::string filename);
 
@@ -54,7 +64,6 @@ namespace MikuMikuWorld
 		int deleteOldAutoSave(int count);
 
 		void drawMenubar();
-		void drawToolbar();
 		void help();
 
 		// inline void loadPresets(std::string path) { presetManager.loadPresets(path); }

@@ -12,16 +12,42 @@
 
 namespace MikuMikuWorld
 {
+	enum class InsertMode : uint8_t
+	{
+		Select,
+		InsertTap,
+		InsertLong,
+		InsertLongMid,
+		InsertFlick,
+		MakeCritical,
+		MakeFriction,
+		InsertGuide,
+		InsertDamage,
+		MakeDummy,
+		InsertBPM,
+		InsertTimeSign,
+		InsertHiSpeed,
+		InsertModeMax
+	};
+
+	inline constexpr const char* insertModes[]{
+		"timeline_select",  "timeline_tap",      "timeline_hold",  "timeline_hold_step",
+		"timeline_flick",   "timeline_critical", "timeline_trace", "timeline_guide",
+		"timeline_damage",  "timeline_dummy",    "timeline_bpm",   "timeline_time_signature",
+		"timeline_hi_speed"
+	};
+
 	struct EditArgs
 	{
-		int noteWidth{ 3 };
+		float noteWidth{ 3 };
 		FlickType flickType{ FlickType::Default };
-		HoldStepType stepType{ HoldStepType::Normal };
 		EaseType easeType{ EaseType::Linear };
+		EditHoldJointType startType{ EditHoldJointType::Normal };
+		EditHoldStepType stepType{ EditHoldStepType::Normal };
+		EditHoldJointType endType{ EditHoldJointType::Normal };
 		GuideColor colorType{ GuideColor::Green };
 		FadeType fadeType{ FadeType::Out };
-		HoldEndType holdStartType{ HoldEndType::Normal };
-		HoldEndType holdEndType{ HoldEndType::Normal };
+		InsertMode insertMode{ InsertMode::Select };
 
 		float bpm{ 160.0f };
 		int timeSignatureNumerator{ 4 };
@@ -30,6 +56,8 @@ namespace MikuMikuWorld
 		float hiSpeedSkip{ 0.0f };
 		HiSpeedEaseType hiSpeedEase{ HiSpeedEaseType::None };
 		bool hiSpeedHideNotes{ false };
+
+		void changeInsertMode(InsertMode newMode);
 	};
 
 	class EditorScoreData

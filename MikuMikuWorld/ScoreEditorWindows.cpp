@@ -1,15 +1,308 @@
-#include "ScoreEditorWindows.h"
 #include "Application.h"
 #include "ApplicationConfiguration.h"
+#include "ScoreEditorWindows.h"
+#include "ScoreEditor.h"
 #include "Constants.h"
 #include "File.h"
 #include "NoteTypes.h"
 #include "ScoreContext.h"
 #include "UI.h"
+#include "Text.h"
 #include "Utilities.h"
 
 namespace MikuMikuWorld
 {
+	std::string EditorToolbar::bindingLabel(const MultiInputBinding& shortcuts)
+	{
+		std::string label = localize(shortcuts.name).string;
+		const char* shortcut = ToShortcutString(shortcuts);
+		if (shortcut && strlen(shortcut))
+			label.append(" (").append(shortcut).append(")");
+		return label;
+	}
+
+	std::string EditorToolbar::bindingLabel(const char* label, const MultiInputBinding& shortcuts)
+	{
+		std::string labelStr = label;
+		const char* shortcut = ToShortcutString(shortcuts);
+		if (shortcut && strlen(shortcut))
+			labelStr.append(" (").append(shortcut).append(")");
+		return labelStr;
+	}
+
+	bool EditorToolbar::iconButton(const char* icon, const char* label,
+	                               const MultiInputBinding& shortcuts, bool enabled, bool selected)
+	{
+		bool activated = false;
+		if (enabled)
+			selected |= activated |= ImGui::AnyShortcut(shortcuts, ImGuiInputFlags_RouteGlobal);
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, UI::scale({ 2, 2 }));
+		ImGui::BeginDisabled(!enabled);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.0f, 0.0f, 0.0f });
+		if (selected)
+		{
+			auto& styleColors = ImGui::GetStyle().Colors;
+			ImGui::PushStyleColor(ImGuiCol_Button, styleColors[ImGuiCol_ButtonActive]);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, styleColors[ImGuiCol_ButtonActive]);
+		}
+
+		activated |= ImGui::Button(icon, UI::toolbarBtnSize);
+		ImGui::SameLine();
+
+		if (label)
+			UI::tooltip(label);
+
+		ImGui::PopStyleColor(selected ? 3 : 1);
+		ImGui::EndDisabled();
+		ImGui::PopStyleVar();
+		return activated;
+	}
+
+	bool EditorToolbar::imageButton(const Texture* texture, const Sprite* sprite, const char* label,
+	                                const MultiInputBinding& shortcuts, bool enabled, bool selected)
+	{
+		bool activated = false;
+		if (!texture || !sprite)
+		{
+			ImGui::PushID(ImHashStr(label));
+			// Fallback to regular button
+			activated = iconButton("?", label, shortcuts, enabled, selected);
+			ImGui::PopID();
+			return activated;
+		}
+		if (enabled)
+			selected |= activated |= ImGui::AnyShortcut(shortcuts, ImGuiInputFlags_RouteGlobal);
+		ImGui::BeginDisabled(!enabled);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.0f, 0.0f, 0.0f });
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, UI::scale({ 1, 1 }));
+		if (selected)
+		{
+			auto& styleColors = ImGui::GetStyle().Colors;
+			ImGui::PushStyleColor(ImGuiCol_Button, styleColors[ImGuiCol_TabSelected]);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, styleColors[ImGuiCol_TabSelected]);
+		}
+		auto&& [uv0, uv1] = texture->getCoords(*sprite);
+		activated |= ImGui::ImageButton(sprite->getName().c_str(), texture->getID(),
+		                                UI::toolbarBtnImgSize, uv0, uv1);
+		ImGui::SameLine();
+
+		if (label)
+			UI::tooltip(label);
+
+		if (selected)
+			ImGui::PopStyleColor(3);
+		else
+			ImGui::PopStyleColor();
+		ImGui::PopStyleVar();
+		ImGui::EndDisabled();
+
+		return activated;
+	}
+
+	static int getInsertEnumRange(InsertMode mode)
+	{
+		switch (mode)
+		{
+		case InsertMode::InsertLong:
+			return int(EaseType::EaseTypeCount);
+		case InsertMode::InsertFlick:
+			return int(FlickType::FlickTypeCount);
+		case InsertMode::InsertLongMid:
+			return int(EditHoldStepType::HoldStepTypeCount);
+		case InsertMode::InsertGuide:
+			return int(GuideColor::GuideColorCount);
+		case InsertMode::InsertHiSpeed:
+			return 2;
+		default:
+			return 0;
+		}
+	}
+
+	template <typename T>
+	static void insertModeComboItems(InsertMode mode, EditArgs& edit, T EditArgs::* type,
+	                                 const char* const texts[], T max, T min = T(0))
+	{
+		auto& resource = getResources().timelineTexture;
+		const Texture* texture = resource.getToolbarTexture();
+		const Sprite* sprite;
+		auto& styleColors = ImGui::GetStyle().Colors;
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, UI::scale({ 2, 2 }));
+		ImGui::PushStyleColor(ImGuiCol_Header, styleColors[ImGuiCol_TabActive]);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, styleColors[ImGuiCol_TabSelected]);
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, styleColors[ImGuiCol_ButtonHovered]);
+		T currentType = edit.*type;
+		for (int i = int(min); i < int(max); i++)
+		{
+			edit.*type = T(i);
+			const bool selected = edit.*type == currentType;
+			ImGui::PushID(i);
+			if (ImGui::Selectable("", selected, ImGuiSelectableFlags_None, UI::toolbarBtnImgSize))
+			{
+				currentType = edit.*type;
+				edit.insertMode = mode;
+			}
+			UI::tooltip(localize(texts[i]));
+			if (texture && (sprite = resource.getInsertModeSprite(mode, edit)))
+			{
+				ImGui::SameLine(ImGui::GetStyle().WindowPadding.x, 0);
+				auto&& [uv0, uv1] = texture->getCoords(*sprite);
+				ImGui::Image(texture->getID(), UI::toolbarBtnImgSize, uv0, uv1);
+			}
+			ImGui::PopID();
+			if (selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		edit.*type = currentType;
+		ImGui::PopStyleColor(3);
+		ImGui::PopStyleVar();
+	}
+
+	void EditorToolbar::update(ScoreEditorState& state, ScoreContext& context, EditArgs& edit)
+	{
+		auto& input = getConfig().input;
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+		// keep toolbar on top in main viewport
+		ImGui::SetNextWindowSizeConstraints({ viewport->WorkSize.x, 0 }, { FLT_MAX, FLT_MAX });
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
+
+		// toolbar style
+		ImGui::PushStyleColor(ImGuiCol_Separator, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetStyleColorVec4(ImGuiCol_MenuBarBg));
+		ImGui::PushStyleVarY(ImGuiStyleVar_WindowPadding, UI::scale(4));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+		constexpr ImGuiWindowFlags ImGuiWindowFlags_Toolbar =
+		    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
+		    ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs |
+		    ImGuiWindowFlags_AlwaysAutoResize;
+
+		ImGui::Begin(windowName, NULL, ImGuiWindowFlags_Toolbar);
+
+		if (iconButton(ICON_FA_FILE, bindingLabel(input.create).c_str(), input.create))
+			state.wantCreateScore = true;
+
+		if (iconButton(ICON_FA_FOLDER_OPEN, bindingLabel(input.open).c_str(), input.open))
+			state.wantOpenScore = true;
+
+		if (iconButton(ICON_FA_SAVE, bindingLabel(input.save).c_str(), input.save))
+			state.wantSaveScore = true;
+
+		if (iconButton(ICON_FA_FILE_EXPORT, bindingLabel(input.exportScore).c_str(),
+		               input.exportScore))
+			state.wantExportScore = true;
+
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+
+		if (iconButton(ICON_FA_CUT, bindingLabel(input.cutSelection).c_str(), input.cutSelection,
+		               context.hasSelection()))
+		{
+			// context.cutSelection();
+		}
+
+		if (iconButton(ICON_FA_COPY, bindingLabel(input.copySelection).c_str(), input.copySelection,
+		               context.hasSelection()))
+		{
+			// context.copySelection();
+		}
+
+		if (iconButton(ICON_FA_PASTE, bindingLabel(input.paste).c_str(), input.paste))
+		{
+			// context.paste(false);
+		}
+
+		if (iconButton(ICON_FA_CLONE, bindingLabel(input.duplicate).c_str(), input.duplicate,
+		               context.hasSelection()))
+		{
+			// context.duplicateSelection(false);
+		}
+
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+
+		if (iconButton(ICON_FA_UNDO, bindingLabel(input.undo).c_str(), input.undo,
+		               context.history.hasUndo()))
+		{
+			// context.undo();
+		}
+
+		if (iconButton(ICON_FA_REDO, bindingLabel(input.redo.name).c_str(), input.redo,
+		               context.history.hasRedo()))
+		{
+			// context.redo();
+		}
+
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 4);
+
+		constexpr InsertMode specialModes[] = { InsertMode::InsertLong, InsertMode::InsertLongMid,
+			                                    InsertMode::InsertFlick, InsertMode::InsertGuide };
+		float insertXOffset[size_t(InsertMode::InsertModeMax)] = {};
+		auto& resource = getResources().timelineTexture;
+		const Texture* texture = resource.getToolbarTexture();
+		for (auto&& mode : EnumRange(InsertMode::InsertModeMax))
+		{
+			bool activated = false;
+			size_t modeIdx = static_cast<size_t>(mode);
+			MultiInputBinding& modeBinding = input.*insertModeBindings[modeIdx];
+			std::string label = bindingLabel(localize(insertModeTexts[modeIdx]), modeBinding);
+			const Sprite* sprite = resource.getInsertModeSprite(mode, edit);
+			bool special =
+			    std::binary_search(std::begin(specialModes), std::end(specialModes), mode);
+			insertXOffset[modeIdx] = ImGui::GetCursorScreenPos().x;
+			if (special)
+				label.append("\n<RightClick>");
+			if (imageButton(texture, sprite, label.c_str(), modeBinding, true,
+			                mode == edit.insertMode))
+				edit.changeInsertMode(mode);
+			if (special && ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+			    ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+			{
+				ImGui::OpenPopup(popUpName);
+				insertModePopup = modeIdx;
+			}
+		}
+
+		ImGui::PushStyleVarX(ImGuiStyleVar_WindowPadding, UI::scale(4.0f));
+		ImGui::SetNextWindowPos(
+		    { insertXOffset[insertModePopup] - ImGui::GetStyle().WindowPadding.x,
+		      ImGui::GetCursorScreenPos().y + ImGui::GetItemRectSize().y },
+		    ImGuiCond_Appearing);
+		if (ImGui::BeginPopup(popUpName, ImGuiWindowFlags_NoResize))
+		{
+			switch ((InsertMode)insertModePopup)
+			{
+			case InsertMode::InsertLong:
+				insertModeComboItems(InsertMode::InsertLong, edit, &EditArgs::easeType,
+				                     easeTypeTexts, EaseType::EaseTypeCount);
+				break;
+			case InsertMode::InsertFlick:
+				insertModeComboItems(InsertMode::InsertFlick, edit, &EditArgs::flickType,
+				                     flickTypeTexts, FlickType::FlickTypeCount, FlickType::Default);
+				break;
+			case InsertMode::InsertLongMid:
+				insertModeComboItems(InsertMode::InsertLongMid, edit, &EditArgs::stepType,
+				                     stepTypeTexts, EditHoldStepType::HoldStepTypeCount);
+				break;
+			case InsertMode::InsertGuide:
+				insertModeComboItems(InsertMode::InsertGuide, edit, &EditArgs::colorType,
+				                     guideColorTexts, GuideColor::GuideColorCount);
+				break;
+			}
+
+			ImGui::EndPopup();
+		}
+		ImGui::PopStyleVar();
+
+		ImGui::End();
+		ImGui::PopStyleColor(2);
+		ImGui::PopStyleVar(3);
+	}
+
+#ifdef COMPILE_ME
 	void ScorePropertiesWindow::update(ScoreContext& context)
 	{
 		if (ImGui::CollapsingHeader(

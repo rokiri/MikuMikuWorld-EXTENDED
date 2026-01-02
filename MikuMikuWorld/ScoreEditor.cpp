@@ -10,6 +10,7 @@
 #include "SUS.h"
 #include "NativeScoreSerializer.h"
 #include "UI.h"
+#include "Text.h"
 #include "Utilities.h"
 #include <filesystem>
 #include <fstream>
@@ -18,21 +19,6 @@ using nlohmann::json;
 
 namespace MikuMikuWorld
 {
-	static MultiInputBinding* timelineModeBindings[] = {
-		&config.input.timelineSelect,   &config.input.timelineTap,
-		&config.input.timelineHold,     &config.input.timelineHoldMid,
-		&config.input.timelineFlick,    &config.input.timelineCritical,
-		&config.input.timelineFriction, &config.input.timelineGuide,
-		&config.input.timelineDamage,   &config.input.timelineDummy,
-		&config.input.timelineBpm,      &config.input.timelineTimeSignature,
-		&config.input.timelineHiSpeed,
-	};
-
-	constexpr const char* toolbarFlickNames[] = { "none", "default",   "left",      "right",
-		                                          "down", "down_left", "down_right" };
-
-	constexpr const char* toolbarStepNames[] = { "normal", "hidden", "skip" };
-
 	ScoreEditor::ScoreEditor()
 	{
 		
@@ -48,22 +34,10 @@ namespace MikuMikuWorld
 		//timeline.setZoom(config.zoom);
 
 		autoSavePath = Application::getAppDir() + "auto_save";
-		autoSaveTimer.reset();
+		// autoSaveTimer.reset();
 
-		//std::thread fetchUpdateThread(
-		//    [this]
-		//    {
-		//	    try
-		//	    {
-		//		    ScoreEditor::fetchUpdate();
-		//	    }
-		//	    catch (const std::exception& e)
-		//	    {
-		//		    std::cout << "Failed to fetch latest update: " << e.what() << std::endl;
-		//	    }
-		//    });
-
-		//fetchUpdateThread.detach();
+		std::thread fetchUpdateThread(&ScoreEditor::fetchUpdate, this);
+		fetchUpdateThread.detach();
 	}
 
 	void ScoreEditor::fetchUpdate()
@@ -71,29 +45,29 @@ namespace MikuMikuWorld
 		using namespace std::chrono;
 		auto now = system_clock::now();
 		auto diff = duration_cast<minutes>(now - getConfig().lastUpdateCheck).count();
-			std::cout << "Last update check: " << diff << " minutes ago" << std::endl;
+		std::cout << "Last update check: " << diff << " minutes ago" << std::endl;
 		if (diff > 60)
-			{
-			try
 		{
-			httplib::Client client("https://api.github.com");
+			try
+			{
+				httplib::Client client("https://api.github.com");
 
-			std::cout << "Fetching new update" << std::endl;
-			auto res = client.Get("/repos/UntitledCharts/MikuMikuWorld4UC/releases/latest");
-			if (!res)
-			{
-				std::cerr << "Failed to fetch latest update: client.Get failed" << std::endl;
-				return;
-			}
-			std::cout << "Status: " << res->status << std::endl;
-			if (res->status == 200)
-			{
-				auto parsed = nlohmann::json::parse(res->body);
-				std::string tagName = parsed["tag_name"];
+				std::cout << "Fetching new update" << std::endl;
+				auto res = client.Get("/repos/UntitledCharts/MikuMikuWorld4UC/releases/latest");
+				if (!res)
+				{
+					std::cerr << "Failed to fetch latest update: client.Get failed" << std::endl;
+					return;
+				}
+				std::cout << "Status: " << res->status << std::endl;
+				if (res->status == 200)
+				{
+					auto parsed = nlohmann::json::parse(res->body);
+					std::string tagName = parsed["tag_name"];
 					getConfig().latestFetchAppVersion = tagName.substr(1);
 					getConfig().lastUpdateCheck = now;
+				}
 			}
-		}
 			catch (const std::exception& e)
 			{
 				std::cout << "Failed to fetch latest update: " << e.what() << std::endl;
@@ -148,27 +122,29 @@ namespace MikuMikuWorld
 	void ScoreEditor::update()
 	{
 		drawMenubar();
-		drawToolbar();
+		toolbar.update(state, context, edit);
+
+		auto& inputConf = getConfig().input;
 
 		if (!ImGui::GetIO().WantCaptureKeyboard)
 		{
-			if (ImGui::IsAnyPressed(config.input.create))
-				//Application::getInstance().getWindowState().resetting = true;
-			if (ImGui::IsAnyPressed(config.input.open))
-			{
-				//Application::getInstance().getWindowState().resetting = true;
-				//Application::getInstance().getWindowState().shouldPickScore = true;
-			}
+			if (ImGui::IsAnyPressed(inputConf.create))
+				// Application::getInstance().getWindowState().resetting = true;
+				if (ImGui::IsAnyPressed(inputConf.open))
+				{
+					// Application::getInstance().getWindowState().resetting = true;
+					// Application::getInstance().getWindowState().shouldPickScore = true;
+				}
 
-			if (ImGui::IsAnyPressed(config.input.openSettings))
-				settingsWindow.open = true;
-			if (ImGui::IsAnyPressed(config.input.openHelp))
+			// if (ImGui::IsAnyPressed(inputConf.openSettings))
+			//	settingsWindow.open = true;
+			if (ImGui::IsAnyPressed(inputConf.openHelp))
 				help();
-			//if (ImGui::IsAnyPressed(config.input.save))
+			// if (ImGui::IsAnyPressed(inputConf.save))
 			//	trySave(context.workingData.filename);
-			if (ImGui::IsAnyPressed(config.input.saveAs))
+			if (ImGui::IsAnyPressed(inputConf.saveAs))
 				saveAs();
-			if (ImGui::IsAnyPressed(config.input.exportScore))
+			if (ImGui::IsAnyPressed(inputConf.exportScore))
 				exportScore();
 			//if (ImGui::IsAnyPressed(config.input.togglePlayback))
 			//	timeline.setPlaying(context, !timeline.isPlaying());
@@ -334,16 +310,17 @@ namespace MikuMikuWorld
 
 	size_t ScoreEditor::updateRecentFilesList(const std::string& entry)
 	{
-		while (config.recentFiles.size() >= maxRecentFilesEntries)
-			config.recentFiles.pop_back();
+		auto& files = getConfig().recentFiles;
+		while (files.size() >= maxRecentFilesEntries)
+			files.pop_back();
 
 		// Remove the entry (if found) to the beginning of the vector
-		auto it = std::find(config.recentFiles.begin(), config.recentFiles.end(), entry);
-		if (it != config.recentFiles.end())
-			config.recentFiles.erase(it);
+		auto it = std::find(files.begin(), files.end(), entry);
+		if (it != files.end())
+			files.erase(it);
 
-		config.recentFiles.insert(config.recentFiles.begin(), entry);
-		return config.recentFiles.size();
+		files.insert(files.begin(), entry);
+		return files.size();
 	}
 
 	void ScoreEditor::create()
@@ -494,9 +471,10 @@ namespace MikuMikuWorld
 	void ScoreEditor::drawMenubar()
 	{
 		ImGui::BeginMainMenuBar();
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 2));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, UI::scale({10, 2}));
 
-		if (ImGui::BeginMenu(getString("file")))
+		auto& inputConf = getConfig().input;
+		if (ImGui::BeginMenu(localize(Text::file)))
 		{
 			//if (ImGui::MenuItem(getString("new"), ToShortcutString(config.input.create)))
 			//	Application::getInstance().getWindowState().resetting = true;
@@ -554,7 +532,7 @@ namespace MikuMikuWorld
 			ImGui::EndMenu();
 		}
 
-		if (ImGui::BeginMenu(getString("edit")))
+		if (ImGui::BeginMenu(localize(Text::edit)))
 		{
 			//if (ImGui::MenuItem(getString("undo"), ToShortcutString(config.input.undo), false,
 			//                    context.history.hasUndo()))
@@ -589,13 +567,13 @@ namespace MikuMikuWorld
 			//	context.selectAll();
 
 			//ImGui::Separator();
-			if (ImGui::MenuItem(getString("settings"), ToShortcutString(config.input.openSettings)))
-				settingsWindow.open = true;
+			// if (ImGui::MenuItem(localize(Text::settings),
+			// ToShortcutString(inputConf.openSettings))) 	settingsWindow.open = true;
 
 			ImGui::EndMenu();
 		}
 
-		if (ImGui::BeginMenu(getString("view")))
+		if (ImGui::BeginMenu(localize(Text::view)))
 		{
 			//ImGui::MenuItem(getString("show_step_outlines"), NULL, &timeline.drawHoldStepOutlines);
 			ImGui::MenuItem(getString("cursor_auto_scroll"), NULL, &config.followCursorInPlayback);
@@ -606,9 +584,9 @@ namespace MikuMikuWorld
 			ImGui::EndMenu();
 		}
 
-		if (config.debugEnabled)
+		if (getConfig().debugEnabled)
 		{
-			if (ImGui::BeginMenu(getString("debug")))
+			if (ImGui::BeginMenu(localize(Text::debug)))
 			{
 #ifdef DEBUG
 				ImGui::MenuItem("ImGui Demo Window", NULL, &showImGuiDemoWindow);
@@ -637,19 +615,19 @@ namespace MikuMikuWorld
 			}
 		}
 
-		if (ImGui::BeginMenu(getString("window")))
+		if (ImGui::BeginMenu(localize(Text::window)))
 		{
-			if (ImGui::MenuItem(getString("vsync"), NULL, &config.vsync))
-				glfwSwapInterval(config.vsync);
+			if (ImGui::MenuItem(localize(Text::vsync), NULL, &getConfig().vsync))
+				glfwSwapInterval(getConfig().vsync);
 
-			ImGui::MenuItem(getString("show_fps"), NULL, &config.showFPS);
+			ImGui::MenuItem(localize(Text::fpsShow), NULL, &getConfig().showFPS);
 
 			ImGui::EndMenu();
 		}
 
-		if (ImGui::BeginMenu(getString("help")))
+		if (ImGui::BeginMenu(localize(Text::help)))
 		{
-			if (ImGui::MenuItem(getString("help"), ToShortcutString(config.input.openHelp)))
+			if (ImGui::MenuItem(localize(Text::help), ToShortcutString(inputConf.openHelp)))
 				help();
 
 			//if (ImGui::MenuItem(getString("about")))
@@ -669,103 +647,6 @@ namespace MikuMikuWorld
 
 		ImGui::PopStyleVar();
 		ImGui::EndMainMenuBar();
-	}
-
-	void ScoreEditor::drawToolbar()
-	{
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImVec2 toolbarSize{ viewport->WorkSize.x,
-			                UI::toolbarBtnSize.y + ImGui::GetStyle().WindowPadding.y + 5 };
-
-		// keep toolbar on top in main viewport
-		ImGui::SetNextWindowViewport(viewport->ID);
-		ImGui::SetNextWindowPos(viewport->WorkPos);
-		ImGui::SetNextWindowSize(toolbarSize, ImGuiCond_Always);
-
-		// toolbar style
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.0f, 0.0f, 0.0f });
-		ImGui::PushStyleColor(ImGuiCol_Separator, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetStyleColorVec4(ImGuiCol_MenuBarBg));
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::Begin("##app_toolbar", NULL, ImGuiWindowFlags_Toolbar);
-
-		if (UI::toolbarButton(ICON_FA_FILE, getString("new"),
-		                      ToShortcutString(config.input.create)))
-		{
-			//Application::getInstance().getWindowState().resetting = true;
-		}
-
-		if (UI::toolbarButton(ICON_FA_FOLDER_OPEN, getString("open"),
-		                      ToShortcutString(config.input.open)))
-		{
-			//Application::getInstance().getWindowState().resetting = true;
-			//Application::getInstance().getWindowState().shouldPickScore = true;
-		}
-
-		//if (UI::toolbarButton(ICON_FA_SAVE, getString("save"), ToShortcutString(config.input.save)))
-		//	trySave(context.workingData.filename);
-
-		if (UI::toolbarButton(ICON_FA_FILE_EXPORT, getString("export_score"),
-		                      ToShortcutString(config.input.exportScore)))
-			exportScore();
-
-		UI::toolbarSeparator();
-
-		//if (UI::toolbarButton(ICON_FA_CUT, getString("cut"),
-		//                      ToShortcutString(config.input.cutSelection),
-		//                      context.selectedNotes.size() > 0))
-		//	context.cutSelection();
-
-		//if (UI::toolbarButton(ICON_FA_COPY, getString("copy"),
-		//                      ToShortcutString(config.input.copySelection),
-		//                      context.selectedNotes.size() > 0))
-		//	context.copySelection();
-
-		//if (UI::toolbarButton(ICON_FA_PASTE, getString("paste"),
-		//                      ToShortcutString(config.input.paste)))
-		//	context.paste(false);
-
-		//if (UI::toolbarButton(ICON_FA_CLONE, getString("duplicate"),
-		//                      ToShortcutString(config.input.duplicate),
-		//                      context.selectedNotes.size() > 0))
-		//	context.duplicateSelection(false);
-
-		UI::toolbarSeparator();
-
-		//if (UI::toolbarButton(ICON_FA_UNDO, getString("undo"), ToShortcutString(config.input.undo),
-		//                      context.history.hasUndo()))
-		//	context.undo();
-
-		//if (UI::toolbarButton(ICON_FA_REDO, getString("redo"), ToShortcutString(config.input.redo),
-		//                      context.history.hasRedo()))
-		//	context.redo();
-
-		UI::toolbarSeparator();
-
-		//for (int i = 0; i < arrayLength(timelineModes); ++i)
-		//{
-		//	std::string img{ IO::concat("timeline", timelineModes[i], "_") };
-		//	if (i == (int)TimelineMode::InsertFlick)
-		//		img.append("_").append(toolbarFlickNames[(int)edit.flickType]);
-		//	else if (i == (int)TimelineMode::InsertLongMid)
-		//		img.append("_").append(toolbarStepNames[(int)edit.stepType]);
-		//	else if (i == (int)TimelineMode::InsertGuide)
-		//	{
-		//		img.append("_").append(guideColors[(int)edit.colorType]);
-		//		img.append("_").append(
-		//		    std::string(fadeTypes[(int)edit.fadeType]).substr(5).c_str());
-		//	}
-
-		//	if (UI::toolbarImageButton(img.c_str(), getString(timelineModes[i]),
-		//	                           ToShortcutString(*timelineModeBindings[i]), true,
-		//	                           (int)timeline.getMode() == i))
-		//		timeline.changeMode((TimelineMode)i, edit);
-		//}
-
-		ImGui::PopStyleColor(3);
-		ImGui::PopStyleVar(2);
-		ImGui::End();
 	}
 
 	void ScoreEditor::help()

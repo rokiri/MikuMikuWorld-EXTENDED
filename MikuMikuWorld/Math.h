@@ -1,7 +1,8 @@
 #pragma once
 #include "ImGui/imgui.h"
-#include <functional>
 #include "NoteTypes.h"
+#include <functional>
+#include <cmath>
 
 namespace MikuMikuWorld
 {
@@ -23,6 +24,21 @@ namespace MikuMikuWorld
 		inline Vector2(const ImVec2& vec) : x(vec.x), y(vec.y) {}
 		inline operator ImVec2() const { return { x, y }; }
 	};
+
+	inline Vector2 floor(const Vector2& vec2)
+	{
+		return Vector2(std::floor(vec2.x), std::floor(vec2.y));
+	}
+
+	inline Vector2 round(const Vector2& vec2)
+	{
+		return Vector2(std::round(vec2.x), std::round(vec2.y));
+	}
+
+	inline Vector2 ceil(const Vector2& vec2)
+	{
+		return Vector2(std::ceil(vec2.x), std::ceil(vec2.y));
+	}
 
 	struct Color
 	{
