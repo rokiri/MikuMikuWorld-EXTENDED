@@ -44,10 +44,11 @@ namespace MikuMikuWorld
 
 		bool initialized;
 		std::string language;
-		
+
 		WindowState windowState;
 		ApplicationConfiguration config;
 		ApplicationResource resource;
+		Localization localization;
 
 		static Application* instance;
 		static std::string version;
@@ -86,5 +87,7 @@ namespace MikuMikuWorld
 		// ApplicationResource
 		friend ApplicationResource& getResources();
 		friend Shader* getShader(const std::string& name);
+		// Localization
+		friend const TranslationString& localize(const std::string& text);
 	};
 }

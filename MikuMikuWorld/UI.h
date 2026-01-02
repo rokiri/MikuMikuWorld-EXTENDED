@@ -5,6 +5,7 @@
 #include "ImGui/imgui_internal.h"
 #include "ImGui/imgui_stdlib.h"
 #include "Localization.h"
+#include "InputBinding.h"
 #include "NoteTypes.h"
 #include <vector>
 
@@ -25,10 +26,6 @@ namespace MikuMikuWorld
 	constexpr float toolTipDelay = 0.5f;
 
 	constexpr ImGuiWindowFlags ImGuiWindowFlags_Static = ImGuiWindowFlags_NoCollapse;
-	constexpr ImGuiWindowFlags ImGuiWindowFlags_Toolbar =
-	    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove |
-	    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar |
-	    ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar;
 
 	enum class ColorDisplay : uint8_t
 	{
@@ -64,6 +61,8 @@ namespace MikuMikuWorld
 		static ImVec2 toolbarBtnImgSize;
 		static std::vector<ImVec4> accentColors;
 
+		static float scale(float value);
+		static ImVec2 scale(const ImVec2& size);
 		static bool transparentButton(const char* txt, ImVec2 size = btnNormal, bool repeat = false,
 		                              bool enabled = true);
 		static bool transparentButton2(const char* txt, ImVec2 pos, ImVec2 size);
@@ -99,16 +98,13 @@ namespace MikuMikuWorld
 		                         size_t count);
 		static bool zoomControl(const char* label, float& value, float min, float max, float width);
 		static bool timeSignatureSelect(int& numerator, int& denominator);
-		static bool toolbarButton(const char* icon, const char* label, const char* shortcut,
-		                          bool enabled = true, bool selected = false);
-		static bool toolbarImageButton(const char* img, const char* label, const char* shortcut,
-		                               bool enabled = true, bool selected = false);
-		static void toolbarSeparator();
-		static void beginNextItemDisabled();
-		static void endNextItemDisabled();
+		static void centeredText(const std::string& str);
+		static void centeredText(const char* str);
+		void drawShadedText(ImDrawList* drawList, ImVec2 textPos, float fontSize, ImU32 fontColor,
+		                    const char* text);
 
 		// static void setWindowTitle(std::string title);
-		static void updateBtnSizesDpiScaling(float scale);
+		static void updateUIScaling(float scale);
 
 		template <typename T> static void addReadOnlyProperty(const char* label, T val)
 		{
@@ -136,38 +132,38 @@ namespace MikuMikuWorld
 		static bool addSelectProperty(const char* label, T& value, const char* const* items,
 		                              int count)
 		{
-			propertyLabel(label);
+			// propertyLabel(label);
 
-			std::string id("##");
-			id.append(label);
+			// std::string id("##");
+			// id.append(label);
 
-			bool edited = false;
+			// bool edited = false;
 
-			std::string curr = getString(items[(int)value]);
-			if (!curr.size())
-				curr = items[(int)value];
-			if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
-			{
-				for (int i = 0; i < count; ++i)
-				{
-					const bool selected = (int)value == i;
-					std::string str = getString(items[i]);
-					if (!str.size())
-						str = items[i];
+			// std::string curr = getString(items[(int)value]);
+			// if (!curr.size())
+			// 	curr = items[(int)value];
+			// if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
+			// {
+			// 	for (int i = 0; i < count; ++i)
+			// 	{
+			// 		const bool selected = (int)value == i;
+			// 		std::string str = getString(items[i]);
+			// 		if (!str.size())
+			// 			str = items[i];
 
-					if (ImGui::Selectable(str.c_str(), selected))
-					{
-						value = (T)i;
-						edited = true;
-					}
-				}
+			// 		if (ImGui::Selectable(str.c_str(), selected))
+			// 		{
+			// 			value = (T)i;
+			// 			edited = true;
+			// 		}
+			// 	}
 
-				ImGui::EndCombo();
-			}
+			// 	ImGui::EndCombo();
+			// }
 
-			ImGui::NextColumn();
+			// ImGui::NextColumn();
 
-			return edited;
+			// return edited;
 		}
 
 		// we need to get proper translated names for the colors
@@ -175,39 +171,39 @@ namespace MikuMikuWorld
 		static bool addSelectProperty<GuideColor>(const char* label, GuideColor& value,
 		                                          const char* const* items, int count)
 		{
-			propertyLabel(label);
+			// propertyLabel(label);
 
-			std::string id("##");
-			id.append(label);
+			// std::string id("##");
+			// id.append(label);
 
-			bool edited = false;
+			// bool edited = false;
 
-			std::string curr = items[(int)value];
-			if (!curr.size())
-				curr = items[(int)value];
-			const std::string translated_str = getString(curr.c_str());
-			if (ImGui::BeginCombo(id.c_str(), translated_str.c_str()))
-			{
-				for (int i = (int)GuideColor::Neutral; i < count; ++i)
-				{
-					const bool selected = (int)value == i;
-					std::string str = getString(items[i]);
-					if (!str.size())
-						str = items[i];
+			// std::string curr = items[(int)value];
+			// if (!curr.size())
+			// 	curr = items[(int)value];
+			// const std::string translated_str = getString(curr.c_str());
+			// if (ImGui::BeginCombo(id.c_str(), translated_str.c_str()))
+			// {
+			// 	for (int i = (int)GuideColor::Neutral; i < count; ++i)
+			// 	{
+			// 		const bool selected = (int)value == i;
+			// 		std::string str = getString(items[i]);
+			// 		if (!str.size())
+			// 			str = items[i];
 
-					if (ImGui::Selectable(str.c_str(), selected))
-					{
-						value = (GuideColor)i;
-						edited = true;
-					}
-				}
+			// 		if (ImGui::Selectable(str.c_str(), selected))
+			// 		{
+			// 			value = (GuideColor)i;
+			// 			edited = true;
+			// 		}
+			// 	}
 
-				ImGui::EndCombo();
-			}
+			// 	ImGui::EndCombo();
+			// }
 
-			ImGui::NextColumn();
+			// ImGui::NextColumn();
 
-			return edited;
+			// return edited;
 		}
 
 		// we don't want FlickType::None to appear in the selection
@@ -215,76 +211,76 @@ namespace MikuMikuWorld
 		static bool addSelectProperty<FlickType>(const char* label, FlickType& value,
 		                                         const char* const* items, int count)
 		{
-			propertyLabel(label);
+			// propertyLabel(label);
 
-			std::string id("##");
-			id.append(label);
+			// std::string id("##");
+			// id.append(label);
 
-			bool edited = false;
+			// bool edited = false;
 
-			std::string curr = getString(items[(int)value]);
-			if (!curr.size())
-				curr = items[(int)value];
-			if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
-			{
-				for (int i = (int)FlickType::Default; i < count; ++i)
-				{
-					const bool selected = (int)value == i;
-					std::string str = getString(items[i]);
-					if (!str.size())
-						str = items[i];
+			// std::string curr = getString(items[(int)value]);
+			// if (!curr.size())
+			// 	curr = items[(int)value];
+			// if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
+			// {
+			// 	for (int i = (int)FlickType::Default; i < count; ++i)
+			// 	{
+			// 		const bool selected = (int)value == i;
+			// 		std::string str = getString(items[i]);
+			// 		if (!str.size())
+			// 			str = items[i];
 
-					if (ImGui::Selectable(str.c_str(), selected))
-					{
+			// 		if (ImGui::Selectable(str.c_str(), selected))
+			// 		{
 
-						value = (FlickType)i;
-						edited = true;
-					}
-				}
+			// 			value = (FlickType)i;
+			// 			edited = true;
+			// 		}
+			// 	}
 
-				ImGui::EndCombo();
-			}
+			// 	ImGui::EndCombo();
+			// }
 
-			ImGui::NextColumn();
+			// ImGui::NextColumn();
 
-			return edited;
+			// return edited;
 		}
 
 		static bool addFlickSelectPropertyWithNone(const char* label, FlickType& value,
 		                                           const char* const* items, int count)
 		{
-			propertyLabel(label);
+			// propertyLabel(label);
 
-			std::string id("##");
-			id.append(label);
+			// std::string id("##");
+			// id.append(label);
 
-			bool edited = false;
+			// bool edited = false;
 
-			std::string curr = getString(items[(int)value]);
-			if (!curr.size())
-				curr = items[(int)value];
-			if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
-			{
-				for (int i = (int)FlickType::None; i < count; ++i)
-				{
-					const bool selected = (int)value == i;
-					std::string str = getString(items[i]);
-					if (!str.size())
-						str = items[i];
+			// std::string curr = getString(items[(int)value]);
+			// if (!curr.size())
+			// 	curr = items[(int)value];
+			// if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
+			// {
+			// 	for (int i = (int)FlickType::None; i < count; ++i)
+			// 	{
+			// 		const bool selected = (int)value == i;
+			// 		std::string str = getString(items[i]);
+			// 		if (!str.size())
+			// 			str = items[i];
 
-					if (ImGui::Selectable(str.c_str(), selected))
-					{
-						value = (FlickType)i;
-						edited = true;
-					}
-				}
+			// 		if (ImGui::Selectable(str.c_str(), selected))
+			// 		{
+			// 			value = (FlickType)i;
+			// 			edited = true;
+			// 		}
+			// 	}
 
-				ImGui::EndCombo();
-			}
+			// 	ImGui::EndCombo();
+			// }
 
-			ImGui::NextColumn();
+			// ImGui::NextColumn();
 
-			return edited;
+			// return edited;
 		}
 	};
 }

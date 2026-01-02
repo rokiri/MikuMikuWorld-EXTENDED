@@ -247,7 +247,6 @@ confirm,Confirm
 layers,Layers
 layer_name,Name
 create_layer,Create Layer
-confirm,Confirm
 show_all_layers,Show All Layers
 layer_rename,Layer Rename
 layer_up,Move Up

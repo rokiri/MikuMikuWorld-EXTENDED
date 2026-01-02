@@ -235,7 +235,6 @@ confirm,确认
 layers,图层
 name,名称
 create_layer,创建图层
-confirm,确认
 show_all_layers,显示所有图层
 layer_rename,重命名图层
 layer_up,图层上移

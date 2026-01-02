@@ -1,8 +1,8 @@
 #include "UI.h"
 #include "Utilities.h"
 #include "Colors.h"
+#include "Text.h"
 #include "Tempo.h"
-#include "ResourceManager.h"
 #include "TimelineMode.h"
 #include <string>
 #include <algorithm>
@@ -13,12 +13,13 @@ namespace MikuMikuWorld
 	const ImVec2 UI::_btnNormal{ 24, 24 };
 	const ImVec2 UI::_btnSmall{ 19, 19 };
 	const ImVec2 UI::_toolbarBtnSize{ 22, 22 };
-	const ImVec2 UI::_toolbarBtnImgSize{ 19, 19 };
+	const ImVec2 UI::_toolbarBtnImgSize{ 20, 20 };
 
 	ImVec2 UI::btnNormal{ UI::_btnNormal };
 	ImVec2 UI::btnSmall{ UI::_btnSmall };
 	ImVec2 UI::toolbarBtnSize{ UI::_toolbarBtnSize };
 	ImVec2 UI::toolbarBtnImgSize{ UI::_toolbarBtnImgSize };
+	float uiScale = 1.f;
 	char UI::idStr[256];
 
 	std::vector<ImVec4> UI::accentColors{
@@ -38,6 +39,10 @@ namespace MikuMikuWorld
 		strcpy(idStr + 2, label);
 		return idStr;
 	}
+
+	float UI::scale(float value) { return std::floor(value * uiScale); }
+
+	ImVec2 UI::scale(const ImVec2& size) { return floor(size * uiScale); }
 
 	bool UI::transparentButton(const char* txt, ImVec2 size, bool repeat, bool enabled)
 	{
@@ -61,7 +66,7 @@ namespace MikuMikuWorld
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.6f, 0.6f, 0.6f, 0.4f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0.3f, 0.4f));
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scale(3.0f));
 
 		ImGui::SetCursorScreenPos(pos);
 		bool pressed = ImGui::Button(labelID(txt), size);
@@ -80,7 +85,7 @@ namespace MikuMikuWorld
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colh);
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, colh);
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.15f, 0.15f, 0.15f, 1.0));
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scale(2.0f));
 
 		ImGui::SetCursorScreenPos(pos);
 		ImVec2 sz = size;
@@ -281,13 +286,15 @@ namespace MikuMikuWorld
 
 	void UI::tooltip(const char* label)
 	{
-		if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 0.5f)
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip))
 		{
 			float txtWidth = ImGui::CalcTextSize(label).x + (ImGui::GetStyle().WindowPadding.x * 2);
 			ImGui::SetNextWindowSize(ImVec2(std::min(txtWidth, 250.0f), -1));
-			ImGui::BeginTooltipEx(ImGuiTooltipFlags_OverridePrevious, ImGuiWindowFlags_NoResize);
-			ImGui::TextWrapped("%s", label);
-			ImGui::EndTooltip();
+			if (ImGui::BeginTooltipEx(ImGuiTooltipFlags_OverridePrevious, ImGuiWindowFlags_NoResize))
+			{
+				ImGui::TextWrapped("%s", label);
+				ImGui::EndTooltip();
+			}
 		}
 	}
 
@@ -300,7 +307,7 @@ namespace MikuMikuWorld
 		ImGui::SetNextItemWidth(100);
 		// very low float value used to disable dragging
 		if (ImGui::DragInt("##custom_input", &value, 0.00000001f, 0, 0,
-		                   getString("division_affix")))
+		                   localize(Text::divisionAffix)))
 		{
 			value = std::clamp(value, 4, 1920);
 			act = true;
@@ -347,20 +354,14 @@ namespace MikuMikuWorld
 		const char* id = labelID(label);
 		ImGui::PushID(id);
 
-		std::string curr = getString(items[value]);
-		if (!curr.size())
-			curr = items[value];
-		if (ImGui::BeginCombo(id, curr.c_str()))
+		if (ImGui::BeginCombo(id, localize(items[value])))
 		{
 			bool act = false;
 			for (int i = 0; i < count; ++i)
 			{
 				const bool selected = value == i;
-				std::string str = getString(items[i]);
-				if (!str.size())
-					str = items[i];
 
-				if (ImGui::Selectable(str.c_str(), selected))
+				if (ImGui::Selectable(localize(items[i]), selected))
 				{
 					value = i;
 					act = true;
@@ -393,7 +394,7 @@ namespace MikuMikuWorld
 		ImGui::SetNextItemWidth(width);
 
 		act |= ImGui::SliderFloat(labelID(label), &value, min, max, "%.2fx");
-		tooltip(getString("zoom_tooltip"));
+		tooltip(localize(Text::zoomTooltip));
 		ImGui::SameLine();
 
 		if (UI::transparentButton(ICON_FA_SEARCH_PLUS, UI::btnSmall, true, value < max))
@@ -408,7 +409,7 @@ namespace MikuMikuWorld
 
 	bool UI::timeSignatureSelect(int& numerator, int& denominator)
 	{
-		propertyLabel(getString("time_signature"));
+		propertyLabel(localize(Text::timeSignature));
 
 		float controlWidth =
 		    (ImGui::GetContentRegionAvail().x / 2.0f) - (ImGui::CalcTextSize("/").x);
@@ -461,122 +462,35 @@ namespace MikuMikuWorld
 	//	glfwSetWindowTitle(window, IO::formatString("%s - %s", APP_NAME, title.c_str()).c_str());
 	//}
 
-	void UI::updateBtnSizesDpiScaling(float scale)
+	void UI::updateUIScaling(float scale)
 	{
-		btnNormal = _btnNormal * scale;
-		btnSmall = _btnSmall * scale;
-		toolbarBtnSize = _toolbarBtnSize * scale;
-		toolbarBtnImgSize = _toolbarBtnImgSize * scale;
+		uiScale = scale;
+		btnNormal = floor(_btnNormal * scale);
+		btnSmall = floor(_btnSmall * scale);
+		toolbarBtnSize = floor(_toolbarBtnSize * scale);
+		toolbarBtnImgSize = floor(_toolbarBtnImgSize * scale);
+	}
+	
+	void UI::centeredText(const std::string& str)
+	{
+		UI::centeredText(str.c_str());
 	}
 
-	bool UI::toolbarButton(const char* icon, const char* label, const char* shortcut, bool enabled,
-	                       bool selected)
+	void UI::centeredText(const char* str)
 	{
-		if (!enabled)
-		{
-			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1 - (0.5f * true));
-		}
-
-		if (selected)
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-			                      ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
-		}
-
-		bool activated = ImGui::Button(icon, UI::toolbarBtnSize);
-
-		std::string tooltipLabel = label;
-		if (shortcut && strlen(shortcut))
-			tooltipLabel.append(" (").append(shortcut).append(")");
-
-		if (tooltipLabel.size())
-			tooltip(tooltipLabel.c_str());
-
-		if (selected)
-			ImGui::PopStyleColor(2);
-
-		if (!enabled)
-		{
-			ImGui::PopItemFlag();
-			ImGui::PopStyleVar();
-		}
-
-		ImGui::SameLine();
-
-		return activated;
+		ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(str).x) *
+		                     0.5f);
+		ImGui::Text(str);
 	}
 
-	bool UI::toolbarImageButton(const char* img, const char* label, const char* shortcut,
-	                            bool enabled, bool selected)
+	void UI::drawShadedText(ImDrawList* drawList, ImVec2 textPos, float fontSize, ImU32 fontColor,
+	                    const char* text)
 	{
-		std::string lblId;
-		lblId.append("##").append(img).append(label);
+		if (!drawList)
+			return;
 
-		int texIndex = ResourceManager::getTexture(img);
-		if (texIndex == -1)
-		{
-			// fallback to regular toolbar button
-			return toolbarButton(img, label, shortcut, enabled, selected);
-		}
-
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 2, 2 });
-		if (!enabled)
-		{
-			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1 - (0.5f * true));
-		}
-
-		if (selected)
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-			                      ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
-		}
-
-		bool activated = ImGui::ImageButton(
-		    lblId.c_str(), ResourceManager::textures[texIndex].getID(),
-		    UI::toolbarBtnImgSize);
-
-		std::string tooltipLabel = label;
-		if (shortcut && strlen(shortcut))
-			tooltipLabel.append(" (").append(shortcut).append(")");
-
-		if (tooltipLabel.size())
-			tooltip(tooltipLabel.c_str());
-
-		if (selected)
-			ImGui::PopStyleColor(2);
-
-		if (!enabled)
-		{
-			ImGui::PopItemFlag();
-			ImGui::PopStyleVar();
-		}
-
-		ImGui::PopStyleVar();
-		ImGui::SameLine();
-
-		return activated;
-	}
-
-	void UI::toolbarSeparator()
-	{
-		ImGui::SameLine();
-		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-		ImGui::SameLine();
-	}
-
-	void UI::beginNextItemDisabled()
-	{
-		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
-	}
-
-	void UI::endNextItemDisabled()
-	{
-		ImGui::PopStyleVar();
-		ImGui::PopItemFlag();
+		drawList->AddText(ImGui::GetFont(), fontSize, textPos + ImVec2{ 0.75f, 1.0f }, 0xff111111,
+		                  text);
+		drawList->AddText(ImGui::GetFont(), fontSize, textPos, fontColor, text);
 	}
 }

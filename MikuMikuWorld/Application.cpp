@@ -201,14 +201,12 @@ namespace MikuMikuWorld
 	{
 		if (config.language != language)
 		{
-			std::string locale =
-			    config.language == "auto" ? Utilities::getSystemLocale() : config.language;
-
-			// Try to set the selected language and fallback to default (en) on failure
-			if (!Localization::setLanguage(locale))
-				Localization::setLanguage("en");
-
-			language = config.language;
+			localization.scanLanguages();
+			if (!localization.setLanguage(config.language))
+			{
+				config.language = "auto";
+				localization.setLanguage("auto");
+			}
 		}
 
 		float dpiX = 1.0f, dpiY = 1.0f;
@@ -221,7 +219,7 @@ namespace MikuMikuWorld
 		float dpiScale = (dpiX + dpiY) * 0.5f;
 		if (dpiScale != windowState.lastDpiScale)
 		{
-			UI::updateBtnSizesDpiScaling(dpiScale);
+			UI::updateUIScaling(dpiScale);
 			windowState.lastDpiScale = dpiScale;
 		}
 
@@ -327,7 +325,12 @@ namespace MikuMikuWorld
 
 		resource.timelineTexture.load();
 
-		Localization::loadLanguages(appDir + "res\\i18n");
+		if (!localization.setLanguage(config.language))
+		{
+			config.language = "auto";
+			localization.setLanguage("auto");
+		}
+		language = config.language;
 	}
 
 	void Application::run()

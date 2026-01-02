@@ -3,6 +3,7 @@
 #include "ImGui/imgui.h"
 #include "Localization.h"
 #include "IO.h"
+#include "Text.h"
 #include <Windows.h>
 #include <ctime>
 #include <vector>
@@ -29,7 +30,7 @@ namespace MikuMikuWorld
 		wL = wL.substr(0, wL.find_first_of(L"-"));
 
 		delete[] lpLocalName;
-		return IO::wideStringToMb(wL);
+		return IO::wideToUtf8(wL);
 	}
 
 	std::vector<std::string> Utilities::splitString(const std::string& base, const char delimiter)
@@ -57,34 +58,6 @@ namespace MikuMikuWorld
 
 	std::string Utilities::getDivisionString(int div)
 	{
-		return IO::formatString(getString("division"), div);
-	}
-
-	float Utilities::centerImGuiItem(const float width)
-	{
-		return (ImGui::GetContentRegionAvail().x * 0.5f) - (width * 0.5f);
-	}
-
-	void Utilities::ImGuiCenteredText(const std::string& str)
-	{
-		Utilities::ImGuiCenteredText(str.c_str());
-	}
-
-	void Utilities::ImGuiCenteredText(const char* str)
-	{
-		ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(str).x) *
-		                     0.5f);
-		ImGui::Text(str);
-	}
-
-	void drawShadedText(ImDrawList* drawList, ImVec2 textPos, float fontSize, ImU32 fontColor,
-	                    const char* text)
-	{
-		if (!drawList)
-			return;
-
-		drawList->AddText(ImGui::GetFont(), fontSize, textPos + ImVec2{ 0.75f, 1.0f }, 0xff111111,
-		                  text);
-		drawList->AddText(ImGui::GetFont(), fontSize, textPos, fontColor, text);
+		return IO::formatString(localize(Text::division), div);
 	}
 }

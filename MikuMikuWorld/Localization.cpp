@@ -1,64 +1,132 @@
+#include <filesystem>
+#include "Application.h"
 #include "Localization.h"
 #include "IO.h"
-#include "File.h"
-#include <filesystem>
+#include "Text.h"
+
+namespace fs = std::filesystem;
 
 namespace MikuMikuWorld
 {
-	static std::string empty;
-
-	std::unordered_map<std::string, std::unique_ptr<Language>> Localization::languages;
-	Language* Localization::currentLanguage = nullptr;
-
-	void Localization::load(const char* code, const std::string& filename)
+	static std::unordered_map<std::string, TranslationString>
+	readLanguageFile(const std::string& filename)
 	{
-		if (!IO::File::exists(filename))
-			return;
+		std::unordered_map<std::string, TranslationString> translation;
+		translation.reserve(320);
+		std::ifstream file(filename);
+		std::string line;
+		for (size_t i = 1; std::getline(file, line); i++)
+		{
+			auto&& [text, comment] = IO::split_first(line, "#");
+			if (text.empty())
+				continue;
+			auto&& [key, value] = IO::split_first(text, ",");
+			key = IO::trim(key);
+			value = IO::trim(value);
+			if (key.empty() || value.empty())
+				fprintf(stderr, "Invalid translation key on line %zd of '%s'", i, filename.c_str());
+			else if (translation.try_emplace(key, TranslationString{ value }).second == false)
+				fprintf(stderr, "Duplicated translation key '%s' in '%s'", key.c_str(),
+				        filename.c_str());
+		}
+		return translation;
+	}
 
-		languages[code] = std::make_unique<Language>(code, filename);
+	static std::string readLanguageName(const std::string& filename)
+	{
+		std::string name;
+		std::ifstream file(filename);
+		std::string line;
+		while (std::getline(file, line))
+		{
+			auto&& [text, comment] = IO::split_first(line, "#");
+			if (text.empty())
+				continue;
+			auto&& [key, value] = IO::split_first(text, ",");
+			key = IO::trim(key);
+			value = IO::trim(value);
+			if (key == Text::languageName)
+				return value;
+		}
+		return "";
+	}
+
+	void Localization::scanLanguages()
+	{
+		languages.clear();
+		auto i18nPath = Application::getFullPath("res", "i18n");
+		if (!fs::exists(i18nPath) || !fs::is_directory(i18nPath))
+			return;
+		for (const auto& entry : fs::directory_iterator(i18nPath))
+		{
+			// look only for csv files and ignore any dot files present
+			auto path = entry.path().filename();
+			if (!entry.is_regular_file() || IO::startsWith(path.u8string(), ".") ||
+			    path.extension() != ".csv")
+				continue;
+			auto langName = readLanguageName(entry.path().u8string());
+			if (langName.empty())
+				continue;
+			languages.push_back({ path.replace_extension().u8string(), langName });
+		}
+		// languages is order by (user's language) > english > (other languages)
+		std::string systemLocale = Utilities::getSystemLocale();
+		auto it = std::find_if(languages.begin(), languages.end(), [&](const Language& language)
+		                       { return language.code == systemLocale; });
+		if (it != languages.end())
+			std::swap(*it, languages.front());
+		if (systemLocale == "en")
+			return;
+		it = std::find_if(languages.begin(), languages.end(),
+		                  [](const Language& language) { return language.code == "en"; });
+		if (it != languages.end())
+			std::swap(*it, *(languages.begin() + 1));
+	}
+
+	bool Localization::supportLanguage(const std::string& code)
+	{
+		if (languages.empty())
+			scanLanguages();
+		if (code == "auto")
+			return languages.size() != 0;
+		return std::any_of(languages.begin(), languages.end(),
+		                   [&](const Language& language) { return language.code == code; });
 	}
 
 	bool Localization::setLanguage(const std::string& code)
 	{
-		auto it = Localization::languages.find(code);
-		if (it == Localization::languages.end())
+		if (languages.empty())
+			scanLanguages();
+		if (languages.empty() && code == "auto")
 			return false;
-
-		Localization::currentLanguage = it->second.get();
+		auto path = Application::getFullPath("res", "i18n") /
+		            (code == "auto" ? languages.front().code : code);
+		path.replace_extension(".csv");
+		if (!fs::exists(path) || !fs::is_regular_file(path))
+			return false;
+		currentTranslation = readLanguageFile(path.u8string());
+		// Since not all text are translated, we use english as filler for missing keys
+		if (code != "en" && supportLanguage("en"))
+			currentTranslation.merge(
+			    readLanguageFile(Application::getFullPath("res", "i18n", "en.csv").u8string()));
 		return true;
 	}
 
-	const char* getString(const std::string& key)
+	const TranslationString& localize(const std::string& text)
 	{
-		if (!Localization::currentLanguage)
-			return key.c_str();
-
-		if (!Localization::currentLanguage->containsString(key))
-			return Localization::languages["en"]->getString(key);
-
-		return Localization::currentLanguage->getString(key);
+		auto& translation = Application::instance->localization.currentTranslation;
+		auto it = translation.find(text);
+		if (it == translation.end())
+			it = translation.emplace(text, TranslationString{ std::string(text) }).first;
+		return it->second;
 	}
 
-	void Localization::loadLanguages(const std::string& path)
-	{
-		std::wstring wPath = IO::mbToWideStr(path);
-		if (!std::filesystem::exists(wPath))
-			return;
-
-		std::vector<std::filesystem::path> filePaths;
-		for (const auto& file : std::filesystem::directory_iterator(wPath))
-		{
-			// look only for csv files and ignore any dot files present
-			std::wstring wFilename = file.path().filename().wstring();
-			if (file.path().extension().wstring() == L".csv" && wFilename[0] != L'.')
-				filePaths.push_back(file.path());
-		}
-
-		for (const auto& filePath : filePaths)
-		{
-			auto countryCode = IO::wideStringToMb(filePath.stem().wstring());
-			auto path = IO::wideStringToMb(filePath.wstring());
-			Localization::load(countryCode.c_str(), path.c_str());
-		}
-	}
+	// Size checks
+	// We don't put this in the header to avoid recursive include
+	static_assert(std::size(insertModeTexts) == size_t(InsertMode::InsertModeMax));
+	static_assert(std::size(flickTypeTexts) == size_t(FlickType::FlickTypeCount));
+	static_assert(std::size(easeTypeTexts) == size_t(EaseType::EaseTypeCount));
+	static_assert(std::size(stepTypeTexts) == size_t(EditHoldStepType::HoldStepTypeCount));
+	static_assert(std::size(guideColorTexts) == size_t(GuideColor::GuideColorCount));
+	static_assert(std::size(fadeTypeTexts) == size_t(FadeType::FadeTypeCount));
 }

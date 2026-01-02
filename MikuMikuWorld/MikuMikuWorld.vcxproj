@@ -194,7 +194,6 @@
     <ClCompile Include="IO.cpp" />
     <ClCompile Include="Jacket.cpp" />
     <ClCompile Include="JsonIO.cpp" />
-    <ClCompile Include="Language.cpp" />
     <ClCompile Include="Localization.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Math.cpp" />
@@ -239,6 +238,7 @@
     <ClInclude Include="BinaryWriter.h" />
     <ClInclude Include="Colors.h" />
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="Enum.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HistoryManager.h" />
     <ClInclude Include="IconsFontAwesome5.h" />
@@ -257,7 +257,6 @@
     <ClInclude Include="IO.h" />
     <ClInclude Include="Jacket.h" />
     <ClInclude Include="JsonIO.h" />
-    <ClInclude Include="Language.h" />
     <ClInclude Include="Localization.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="Audio\miniaudio.h" />
@@ -271,13 +270,11 @@
     <ClInclude Include="Rendering\Quad.h" />
     <ClInclude Include="Rendering\Renderer.h" />
     <ClInclude Include="Rendering\Shader.h" />
-    <ClInclude Include="Rendering\Sprite.h" />
     <ClInclude Include="Rendering\Texture.h" />
     <ClInclude Include="Rendering\Vertex.h" />
     <ClInclude Include="Rendering\VertexBuffer.h" />
     <ClInclude Include="NoteResource.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="Score.h" />
     <ClInclude Include="ScoreContext.h" />
     <ClInclude Include="ScoreEditorTimeline.h" />
@@ -294,6 +291,7 @@
     <ClInclude Include="SusSerializer.h" />
     <ClInclude Include="Tempo.h" />
     <ClInclude Include="ScoreEditor.h" />
+    <ClInclude Include="Text.h" />
     <ClInclude Include="TimelineMode.h" />
     <ClInclude Include="UI.h" />
     <ClInclude Include="UscSerializer.h" />

@@ -65,12 +65,6 @@
     <ClCompile Include="ImGuiManager.cpp">
       <Filter>UI</Filter>
     </ClCompile>
-    <ClCompile Include="Localization.cpp">
-      <Filter>UI\i18n</Filter>
-    </ClCompile>
-    <ClCompile Include="Language.cpp">
-      <Filter>UI\i18n</Filter>
-    </ClCompile>
     <ClCompile Include="ImGui\imgui_demo.cpp">
       <Filter>Imgui</Filter>
     </ClCompile>
@@ -186,12 +180,6 @@
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Resources</Filter>
-    </ClInclude>
-    <ClInclude Include="Language.h">
-      <Filter>UI\i18n</Filter>
-    </ClInclude>
-    <ClInclude Include="Localization.h">
-      <Filter>UI\i18n</Filter>
     </ClInclude>
     <ClInclude Include="NotesPreset.h">
       <Filter>Presets</Filter>
@@ -376,12 +364,19 @@
     <ClInclude Include="Sonolus.h">
       <Filter>Score\Include</Filter>
     </ClInclude>
+    <ClInclude Include="Enum.h">
+      <Filter>Misc\Include</Filter>
+    </ClInclude>
     <ClInclude Include="NoteResource.h">
       <Filter>Score\Include</Filter>
     </ClInclude>
     <ClInclude Include="ApplicationResource.h">
       <Filter>Application\Include</Filter>
     </ClInclude>
+    <ClInclude Include="Localization.h">
+      <Filter>UI\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Text.h" />
     <ClInclude Include="InputConfiguration.h">
       <Filter>IO\Include</Filter>
     </ClInclude>
