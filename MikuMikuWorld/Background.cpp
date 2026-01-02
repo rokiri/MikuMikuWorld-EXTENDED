@@ -1,6 +1,6 @@
 #include "Background.h"
 #include "Math.h"
-#include "ResourceManager.h"
+#include "ApplicationResource.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/Framebuffer.h"
 
@@ -77,17 +77,15 @@ namespace MikuMikuWorld
 		if (framebuffer == nullptr || texture == nullptr)
 			return;
 
-		int s = ResourceManager::getShader("basic2d");
-		if (s == -1)
-			return;
-
 		int w = texture->getWidth();
 		int h = texture->getHeight();
 
 		if (w < 1 || h < 1)
 			return;
 
-		Shader* blur = ResourceManager::shaders[s];
+		Shader* blur = getShader("basic2d");
+		if (!blur)
+			return;
 		blur->use();
 		blur->setMatrix4("projection", DirectX::XMMatrixOrthographicRH(w, -h, 0.001f, 100));
 
@@ -100,7 +98,8 @@ namespace MikuMikuWorld
 		Vector2 size(w, h);
 		Color tint(brightness, brightness, brightness, 1.0f);
 
-		renderer->drawSprite(posR, 0.0f, size, AnchorType::MiddleCenter, *texture, 0, tint);
+		renderer->drawSprite(posR, 0.0f, size, AnchorType::MiddleCenter, *texture,
+		                     *texture->getDefaultSprite(), tint);
 		renderer->endBatch();
 		glDisable(GL_DEPTH_TEST);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);

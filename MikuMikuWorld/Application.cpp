@@ -3,9 +3,7 @@
 #include "Colors.h"
 #include "IO.h"
 #include "Localization.h"
-#include "ResourceManager.h"
 #include "Utilities.h"
-#include <filesystem>
 #include <json.hpp>
 #include <stdexcept>
 #include <thread>
@@ -16,13 +14,12 @@ namespace MikuMikuWorld
 	std::string Application::version;
 	std::string Application::appDir;
 
-	NoteTextures noteTextures{ -1, -1, -1, -1, -1, -1 };
-
 	Application::Application() : initialized{ false }
 	{
 		appDir = "";
 		version = "";
 		instance = this;
+		window = nullptr;
 	}
 
 	Result Application::initialize(const std::string& root)
@@ -57,10 +54,10 @@ namespace MikuMikuWorld
 		imgui->applyAccentColor(config.accentColor);
 		imgui->buildFonts();
 
-		loadResources();
-
 		editor = std::make_unique<ScoreEditor>();
 		// editor->loadPresets(appDir + "library");
+
+		loadResources();
 
 		initialized = true;
 		return Result::Ok();
@@ -77,8 +74,10 @@ namespace MikuMikuWorld
 
 	std::string Application::getVersion()
 	{
-		wchar_t filename[1024];
-		lstrcpyW(filename, IO::mbToWideStr(std::string(appDir + "MikuMikuWorld.exe")).c_str());
+		int argc;
+		LPWSTR* args;
+		args = CommandLineToArgvW(GetCommandLineW(), &argc);
+		LPWSTR filename = args[0];
 
 		DWORD verHandle = 0;
 		UINT size = 0;
@@ -320,48 +319,12 @@ namespace MikuMikuWorld
 
 	void Application::loadResources()
 	{
-		ResourceManager::loadShader(appDir + "res\\shaders\\basic2d");
-		const std::string texturesDir = appDir + "res\\textures\\";
-		ResourceManager::loadTexture(texturesDir + "notes1.png",
-		                             TextureFilterMode::LinearMipMapLinear,
-		                             TextureFilterMode::Linear);
-		ResourceManager::loadTexture(texturesDir + "notes2.png");
-		ResourceManager::loadTexture(texturesDir + "notes3.png");
-		ResourceManager::loadTexture(texturesDir + "longNoteLine.png");
-		ResourceManager::loadTexture(texturesDir + "touchLine_eff.png");
-		ResourceManager::loadTexture(texturesDir + "guideColors.png");
+		resource.loadShader("basic2d");
 
-		ResourceManager::loadTexture(texturesDir + "timeline_select.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_tap.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_hold.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_hold_step_normal.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_hold_step_hidden.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_hold_step_skip.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_flick_default.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_flick_left.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_flick_right.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_flick_down.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_flick_down_left.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_flick_down_right.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_critical.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_trace.png");
-		for (auto color : guideColors)
-			for (auto fade : fadeTypes)
-				ResourceManager::loadTexture(
-				    appDir + IO::formatString("res\\textures\\timeline_guide_%s_%s.png", color,
-				                              std::string(fade).substr(5).c_str()));
-		ResourceManager::loadTexture(texturesDir + "timeline_damage.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_dummy.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_bpm.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_time_signature.png");
-		ResourceManager::loadTexture(texturesDir + "timeline_hi_speed.png");
-		// Cache note textures indices
-		noteTextures.notes = ResourceManager::getTexture(NOTES_TEX);
-		noteTextures.holdPath = ResourceManager::getTexture(HOLD_PATH_TEX);
-		noteTextures.touchLine = ResourceManager::getTexture(TOUCH_LINE_TEX);
-		noteTextures.ccNotes = ResourceManager::getTexture(CC_NOTES_TEX);
-		noteTextures.guideColors = ResourceManager::getTexture(GUIDE_COLORS_TEX);
-		noteTextures.dummyNotes = ResourceManager::getTexture(DUMMY_RED_CROSS);
+		resource.noteTexture.scanProfiles();
+		resource.noteTexture.load(config.notesSkin);
+
+		resource.timelineTexture.load();
 
 		Localization::loadLanguages(appDir + "res\\i18n");
 	}

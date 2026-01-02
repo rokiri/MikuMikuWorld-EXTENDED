@@ -1,0 +1,3 @@
+This folder contains "original" assets for MikuMikuWorld
+These assets are packed into texture sheets in the /res folder to reduce space
+But they are kept here to allow easy modification without messing with the texture sheet

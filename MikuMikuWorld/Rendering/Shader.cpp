@@ -20,7 +20,7 @@ namespace MikuMikuWorld
 
 	void Shader::compile(const std::string& source)
 	{
-		std::wstring wSource = mbToWideStr(source);
+		std::wstring wSource = utf8ToWide(source);
 		std::string vertexCode, fragmentCode;
 		std::ifstream vertexFile, fragmentFile;
 		vertexFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);

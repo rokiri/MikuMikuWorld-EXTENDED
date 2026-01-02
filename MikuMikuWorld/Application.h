@@ -9,8 +9,11 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
+#include <filesystem>
 #include "ScoreEditor.h"
 #include "ImGuiManager.h"
+#include "ApplicationConfiguration.h"
+#include "ApplicationResource.h"
 
 LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -45,6 +48,7 @@ namespace MikuMikuWorld
 		std::string language;
 		
 		WindowState windowState;
+		ApplicationResource resource;
 
 		static Application* instance;
 		static std::string version;
@@ -72,5 +76,15 @@ namespace MikuMikuWorld
 		static void* getAppWindowHandle();
 		static const std::string& getAppDir();
 		static const std::string& getAppVersion();
+
+		template <typename... TPath> static std::filesystem::path getFullPath(TPath... paths)
+		{
+			return (std::filesystem::path(appDir) / ... / paths);
+		}
+
+		// Helpers
+		// ApplicationResource
+		friend ApplicationResource& getResources();
+		friend Shader* getShader(const std::string& name);
 	};
 }
