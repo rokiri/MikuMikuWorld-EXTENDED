@@ -2,16 +2,16 @@
 #include "IO.h"
 #include <Windows.h>
 #include <algorithm>
-#include <ctime>
-#include <stdio.h>
 #include <iostream>
-#include <stdlib.h>
 #include <filesystem>
-#include <chrono>
-#include <sstream>
+
+namespace fs = std::filesystem;
 
 namespace IO
 {
+	fs::path stringToPath(const std::string& str) { return fs::path(utf8ToWide(str)); }
+	fs::path stringToPath(const std::wstring& str) { return fs::path(str); }
+
 	FileDialogFilter mmwsFilter{ "MikuMikuWorld Score", "*.unchmmws;*.ccmmws;*.mmws" };
 	FileDialogFilter susFilter{ "Sliding Universal Score", "*.sus" };
 	FileDialogFilter uscFilter{ "Universal Sekai Chart", "*.usc" };
@@ -21,22 +21,14 @@ namespace IO
 	FileDialogFilter presetFilter{ "Notes Preset", "*.json" };
 	FileDialogFilter allFilter{ "All Files", "*.*" };
 
-	File::File(const std::string& filename, FileMode mode)
-	{
-		stream = std::make_unique<std::fstream>();
-		open(filename, mode);
-	}
+	File::File(const std::string& filename, FileMode mode) { open(filename, mode); }
 
-	File::File(const std::wstring& filename, FileMode mode)
-	{
-		stream = std::make_unique<std::fstream>();
-		open(filename, mode);
-	}
+	File::File(const std::wstring& filename, FileMode mode) { open(filename, mode); }
 
 	File::~File()
 	{
-		if (stream->is_open())
-			stream->close();
+		if (stream.is_open())
+			stream.close();
 	}
 
 	int File::getStreamMode(FileMode mode) const
@@ -59,166 +51,135 @@ namespace IO
 	void File::open(const std::string& filename, FileMode mode)
 	{
 		openFilename = filename;
-		open(IO::mbToWideStr(filename), mode);
+		openFilenameW = IO::utf8ToWide(filename);
+		stream.open(openFilenameW, getStreamMode(mode));
 	}
 
 	void File::open(const std::wstring& filename, FileMode mode)
 	{
+		openFilename = IO::wideToUtf8(filename);
 		openFilenameW = filename;
-		stream->open(filename, getStreamMode(mode));
+		stream.open(openFilenameW, getStreamMode(mode));
 	}
 
 	void File::close()
 	{
 		openFilename.clear();
 		openFilenameW.clear();
-		stream->close();
+		stream.close();
 	}
 
-	void File::flush()
-	{
-		stream->flush();
-	}
+	void File::flush() { stream.flush(); }
 
 	std::vector<uint8_t> File::readAllBytes()
 	{
-		if (!stream->is_open())
+		if (!stream.is_open())
 			return {};
 
-		stream->seekg(0, std::ios_base::end);
-		size_t length = stream->tellg();
-		stream->seekg(0, std::ios_base::beg);
+		size_t length = fs::file_size(openFilenameW);
+		stream.seekg(0, std::ios_base::beg);
 
-		std::vector<uint8_t> bytes;
-		bytes.resize(length);
-		stream->read((char*)bytes.data(), length);
+		std::vector<uint8_t> bytes(length, 0);
+		stream.read((char*)bytes.data(), length);
 
 		return bytes;
 	}
 
 	std::string File::readLine()
 	{
-		if (!stream->is_open())
+		if (!stream.is_open())
 			return {};
 
-		std::string line{};
-		std::getline(*stream, line);
+		std::string line;
+		std::getline(stream, line);
+
 		return line;
 	}
 
 	std::vector<std::string> File::readAllLines()
 	{
-		if (!stream->is_open())
+		if (!stream.is_open())
 			return {};
 
+		stream.seekg(0, std::ios_base::beg);
+		std::string line;
 		std::vector<std::string> lines;
-		while (!stream->eof())
-			lines.push_back(readLine());
+		while (std::getline(stream, line))
+			lines.push_back(line);
 
 		return lines;
 	}
 
 	std::string File::readAllText()
 	{
-		if (!stream->is_open())
+		if (!stream.is_open())
 			return {};
 
-		std::stringstream buffer;
-		buffer << stream->rdbuf();
-		return buffer.str();
+		stream.seekg(0, std::ios_base::beg);
+		return { std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>() };
 	}
 
-	bool File::isEndofFile() const
-	{
-		return stream->is_open() ? stream->eof() : true;
-	}
+	bool File::isEndofFile() const { return stream.is_open() ? stream.eof() : true; }
 
 	void File::write(const std::string& str)
 	{
-		if (stream->is_open())
-		{
-			stream->write(str.c_str(), str.length());
-		}
+		if (stream.is_open())
+			stream << str;
 	}
 
-	void File::writeLine(const std::string line) { write(line + "\n"); }
+	void File::writeLine(const std::string& line)
+	{
+		if (stream.is_open())
+			stream << line << '\n';
+	}
 
 	void File::writeAllLines(const std::vector<std::string>& lines)
 	{
-		if (stream->is_open())
-		{
+		if (stream.is_open())
 			for (const auto& line : lines)
-				stream->write(line.c_str(), line.length());
-		}
+				stream << line << '\n';
 	}
 
 	void File::writeAllBytes(const std::vector<uint8_t>& bytes)
 	{
-		if (stream->is_open())
-		{
-			stream->write((char*)bytes.data(), bytes.size());
-		}
+		if (stream.is_open())
+			stream.write((char*)bytes.data(), bytes.size());
 	}
+
+	// --------------------------------------------------------
 
 	std::string File::getFilename(const std::string& filename)
 	{
-		size_t start = filename.find_last_of("\\/");
-		return filename.substr(start + 1, filename.size() - (start + 1));
+		return wideToUtf8(stringToPath(filename).filename());
 	}
 
 	std::string File::getFileExtension(const std::string& filename)
 	{
-		size_t end = filename.find_last_of(".");
-		if (end == std::string::npos)
-			return "";
-
-		return filename.substr(end);
+		return wideToUtf8(stringToPath(filename).extension());
 	}
 
 	std::string File::getFilenameWithoutExtension(const std::string& filename)
 	{
-		std::string str = getFilename(filename);
-		size_t end = str.find_last_of(".");
-
-		return str.substr(0, end);
+		return wideToUtf8(stringToPath(filename).filename().replace_extension());
 	}
 
 	std::string File::getFilepath(const std::string& filename)
 	{
-		size_t start = 0;
-		size_t end = filename.find_last_of("\\/");
-
-		return filename.substr(start, end - start + 1);
+		return wideToUtf8(stringToPath(filename).replace_filename(""));
 	}
 
-	std::string File::fixPath(const std::string& path)
+	size_t File::getFileSize(const std::string& filename)
 	{
-		std::string result = path;
-		int index = 0;
-		while (true)
-		{
-			index = result.find("\\", index);
-			if (index == result.npos)
-				break;
-
-			result.replace(index, 1, "/");
-			index += 1;
-		}
-
-		return result;
+		return fs::file_size(stringToPath(filename));
 	}
 
-	bool File::exists(const std::string& path)
-	{
-		std::wstring wPath = mbToWideStr(path);
-		return std::filesystem::exists(wPath);
-	}
+	bool File::exists(const std::string& path) { return fs::exists(stringToPath(path)); }
 
-	bool File::exists(const std::wstring& path) { return std::filesystem::exists(path); }
+	bool File::exists(const std::wstring& path) { return fs::exists(path); }
 
 	FileDialogResult FileDialog::showFileDialog(DialogType type, DialogSelectType selectType)
 	{
-		std::wstring wTitle = mbToWideStr(title);
+		std::wstring wTitle = utf8ToWide(title);
 
 		OPENFILENAMEW ofn;
 		memset(&ofn, 0, sizeof(ofn));
@@ -231,7 +192,7 @@ namespace IO
 		ofn.Flags = OFN_LONGNAMES | OFN_EXPLORER | OFN_ENABLESIZING | OFN_OVERWRITEPROMPT |
 		            OFN_HIDEREADONLY | OFN_PATHMUSTEXIST;
 
-		std::wstring wDefaultExtension = mbToWideStr(defaultExtension);
+		std::wstring wDefaultExtension = utf8ToWide(defaultExtension);
 		ofn.lpstrDefExt = wDefaultExtension.c_str();
 
 		std::vector<std::wstring> ofnFilters;
@@ -253,11 +214,11 @@ namespace IO
 			    .append("|");
 		}
 
-		std::wstring wFiltersCombined = mbToWideStr(filtersCombined);
+		std::wstring wFiltersCombined = utf8ToWide(filtersCombined);
 		std::replace(wFiltersCombined.begin(), wFiltersCombined.end(), '|', '\0');
 		ofn.lpstrFilter = wFiltersCombined.c_str();
 
-		std::wstring wInputFilename = mbToWideStr(inputFilename);
+		std::wstring wInputFilename = utf8ToWide(inputFilename);
 		wchar_t ofnFilename[1024]{ 0 };
 
 		// suppress return value not used warning
@@ -270,7 +231,7 @@ namespace IO
 			ofn.Flags |= OFN_HIDEREADONLY;
 			if (GetSaveFileNameW(&ofn))
 			{
-				outputFilename = wideStringToMb(ofn.lpstrFile);
+				outputFilename = wideToUtf8(ofn.lpstrFile);
 			}
 			else
 			{
@@ -280,7 +241,7 @@ namespace IO
 		}
 		else if (GetOpenFileNameW(&ofn))
 		{
-			outputFilename = wideStringToMb(ofn.lpstrFile);
+			outputFilename = wideToUtf8(ofn.lpstrFile);
 		}
 		else
 		{

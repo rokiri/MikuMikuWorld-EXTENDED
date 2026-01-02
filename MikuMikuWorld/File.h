@@ -1,5 +1,4 @@
 #pragma once
-#include <chrono>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -7,6 +6,9 @@
 
 namespace IO
 {
+	std::filesystem::path stringToPath(const std::string& str);
+	std::filesystem::path stringToPath(const std::wstring& str);
+
 	enum class FileMode : uint8_t
 	{
 		Read,
@@ -22,7 +24,7 @@ namespace IO
 		static std::string getFileExtension(const std::string& filename);
 		static std::string getFilenameWithoutExtension(const std::string& filename);
 		static std::string getFilepath(const std::string& filename);
-		static std::string fixPath(const std::string& path);
+		static size_t getFileSize(const std::string& filename);
 		static bool exists(const std::string& path);
 		static bool exists(const std::wstring& path);
 
@@ -36,7 +38,7 @@ namespace IO
 		std::vector<std::string> readAllLines();
 		std::string readAllText();
 		void write(const std::string& str);
-		void writeLine(const std::string line);
+		void writeLine(const std::string& line);
 		void writeAllLines(const std::vector<std::string>& lines);
 		void writeAllBytes(const std::vector<uint8_t>& bytes);
 		bool isEndofFile() const;
@@ -49,7 +51,7 @@ namespace IO
 		~File();
 
 	private:
-		std::unique_ptr<std::fstream> stream{};
+		std::fstream stream{};
 		std::string openFilename{};
 		std::wstring openFilenameW{};
 

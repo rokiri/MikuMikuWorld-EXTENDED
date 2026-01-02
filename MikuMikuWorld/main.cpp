@@ -21,14 +21,14 @@ int main()
 	try
 	{
 #endif
-		std::string dir = IO::File::getFilepath(IO::wideStringToMb(args[0]));
+		std::string dir = IO::File::getFilepath(IO::wideToUtf8(args[0]));
 		mmw::Result result = app.initialize(dir);
 
 		if (!result.isOk())
 			throw(std::exception(result.getMessage().c_str()));
 
 		//for (int i = 1; i < argc; ++i)
-		//	app.appendOpenFile(IO::wideStringToMb(args[i]));
+		//	app.appendOpenFile(IO::wideToUtf8(args[i]));
 
 		// app.handlePendingOpenFiles();
 		app.run();

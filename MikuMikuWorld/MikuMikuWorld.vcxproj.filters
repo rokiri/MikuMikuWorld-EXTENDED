@@ -26,9 +26,6 @@
     <ClCompile Include="Score.cpp">
       <Filter>Score</Filter>
     </ClCompile>
-    <ClCompile Include="ResourceManager.cpp">
-      <Filter>IO</Filter>
-    </ClCompile>
     <ClCompile Include="Utilities.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
@@ -90,9 +87,6 @@
       <Filter>IO\File</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\Texture.cpp">
-      <Filter>Rendering\Texture</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\Sprite.cpp">
       <Filter>Rendering\Texture</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\Framebuffer.cpp">
@@ -172,6 +166,18 @@
     </ClCompile>
     <ClCompile Include="Sonolus.cpp">
       <Filter>Score</Filter>
+    </ClCompile>
+    <ClCompile Include="NoteResource.cpp">
+      <Filter>Score</Filter>
+    </ClCompile>
+    <ClCompile Include="ApplicationResource.cpp">
+      <Filter>Application</Filter>
+    </ClCompile>
+    <ClCompile Include="Localization.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="InputConfiguration.cpp">
+      <Filter>IO</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -256,9 +262,6 @@
     <ClInclude Include="JsonIO.h">
       <Filter>IO\Include</Filter>
     </ClInclude>
-    <ClInclude Include="ResourceManager.h">
-      <Filter>IO\Include</Filter>
-    </ClInclude>
     <ClInclude Include="BinaryReader.h">
       <Filter>IO\File\Include</Filter>
     </ClInclude>
@@ -291,9 +294,6 @@
     </ClInclude>
     <ClInclude Include="Rendering\VertexBuffer.h">
       <Filter>Rendering\Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\Sprite.h">
-      <Filter>Rendering\Texture\Include</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\Framebuffer.h">
       <Filter>Rendering\Texture\Include</Filter>
@@ -375,6 +375,15 @@
     </ClInclude>
     <ClInclude Include="Sonolus.h">
       <Filter>Score\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="NoteResource.h">
+      <Filter>Score\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="ApplicationResource.h">
+      <Filter>Application\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="InputConfiguration.h">
+      <Filter>IO\Include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

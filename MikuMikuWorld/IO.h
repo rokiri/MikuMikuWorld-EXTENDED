@@ -51,10 +51,8 @@ namespace IO
 	std::pair<std::string, std::string> split_first(const std::string& line,
 	                                                const std::string& delim);
 
-	std::string wideStringToMb(const std::wstring& str);
-	std::string ansiWideStringToMb(const std::wstring& str);
-	std::wstring mbToWideStr(const std::string& str);
-	std::wstring ansiMbToWideStr(const std::string& str);
+	std::string wideToUtf8(const std::wstring& str);
+	std::wstring utf8ToWide(const std::string& str);
 
 	std::string concat(const char* s1, const char* s2, const char* join = "");
 

@@ -1,5 +1,5 @@
 ﻿#include "Application.h"
-#include "ApplicationConfiguration.h"
+#include "ImGuiManager.h"
 #include "ImGui/imgui_impl_glfw.h"
 #include "ImGui/imgui_impl_opengl3.h"
 #include "../Depends/glad/include/glad/glad.h"
@@ -19,7 +19,7 @@ namespace MikuMikuWorld
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 
-		configFilename = Application::getAppDir() + IMGUI_CONFIG_FILENAME;
+		configFilename = IO::wideToUtf8(Application::getFullPath(IMGUI_CONFIG_FILENAME));
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
@@ -39,7 +39,9 @@ namespace MikuMikuWorld
 		if (!ImGui_ImplOpenGL3_Init("#version 150"))
 			return Result(ResultStatus::Error, "Failed to initialize ImGui OpenGL implementation.");
 
-		setBaseTheme(BaseTheme::DARK);
+		setBaseTheme(getConfig().baseTheme);
+		buildFonts();
+		baseStyle = std::make_unique<ImGuiStyle>(ImGui::GetStyle());
 
 		return Result::Ok();
 	}
@@ -47,22 +49,23 @@ namespace MikuMikuWorld
 	void ImGuiManager::setBaseTheme(BaseTheme theme)
 	{
 		ImGuiStyle* style = &ImGui::GetStyle();
-		style->FramePadding.x = 4;
-		style->FramePadding.y = 2;
-		style->ItemSpacing.x = 2;
-		style->ItemSpacing.y = 4;
-		style->WindowPadding.x = 6;
-		style->WindowRounding = 4;
-		style->WindowBorderSize = 1;
-		style->FrameBorderSize = 0;
-		style->FrameRounding = 1;
-		style->ScrollbarRounding = 6;
-		style->ChildRounding = 2;
-		style->PopupRounding = 2;
-		style->GrabRounding = 1;
-		style->TabRounding = 1;
-		style->ScrollbarSize = 12;
-		style->GrabMinSize = 8;
+		float scale = style->_MainScale;
+		style->FramePadding.x = ImTrunc(4 * scale);
+		style->FramePadding.y = ImTrunc(2 * scale);
+		style->ItemSpacing.x = ImTrunc(2 * scale);
+		style->ItemSpacing.y = ImTrunc(4 * scale);
+		style->WindowPadding.x = ImTrunc(6 * scale);
+		style->WindowRounding = ImTrunc(4 * scale);
+		style->WindowBorderSize = ImTrunc(1 * scale);
+		style->FrameBorderSize = ImTrunc(0 * scale);
+		style->FrameRounding = ImTrunc(1 * scale);
+		style->ScrollbarRounding = ImTrunc(6 * scale);
+		style->ChildRounding = ImTrunc(2 * scale);
+		style->PopupRounding = ImTrunc(2 * scale);
+		style->GrabRounding = ImTrunc(1 * scale);
+		style->TabRounding = ImTrunc(1 * scale);
+		style->ScrollbarSize = ImTrunc(12 * scale);
+		style->GrabMinSize = ImTrunc(8 * scale);
 
 		ImVec4* colors = style->Colors;
 
@@ -141,7 +144,7 @@ namespace MikuMikuWorld
 		}
 
 		this->theme = theme;
-		applyAccentColor(config.accentColor);
+		applyAccentColor(getConfig().accentColor);
 	}
 
 	void ImGuiManager::shutdown()
@@ -157,12 +160,28 @@ namespace MikuMikuWorld
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+		auto& config = getConfig();
 		float dpiScale = ImGui::GetMainViewport()->DpiScale;
 		if (dpiScale != styleScale)
 		{
+			// Reset base theme so scaling doesn't lose precision
+			ImGui::GetStyle() = *baseStyle;
+			styleScale = 1;
+			theme = BaseTheme::DARK;
+			accentColor = 1;
+
 			ImGui::GetStyle().ScaleAllSizes(dpiScale / styleScale);
 			styleScale = dpiScale;
 		}
+
+		if (config.accentColor != accentColor)
+			applyAccentColor(config.accentColor);
+
+		if (config.accentColor == 0 && config.userColor != Color::fromImVec4(UI::accentColors[0]))
+			applyAccentColor(config.accentColor);
+
+		if (config.baseTheme != theme)
+			setBaseTheme(config.baseTheme);
 	}
 
 	void ImGuiManager::draw(GLFWwindow* window)
@@ -189,21 +208,8 @@ namespace MikuMikuWorld
 		fontConfig.OversampleH = 1;
 		fontConfig.RasterizerMultiply = 1.05f;
 
-		// ImFontGlyphRangesBuilder rangeBuilder;
-		// static ImVector<ImWchar> ranges;
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesDefault());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesJapanese());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesKorean());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesVietnamese());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesChineseFull());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesThai());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesGreek());
-		// rangeBuilder.BuildRanges(&ranges);
-
-		auto font = ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size,
-		                                                     &fontConfig);
-		// ImGui::GetIO().Fonts->Build();
+		auto font =
+		    ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size, &fontConfig);
 	}
 
 	void ImGuiManager::loadIconFont(const std::string& filename, int start, int end, float size)
@@ -216,7 +222,7 @@ namespace MikuMikuWorld
 		fontConfig.GlyphMinAdvanceX = 13.0f;
 		fontConfig.PixelSnapH = false;
 		fontConfig.OversampleH = 1;
-		static const ImWchar iconRanges[] = { start, end, 0 };
+		static const ImWchar iconRanges[] = { ImWchar(start), ImWchar(end), 0 };
 		ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size, &fontConfig,
 		                                         iconRanges);
 	}
@@ -230,11 +236,9 @@ namespace MikuMikuWorld
 
 		io.FontDefault = nullptr;
 
-		loadFont(Application::getAppDir() + "res/fonts/NotoSansCJK-Regular.ttc", 16);
-		loadIconFont(Application::getAppDir() + "res/fonts/fa-solid-900.ttf", ICON_MIN_FA,
-		             ICON_MAX_FA, 12);
-		
-		//ImGui_ImplOpenGL3_CreateFontsTexture();
+		auto fontPath = Application::getFullPath("res", "fonts");
+		loadFont(IO::wideToUtf8(fontPath / "NotoSansCJK-Regular.ttc"), 16);
+		loadIconFont(IO::wideToUtf8(fontPath / "fa-solid-900.ttf"), ICON_MIN_FA, ICON_MAX_FA, 13);
 	}
 
 	void ImGuiManager::initializeLayout()
@@ -254,9 +258,9 @@ namespace MikuMikuWorld
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("InvisibleWindow", nullptr,
-		             windowFlags); // This is basically the background window that contains all the
-		                           // dockable windows
+		// This is basically the background window that contains all the dockable windows
+		// We'll use it as the dockspace
+		ImGui::Begin("InvisibleWindow", nullptr, windowFlags);
 		ImGui::PopStyleVar(3);
 		
 		ImGuiID dockSpaceId = ImGui::GetID("InvisibleWindowDockSpace");

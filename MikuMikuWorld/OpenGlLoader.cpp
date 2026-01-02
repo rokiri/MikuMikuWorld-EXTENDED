@@ -70,13 +70,14 @@ namespace MikuMikuWorld
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-		glfwWindowHint(GLFW_POSITION_X, config.windowPos.x);
-		glfwWindowHint(GLFW_POSITION_Y, config.windowPos.y);
-		if (config.maximized)
+		glfwWindowHint(GLFW_POSITION_X, getConfig().windowPos.x);
+		glfwWindowHint(GLFW_POSITION_Y, getConfig().windowPos.y);
+		if (getConfig().maximized)
 			glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-		window = glfwCreateWindow(config.windowSize.x, config.windowSize.y, APP_NAME, NULL, NULL);
+		window = glfwCreateWindow(getConfig().windowSize.x, getConfig().windowSize.y, APP_NAME,
+		                          NULL, NULL);
 		possibleError = glfwGetError(&glfwErrorDescription);
 		if (possibleError != GLFW_NO_ERROR)
 		{
@@ -85,9 +86,9 @@ namespace MikuMikuWorld
 			              "Failed to create GLFW Window.\n" + std::string(glfwErrorDescription));
 		}
 
-		// glfwSetWindowPos(window, config.windowPos.x, config.windowPos.y);
+		// glfwSetWindowPos(window, getConfig().windowPos.x, getConfig().windowPos.y);
 		glfwMakeContextCurrent(window);
-		glfwSetWindowTitle(window, APP_NAME " - Untitled");
+		glfwSetWindowTitle(window, APP_NAME);
 		glfwSetWindowUserPointer(window, this);
 		glfwSetWindowPosCallback(window, windowPositionCallback);
 		glfwSetWindowSizeCallback(window, windowSizeCallback);
@@ -95,7 +96,7 @@ namespace MikuMikuWorld
 		glfwSetWindowCloseCallback(window, windowCloseCallback);
 		glfwSetWindowMaximizeCallback(window, windowMaximizeCallback);
 
-		std::string iconFilename = appDir + "res\\mmw_icon.png";
+		std::string iconFilename = IO::wideToUtf8(Application::getFullPath("res", "mmw_icon.png"));
 		if (IO::File::exists(iconFilename))
 		{
 			GLFWimage image{};
@@ -112,14 +113,14 @@ namespace MikuMikuWorld
 			return Result(ResultStatus::Error, "Failed to fetch OpenGL proc address.");
 		}
 
-		glfwSwapInterval(config.vsync);
+		glfwSwapInterval(getConfig().vsync);
 
 		glLineWidth(1.0f);
 		glPointSize(1.0f);
 		glEnablei(GL_BLEND, 0);
 		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-		glViewport(0, 0, config.windowSize.x, config.windowSize.y);
+		glViewport(0, 0, getConfig().windowSize.x, getConfig().windowSize.y);
 
 		return Result::Ok();
 	}

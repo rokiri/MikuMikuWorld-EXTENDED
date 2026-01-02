@@ -36,7 +36,7 @@ namespace MikuMikuWorld
 		Renderer();
 
 		void drawSprite(const Vector2& pos, float rot, const Vector2& sz, AnchorType anchor,
-		                const Texture& tex, int spr, const Color& tint, int z = 0);
+		                const Texture& tex, const Sprite& spr, const Color& tint, int z = 0);
 		void drawSprite(const Vector2& pos, float rot, const Vector2& sz, AnchorType anchor,
 		                const Texture& tex, float x1, float x2, float y1, float y2,
 		                const Color& tint = { 1.0f, 1.0f, 1.0f, 1.0f }, int z = 0);

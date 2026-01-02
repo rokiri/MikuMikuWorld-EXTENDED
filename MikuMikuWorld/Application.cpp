@@ -1,5 +1,4 @@
 ﻿#include "Application.h"
-#include "ApplicationConfiguration.h"
 #include "Colors.h"
 #include "IO.h"
 #include "Localization.h"
@@ -31,8 +30,7 @@ namespace MikuMikuWorld
 		version = getVersion();
 		language = "";
 
-		config.read(appDir + APP_CONFIG_FILENAME);
-		readSettings();
+		readConfiguration();
 
 		Result result = initOpenGL();
 		if (!result.isOk())
@@ -49,10 +47,6 @@ namespace MikuMikuWorld
 		windowState.defaultWndProc =
 		    (WNDPROC)::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)wndProc);
 		::DragAcceptFiles(hwnd, TRUE);
-
-		imgui->setBaseTheme(config.baseTheme);
-		imgui->applyAccentColor(config.accentColor);
-		imgui->buildFonts();
 
 		editor = std::make_unique<ScoreEditor>();
 		// editor->loadPresets(appDir + "library");
@@ -127,25 +121,41 @@ namespace MikuMikuWorld
 		instance = nullptr;
 	}
 
-	void Application::readSettings()
+	void Application::readConfiguration()
 	{
-		windowState.position = config.windowPos;
-		windowState.size = config.windowSize;
+		auto configPath = getFullPath(APP_CONFIG_FILENAME);
+		if (std::filesystem::exists(configPath))
+		{
+			std::ifstream configFile(configPath);
+			nlohmann::json configJson;
+			configFile >> configJson;
+			configFile.close();
+			configJson.get_to(config);
+		}
+
 		windowState.maximized = config.maximized;
 		windowState.vsync = config.vsync;
+		windowState.position = config.windowPos;
+		windowState.size = config.windowSize;
 		UI::accentColors[0] = config.userColor.toImVec4();
 	}
 
-	void Application::writeSettings()
+	void Application::writeConfiguration()
 	{
 		config.maximized = windowState.maximized;
 		config.vsync = windowState.vsync;
 		config.windowPos = windowState.position;
 		config.windowSize = windowState.size;
 		config.userColor = Color::fromImVec4(UI::accentColors[0]);
-
 		editor->writeSettings();
-		config.write(appDir + APP_CONFIG_FILENAME);
+
+		// update to latest version
+		version = ApplicationConfiguration::CONFIG_VERSION;
+		nlohmann::json configJson = config;
+		std::ofstream configFile(appDir + APP_CONFIG_FILENAME);
+		configFile << std::setw(4) << configJson;
+		configFile.flush();
+		configFile.close();
 	}
 
 	// void Application::appendOpenFile(const std::string& filename)
@@ -218,15 +228,6 @@ namespace MikuMikuWorld
 		imgui->begin();
 		imgui->initializeLayout();
 
-		if (config.accentColor != imgui->getAccentColor())
-			imgui->applyAccentColor(config.accentColor);
-
-		if (config.userColor != Color::fromImVec4(UI::accentColors[0]) && config.accentColor == 0)
-			imgui->applyAccentColor(config.accentColor);
-
-		if (config.baseTheme != imgui->getBaseTheme())
-			imgui->setBaseTheme(config.baseTheme);
-
 		// if ((windowState.closing || windowState.resetting) && !editor->isUpToDate() &&
 		//     !unsavedChangesDialog.open)
 		//{
@@ -234,7 +235,7 @@ namespace MikuMikuWorld
 		//	ImGui::OpenPopup(MODAL_TITLE("unsaved_changes"));
 		// }
 
-		auto unsavedChangesResult = unsavedChangesDialog.update();
+		// auto unsavedChangesResult = unsavedChangesDialog.update();
 
 		if (windowState.closing)
 		{
@@ -340,7 +341,7 @@ namespace MikuMikuWorld
 		}
 
 		// editor->savePresets(appDir + "library");
-		writeSettings();
+		writeConfiguration();
 	}
 }
 

@@ -92,11 +92,10 @@ namespace MikuMikuWorld
 	}
 
 	void Renderer::drawSprite(const Vector2& pos, float rot, const Vector2& sz, AnchorType anchor,
-	                          const Texture& tex, int spr, const Color& tint, int z)
+	                          const Texture& tex, const Sprite& spr, const Color& tint, int z)
 	{
-		const Sprite& s = tex.sprites[spr];
-		drawSprite(pos, rot, sz, anchor, tex, s.getX(), s.getX() + s.getWidth(), s.getY(),
-		           s.getY() + s.getHeight(), tint, z);
+		drawSprite(pos, rot, sz, anchor, tex, spr.getX(), spr.getX() + spr.getWidth(), spr.getY(),
+		           spr.getY() + spr.getHeight(), tint, z);
 	}
 
 	void Renderer::drawSprite(const Vector2& pos, float rot, const Vector2& sz, AnchorType anchor,

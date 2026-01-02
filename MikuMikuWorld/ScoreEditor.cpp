@@ -4,14 +4,13 @@
 #include <cpp-httplib/httplib.h>
 
 #include "Application.h"
-#include "ApplicationConfiguration.h"
+#include "ScoreEditor.h"
 #include "Constants.h"
 #include "File.h"
 #include "SUS.h"
 #include "NativeScoreSerializer.h"
 #include "UI.h"
 #include "Utilities.h"
-#include <Windows.h>
 #include <filesystem>
 #include <fstream>
 
@@ -69,31 +68,14 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::fetchUpdate()
 	{
-		std::wstring updateFlagPath =
-		    IO::mbToWideStr(Application::getAppDir() + "latest_version.txt");
-		bool shouldFetchUpdate = true;
-		std::string latestVersionString;
-		if (IO::File::exists(updateFlagPath))
-		{
-			auto file = IO::File(updateFlagPath, IO::FileMode::Read);
-			using fs_time_t = std::filesystem::file_time_type;
-			auto lastWriteTime = std::filesystem::last_write_time(updateFlagPath);
-			auto now = fs_time_t::clock::now();
-			auto diff =
-			    std::chrono::duration_cast<std::chrono::minutes>(now - lastWriteTime).count();
+		using namespace std::chrono;
+		auto now = system_clock::now();
+		auto diff = duration_cast<minutes>(now - getConfig().lastUpdateCheck).count();
 			std::cout << "Last update check: " << diff << " minutes ago" << std::endl;
-			if (diff < 60)
+		if (diff > 60)
 			{
-				std::ifstream file(updateFlagPath);
-				std::getline(file, latestVersionString);
-				file.close();
-				std::cout << "Loading cached latest version" << std::endl;
-				shouldFetchUpdate = false;
-			}
-		}
-		if (shouldFetchUpdate)
+			try
 		{
-
 			httplib::Client client("https://api.github.com");
 
 			std::cout << "Fetching new update" << std::endl;
@@ -108,25 +90,27 @@ namespace MikuMikuWorld
 			{
 				auto parsed = nlohmann::json::parse(res->body);
 				std::string tagName = parsed["tag_name"];
-				latestVersionString = tagName.substr(1);
+					getConfig().latestFetchAppVersion = tagName.substr(1);
+					getConfig().lastUpdateCheck = now;
 			}
-
-			auto file = IO::File(updateFlagPath, IO::FileMode::Write);
-			file.write(latestVersionString);
-			file.flush();
-			file.close();
+		}
+			catch (const std::exception& e)
+			{
+				std::cout << "Failed to fetch latest update: " << e.what() << std::endl;
+			}
 		}
 
 		auto currentVersion = Utilities::splitString(Application::getAppVersion(), '.');
-		auto latestVersion = Utilities::splitString(latestVersionString, '.');
+		auto latestVersion = Utilities::splitString(getConfig().latestFetchAppVersion, '.');
 
 		if (currentVersion.size() != latestVersion.size())
 		{
 			std::cout << "Assertion failed: number of version part don't match" << std::endl;
+			return;
 		}
 
 		std::cout << "Current version: " << Application::getAppVersion() << std::endl;
-		std::cout << "Latest version: " << latestVersionString << std::endl;
+		std::cout << "Latest version: " << getConfig().latestFetchAppVersion << std::endl;
 
 		for (int i = 0; i < currentVersion.size(); i++)
 		{
@@ -674,7 +658,7 @@ namespace MikuMikuWorld
 			ImGui::EndMenu();
 		}
 
-		if (config.showFPS)
+		if (getConfig().showFPS)
 		{
 			std::string fps = IO::formatString("%.3fms (%.1fFPS)", ImGui::GetIO().DeltaTime * 1000,
 			                                   ImGui::GetIO().Framerate);
@@ -791,7 +775,7 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::autoSave()
 	{
-		std::wstring wAutoSaveDir = IO::mbToWideStr(autoSavePath);
+		std::wstring wAutoSaveDir = IO::utf8ToWide(autoSavePath);
 
 		// create auto save directory if none exists
 		if (!std::filesystem::exists(wAutoSaveDir))
@@ -818,7 +802,7 @@ namespace MikuMikuWorld
 
 	int ScoreEditor::deleteOldAutoSave(int count)
 	{
-		std::wstring wAutoSaveDir = IO::mbToWideStr(autoSavePath);
+		std::wstring wAutoSaveDir = IO::utf8ToWide(autoSavePath);
 		if (!std::filesystem::exists(wAutoSaveDir))
 			return 0;
 

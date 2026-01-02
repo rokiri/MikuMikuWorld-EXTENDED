@@ -23,6 +23,8 @@ struct InputBinding
 	}
 
 	constexpr bool operator!=(const InputBinding& other) const { return !(*this == other); }
+
+	constexpr inline explicit operator ImGuiKeyChord() const { return keyCode | keyModifiers; }
 };
 
 // DECLARE_ENUM_FLAG_OPERATORS(ImGuiKey);
@@ -54,7 +56,7 @@ struct MultiInputBinding
 
 	void moveUp(int index)
 	{
-		if (index < 1)
+		if (index <= 0 || index >= count)
 			return;
 
 		std::swap(bindings[index - 1], bindings[index]);
@@ -62,7 +64,7 @@ struct MultiInputBinding
 
 	void moveDown(int index)
 	{
-		if (index > 2 || count <= index + 1)
+		if (index < 0 || index + 1 >= count)
 			return;
 
 		std::swap(bindings[index + 1], bindings[index]);
@@ -70,21 +72,19 @@ struct MultiInputBinding
 
 	void addBinding(InputBinding binding)
 	{
-		if (count == bindings.size())
+		if (count == bindings.size() || binding.keyCode != 0)
 			return;
 
-		bindings[count++] = binding;
+		bindings.at(count++) = binding;
 	}
 
 	void removeAt(int index)
 	{
-		if (index < 0 || index >= bindings.size())
+		if (index < 0 || index >= count)
 			return;
 
 		// shift elements to the left
-		for (int i = index; i < count - 1; ++i)
-			bindings[i] = bindings[i + 1];
-
+		std::move(bindings.begin() + index, bindings.begin() + count, bindings.begin() + index - 1);
 		--count;
 	}
 };
@@ -107,4 +107,8 @@ namespace ImGui
 
 	bool IsAnyDown(const MultiInputBinding& binding);
 	bool IsAnyPressed(const MultiInputBinding& binding, bool repeat = false);
+
+	bool Shortcut(const InputBinding& binding, ImGuiInputFlags_ flags = ImGuiInputFlags_None);
+	bool AnyShortcut(const MultiInputBinding& bindings,
+	                 ImGuiInputFlags_ flags = ImGuiInputFlags_None);
 }

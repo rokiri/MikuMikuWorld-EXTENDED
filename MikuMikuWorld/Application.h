@@ -5,7 +5,6 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
@@ -41,13 +40,13 @@ namespace MikuMikuWorld
 		GLFWwindow* window;
 		std::unique_ptr<ScoreEditor> editor;
 		std::unique_ptr<ImGuiManager> imgui;
-		std::unique_ptr<Renderer> renderer;
-		UnsavedChangesDialog unsavedChangesDialog;
+		// UnsavedChangesDialog unsavedChangesDialog;
 
 		bool initialized;
 		std::string language;
 		
 		WindowState windowState;
+		ApplicationConfiguration config;
 		ApplicationResource resource;
 
 		static Application* instance;
@@ -58,14 +57,13 @@ namespace MikuMikuWorld
 		std::string getVersion();
 
 	  public:
-
 		Application();
 
 		Result initialize(const std::string& root);
 		void run();
 		void update();
-		void readSettings();
-		void writeSettings();
+		void readConfiguration();
+		void writeConfiguration();
 		void loadResources();
 		void dispose();
 
@@ -83,6 +81,8 @@ namespace MikuMikuWorld
 		}
 
 		// Helpers
+		// ApplicationConfig
+		friend ApplicationConfiguration& getConfig();
 		// ApplicationResource
 		friend ApplicationResource& getResources();
 		friend Shader* getShader(const std::string& name);

@@ -48,8 +48,8 @@ namespace IO
 		}
 
 		const int result =
-		    MessageBoxExW(reinterpret_cast<HWND>(parentWindow), mbToWideStr(message).c_str(),
-		                  mbToWideStr(title).c_str(), flags, 0);
+		    MessageBoxExW(reinterpret_cast<HWND>(parentWindow), utf8ToWide(message).c_str(),
+		                  utf8ToWide(title).c_str(), flags, 0);
 		switch (result)
 		{
 		case IDABORT:
@@ -175,20 +175,28 @@ namespace IO
 		return values;
 	}
 
-	std::string wideStringToMb(const std::wstring& str)
+	std::string wideToUtf8(const std::wstring& str)
 	{
-		int size = WideCharToMultiByte(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0, NULL, NULL);
+		if (str.empty())
+			return {};
+
+		int wSize = static_cast<int>(str.size());
+		int size = WideCharToMultiByte(CP_UTF8, 0, str.data(), wSize, NULL, 0, NULL, NULL);
 		std::string result(size, 0);
-		WideCharToMultiByte(CP_UTF8, 0, &str[0], (int)str.size(), &result[0], size, NULL, NULL);
+		WideCharToMultiByte(CP_UTF8, 0, str.data(), wSize, result.data(), size, NULL, NULL);
 
 		return result;
 	}
 
-	std::wstring mbToWideStr(const std::string& str)
+	std::wstring utf8ToWide(const std::string& str)
 	{
-		int size = MultiByteToWideChar(CP_UTF8, 0, &str[0], str.size(), NULL, 0);
-		std::wstring wResult(size, 0);
-		MultiByteToWideChar(CP_UTF8, 0, &str[0], str.size(), &wResult[0], size);
+		if (str.empty())
+			return {};
+
+		int size = static_cast<int>(str.size());
+		int wSize = MultiByteToWideChar(CP_UTF8, 0, str.data(), size, NULL, 0);
+		std::wstring wResult(wSize, 0);
+		MultiByteToWideChar(CP_UTF8, 0, str.data(), size, wResult.data(), wSize);
 
 		return wResult;
 	}

@@ -172,6 +172,7 @@
     <ClCompile Include="..\Depends\stb_vorbis\stb_vorbis.c" />
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="ApplicationConfiguration.cpp" />
+    <ClCompile Include="ApplicationResource.cpp" />
     <ClCompile Include="Audio\Sound.cpp" />
     <ClCompile Include="Audio\AudioManager.cpp" />
     <ClCompile Include="Background.cpp" />
@@ -189,6 +190,7 @@
     <ClCompile Include="ImGui\imgui_tables.cpp" />
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
     <ClCompile Include="InputBinding.cpp" />
+    <ClCompile Include="InputConfiguration.cpp" />
     <ClCompile Include="IO.cpp" />
     <ClCompile Include="Jacket.cpp" />
     <ClCompile Include="JsonIO.cpp" />
@@ -198,16 +200,15 @@
     <ClCompile Include="Math.cpp" />
     <ClCompile Include="NativeScoreSerializer.cpp" />
     <ClCompile Include="Note.cpp" />
+    <ClCompile Include="NoteResource.cpp" />
     <ClCompile Include="OpenGlLoader.cpp" />
     <ClCompile Include="NotesPreset.cpp" />
     <ClCompile Include="Rendering\Camera.cpp" />
     <ClCompile Include="Rendering\Framebuffer.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
-    <ClCompile Include="Rendering\Sprite.cpp" />
     <ClCompile Include="Rendering\Texture.cpp" />
     <ClCompile Include="Rendering\VertexBuffer.cpp" />
-    <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="Score.cpp" />
     <ClCompile Include="ScoreContext.cpp" />
     <ClCompile Include="ScoreEditorTimeline.cpp" />
@@ -230,6 +231,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="ApplicationConfiguration.h" />
+    <ClInclude Include="ApplicationResource.h" />
     <ClInclude Include="Audio\Sound.h" />
     <ClInclude Include="Audio\AudioManager.h" />
     <ClInclude Include="Background.h" />
@@ -251,6 +253,7 @@
     <ClInclude Include="ImGui\imstb_textedit.h" />
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="InputBinding.h" />
+    <ClInclude Include="InputConfiguration.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="Jacket.h" />
     <ClInclude Include="JsonIO.h" />
@@ -272,6 +275,7 @@
     <ClInclude Include="Rendering\Texture.h" />
     <ClInclude Include="Rendering\Vertex.h" />
     <ClInclude Include="Rendering\VertexBuffer.h" />
+    <ClInclude Include="NoteResource.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="Score.h" />
