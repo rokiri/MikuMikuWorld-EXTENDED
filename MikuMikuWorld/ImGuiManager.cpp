@@ -19,18 +19,20 @@ namespace MikuMikuWorld
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 
-		configFilename = IO::wideToUtf8(Application::getFullPath(IMGUI_CONFIG_FILENAME));
+		configFilename =
+		    IO::toString(Application::getInstance().getConfigPath(IMGUI_CONFIG_FILENAME));
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
-		
+
 		io.ConfigWindowsMoveFromTitleBarOnly = true;
 		io.ConfigViewportsNoDefaultParent = false;
 		io.ConfigViewportsNoAutoMerge = true;
 		io.ConfigDpiScaleViewports = true;
 		io.ConfigDpiScaleFonts = true;
 		io.ConfigDockingTransparentPayload = true;
-		
+		ImGui::GetStyle().HoverFlagsForTooltipMouse = ImGuiHoveredFlags_DelayNormal;
+
 		io.IniFilename = configFilename.c_str();
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(window, true))
@@ -236,9 +238,9 @@ namespace MikuMikuWorld
 
 		io.FontDefault = nullptr;
 
-		auto fontPath = Application::getFullPath("res", "fonts");
-		loadFont(IO::wideToUtf8(fontPath / "NotoSansCJK-Regular.ttc"), 16);
-		loadIconFont(IO::wideToUtf8(fontPath / "fa-solid-900.ttf"), ICON_MIN_FA, ICON_MAX_FA, 13);
+		auto fontPath = Application::getInstance().getResourcePath("fonts");
+		loadFont(IO::toString(fontPath / "NotoSansCJK-Regular.ttc"), 16);
+		loadIconFont(IO::toString(fontPath / "fa-solid-900.ttf"), ICON_MIN_FA, ICON_MAX_FA, 13);
 	}
 
 	void ImGuiManager::initializeLayout()
@@ -250,7 +252,8 @@ namespace MikuMikuWorld
 		                               ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
 
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImVec2 viewportOffset{ 0, UI::toolbarBtnSize.y + ImGui::GetStyle().WindowPadding.y + 5 };
+		auto toolbarWindow = ImGui::FindWindowByName(EditorToolbar::windowName);
+		ImVec2 viewportOffset{ 0, toolbarWindow ? toolbarWindow->Size.y : 0 };
 		ImGui::SetNextWindowPos(viewport->WorkPos + viewportOffset);
 		ImGui::SetNextWindowSize(viewport->WorkSize - viewportOffset);
 		ImGui::SetNextWindowViewport(viewport->ID);
@@ -262,9 +265,10 @@ namespace MikuMikuWorld
 		// We'll use it as the dockspace
 		ImGui::Begin("InvisibleWindow", nullptr, windowFlags);
 		ImGui::PopStyleVar(3);
-		
+
+		bool& wantsReset = Application::getInstance().getWindowState().resetLayout;
 		ImGuiID dockSpaceId = ImGui::GetID("InvisibleWindowDockSpace");
-		if (!ImGui::DockBuilderGetNode(dockSpaceId))
+		if (!ImGui::DockBuilderGetNode(dockSpaceId) || wantsReset)
 		{
 			ImGui::DockBuilderAddNode(dockSpaceId, ImGuiDockNodeFlags_DockSpace);
 			ImGui::DockBuilderSetNodeSize(dockSpaceId, viewport->WorkSize - viewportOffset);
@@ -284,6 +288,7 @@ namespace MikuMikuWorld
 			ImGui::DockBuilderDockWindow("###waypoints", bottomRightId);
 
 			ImGui::DockBuilderFinish(dockMainId);
+			wantsReset = false;
 		}
 
 		ImGui::DockSpace(dockSpaceId, ImVec2(), ImGuiDockNodeFlags_PassthruCentralNode);

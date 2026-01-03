@@ -33,7 +33,7 @@ namespace MikuMikuWorld
 		//timeline.setDivision(config.division);
 		//timeline.setZoom(config.zoom);
 
-		autoSavePath = Application::getAppDir() + "auto_save";
+		autoSavePath = Application::getInstance().getConfigPath("auto_save");
 		// autoSaveTimer.reset();
 
 		std::thread fetchUpdateThread(&ScoreEditor::fetchUpdate, this);
@@ -74,8 +74,9 @@ namespace MikuMikuWorld
 			}
 		}
 
-		auto currentVersion = Utilities::splitString(Application::getAppVersion(), '.');
-		auto latestVersion = Utilities::splitString(getConfig().latestFetchAppVersion, '.');
+		auto& instance = Application::getInstance();
+		auto currentVersion = IO::split(instance.getAppVersion(), ".");
+		auto latestVersion = IO::split(getConfig().latestFetchAppVersion, ".");
 
 		if (currentVersion.size() != latestVersion.size())
 		{
@@ -83,7 +84,7 @@ namespace MikuMikuWorld
 			return;
 		}
 
-		std::cout << "Current version: " << Application::getAppVersion() << std::endl;
+		std::cout << "Current version: " << instance.getAppVersion() << std::endl;
 		std::cout << "Latest version: " << getConfig().latestFetchAppVersion << std::endl;
 
 		for (int i = 0; i < currentVersion.size(); i++)
@@ -656,11 +657,9 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::autoSave()
 	{
-		std::wstring wAutoSaveDir = IO::utf8ToWide(autoSavePath);
-
 		// create auto save directory if none exists
-		if (!std::filesystem::exists(wAutoSaveDir))
-			std::filesystem::create_directory(wAutoSaveDir);
+		if (!std::filesystem::exists(autoSavePath))
+			std::filesystem::create_directory(autoSavePath);
 
 		//context.score.metadata = context.workingData.toScoreMetadata();
 		//NativeScoreSerializer().serialize(context.score, autoSavePath + "\\mmw_auto_save_" +
@@ -683,16 +682,15 @@ namespace MikuMikuWorld
 
 	int ScoreEditor::deleteOldAutoSave(int count)
 	{
-		std::wstring wAutoSaveDir = IO::utf8ToWide(autoSavePath);
-		if (!std::filesystem::exists(wAutoSaveDir))
+		if (!std::filesystem::exists(autoSavePath))
 			return 0;
 
 		// get mmws files
 		using entry = std::filesystem::directory_entry;
 		std::vector<entry> deleteFiles;
-		for (const auto& file : std::filesystem::directory_iterator(wAutoSaveDir))
+		for (const auto& file : std::filesystem::directory_iterator(autoSavePath))
 		{
-			std::string extension = file.path().extension().string();
+			std::string extension = IO::toString(file.path().extension());
 			std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 			if (extension == MMWS_EXTENSION)
 				deleteFiles.push_back(file);
@@ -714,5 +712,10 @@ namespace MikuMikuWorld
 		}
 
 		return deleteCount;
+	}
+
+	void ScoreEditor::appendOpenFile(const FilePath& filepath)
+	{
+		state.pendingOpenFiles.push_back(filepath);
 	}
 }

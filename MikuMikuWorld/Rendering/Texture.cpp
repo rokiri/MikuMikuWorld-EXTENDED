@@ -1,5 +1,6 @@
 #include "../File.h"
 #include "../IO.h"
+#include "../PlatformIO.h"
 #include "../JsonIO.h"
 #include "Texture.h"
 #include <glad/glad.h>
@@ -9,6 +10,7 @@
 #include <fstream>
 
 using namespace IO;
+using namespace jsonIO;
 using json = nlohmann::json;
 
 namespace MikuMikuWorld
@@ -42,32 +44,33 @@ namespace MikuMikuWorld
 	{
 		glID = 0;
 		this->filename = filename;
-		name = File::getFilenameWithoutExtension(filename);
+		auto filepath = IO::stringToPath(filename);
+		name = IO::toString(File::getFilenameWithoutExtension(filepath));
 		createTexture(filename, min, mag);
 
 		// Default sprite
 		sprites.emplace(name, Sprite(0, 0, width, height, name));
 
-		std::string sprSheet = File::getFilepath(filename) + name + ".json";
-		if (File::exists(sprSheet))
+		filepath.replace_extension(".json");
+		if (File::exists(filepath))
 		{
-			File sprFile(sprSheet, FileMode::Read);
+			File sprFile(filepath, FileMode::Read);
 			json sprJson = json::parse(sprFile.readAllText());
 			sprFile.close();
 			if (jsonIO::arrayHasData(sprJson, "sprites"))
 			{
 				for (auto&& jspr : sprJson["sprites"])
 				{
-					std::string sprName = jsonIO::tryGetValue<std::string>(jspr, "name");
-					int x = jsonIO::tryGetValue(jspr, "x", 0);
-					int y = jsonIO::tryGetValue(jspr, "y", 0);
-					int w = jsonIO::tryGetValue(jspr, "w", width);
-					int h = jsonIO::tryGetValue(jspr, "h", height);
-
-					if (sprName.empty())
+					if (!keyExists(jspr, "name", json::value_t::string) ||
+					    !keyExists(jspr, "x", json::value_t::number_unsigned) ||
+					    !keyExists(jspr, "y", json::value_t::number_unsigned) ||
+					    !keyExists(jspr, "w", json::value_t::number_unsigned) ||
+					    !keyExists(jspr, "h", json::value_t::number_unsigned))
 						continue;
-
-					sprites.emplace(sprName, Sprite(x, y, w, h, sprName));
+					sprites.emplace(
+					    jspr["name"].get<std::string>(),
+					    Sprite(jspr["x"], jspr["y"], jspr["w"], jspr["h"],
+					                                     jspr["name"]));
 				}
 			}
 		}

@@ -41,13 +41,14 @@ namespace MikuMikuWorld
 
 	bool TimelineTexture::load()
 	{
-		auto path = Application::getFullPath("res", "textures", "editor", "timeline_tools.png");
+		auto path = Application::getInstance().getResourcePath("textures", "editor", "timeline_tools.png");
+		std::string filename = IO::toString(path);
 		if (!fs::exists(path))
 		{
-			fprintf(stderr, "ERROR: Could not find texture file %s\n", path.string().c_str());
+			fprintf(stderr, "ERROR: Could not find texture file %s\n", filename.c_str());
 			return false;
 		}
-		toolbarTex = std::make_unique<Texture>(path.string());
+		toolbarTex = std::make_unique<Texture>(filename);
 		return true;
 	}
 
@@ -109,13 +110,15 @@ namespace MikuMikuWorld
 
 	bool NoteTexture::load(const std::string& profile)
 	{
-		auto path = Application::getFullPath("res", "textures", "note") / profile / "notes.png";
+		auto path =
+		    Application::getInstance().getResourcePath("textures", "note", profile, "notes.png");
+		auto filename = IO::toString(path);
 		if (!fs::exists(path))
 		{
-			fprintf(stderr, "ERROR: Could not find texture file %s\n", path.string().c_str());
+			fprintf(stderr, "ERROR: Could not find texture file %s\n", filename.c_str());
 			return false;
 		}
-		texture = std::make_unique<Texture>(path.string());
+		texture = std::make_unique<Texture>(filename);
 		return true;
 	}
 
@@ -126,7 +129,7 @@ namespace MikuMikuWorld
 	void MikuMikuWorld::NoteTexture::scanProfiles()
 	{
 		profiles.clear();
-		auto notePath = Application::getFullPath("res/textures/note");
+		auto notePath = Application::getInstance().getResourcePath("textures", "note");
 		if (!fs::exists(notePath))
 			return;
 		for (auto&& entry : fs::directory_iterator(notePath))

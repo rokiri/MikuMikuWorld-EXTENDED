@@ -18,7 +18,7 @@ namespace MikuMikuWorld
 		if (texture)
 		{
 			texture->dispose();
-			texture = nullptr;
+			texture.reset();
 		}
 
 		if (filename.empty() || !IO::File::exists(filename))

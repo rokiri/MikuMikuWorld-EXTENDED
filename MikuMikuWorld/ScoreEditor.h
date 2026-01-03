@@ -13,6 +13,7 @@ namespace MikuMikuWorld
 		bool wantOpenScore{ false };
 		bool wantExportScore{ false };
 		bool wantSaveScore{ false };
+		std::vector<FilePath> pendingOpenFiles;
 	};
 
 	class ScoreEditor
@@ -20,7 +21,6 @@ namespace MikuMikuWorld
 	  private:
 		ScoreEditorState state;
 		ScoreContext context{};
-		// std::vector<std::string> pendingOpenFiles;
 		// PresetManager presetManager;
 		std::unique_ptr<Renderer> renderer;
 		EditorToolbar toolbar;
@@ -33,14 +33,14 @@ namespace MikuMikuWorld
 		// DebugWindow debugWindow{};
 		// LayersWindow layersWindow{};
 		// WaypointsWindow waypointsWindow{};
-		SettingsWindow settingsWindow{};
+		// SettingsWindow settingsWindow{};
 		// RecentFileNotFoundDialog recentFileNotFoundDialog{};
 		// AboutDialog aboutDialog{};
 		// UpdateAvailableDialog updateAvailableDialog{};
 		// ScoreSerializeWindow serializeWindow{};
 
 		// Stopwatch autoSaveTimer;
-		std::string autoSavePath;
+		FilePath autoSavePath;
 		bool showImGuiDemoWindow{ false };
 
 		bool save(std::string filename);
@@ -62,6 +62,7 @@ namespace MikuMikuWorld
 		bool trySave(std::string);
 		void autoSave();
 		int deleteOldAutoSave(int count);
+		void appendOpenFile(const FilePath& filepath);
 
 		void drawMenubar();
 		void help();
@@ -72,6 +73,7 @@ namespace MikuMikuWorld
 		void writeSettings();
 		void uninitialize();
 		// inline std::string_view getWorkingFilename() const { return context.workingData.filename; }
-		// constexpr inline bool isUpToDate() const { return context.upToDate; }
+		
+		// bool isUpToDate() const { return context.upToDate; }
 	};
 }

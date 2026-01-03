@@ -2,6 +2,7 @@
 #include "ImGuiManager.h"
 #include "File.h"
 #include "Math.h"
+#include "PlatformIO.h"
 #include <algorithm>
 
 namespace MikuMikuWorld
@@ -21,7 +22,7 @@ namespace MikuMikuWorld
 			texture = nullptr;
 		}
 
-		if (filename.empty() || !IO::File::exists(filename))
+		if (filename.empty() || !IO::File::exists(IO::stringToPath(filename)))
 			return;
 
 		texture = std::make_unique<Texture>(filename);
@@ -38,17 +39,18 @@ namespace MikuMikuWorld
 		filename = "";
 	}
 
-	void Jacket::draw()
+	void Jacket::draw() const
 	{
 		if (texture == nullptr)
 			return;
 
-		if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 0.3f)
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip))
 		{
 			// animate opacity
 			ImVec4 color{ 1.0f, 1.0f, 1.0f, 0.0f };
-			color.w +=
-			    std::clamp(lerp(0.0f, 1.0f, (GImGui->HoveredIdTimer - 0.3f) / 0.25f), 0.0f, 1.0f);
+			float displayTime = GImGui->HoveredIdTimer - ImGui::GetStyle().HoverDelayNormal;
+			float ratio = std::clamp(displayTime / 0.25f, 0.0f, 1.0f);
+			color.w = ratio;
 
 			ImGui::SetNextWindowSize(previewSize, ImGuiCond_Always);
 			ImGui::SetNextWindowBgAlpha(color.w);

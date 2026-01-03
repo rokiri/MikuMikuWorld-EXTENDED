@@ -173,6 +173,9 @@
     <ClCompile Include="InputConfiguration.cpp">
       <Filter>IO</Filter>
     </ClCompile>
+    <ClCompile Include="PlatformIO.cpp">
+      <Filter>IO</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SUS.h">
@@ -378,6 +381,9 @@
     </ClInclude>
     <ClInclude Include="Text.h" />
     <ClInclude Include="InputConfiguration.h">
+      <Filter>IO\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="PlatformIO.h">
       <Filter>IO\Include</Filter>
     </ClInclude>
   </ItemGroup>

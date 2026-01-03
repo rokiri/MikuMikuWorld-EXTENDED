@@ -2,6 +2,7 @@
 #include "Application.h"
 #include "Localization.h"
 #include "IO.h"
+#include "PlatformIO.h"
 #include "Text.h"
 
 namespace fs = std::filesystem;
@@ -54,28 +55,31 @@ namespace MikuMikuWorld
 	void Localization::scanLanguages()
 	{
 		languages.clear();
-		auto i18nPath = Application::getFullPath("res", "i18n");
+		auto i18nPath = Application::getInstance().getResourcePath("i18n");
 		if (!fs::exists(i18nPath) || !fs::is_directory(i18nPath))
 			return;
 		for (const auto& entry : fs::directory_iterator(i18nPath))
 		{
 			// look only for csv files and ignore any dot files present
-			auto path = entry.path().filename();
-			if (!entry.is_regular_file() || IO::startsWith(path.u8string(), ".") ||
+			auto& path = entry.path();
+			std::string filename = IO::toString(path.filename());
+			// auto path = entry.path().filename();
+			if (!entry.is_regular_file() || IO::startsWith(filename, ".") ||
 			    path.extension() != ".csv")
 				continue;
-			auto langName = readLanguageName(entry.path().u8string());
+			std::string langName = readLanguageName(IO::toString(path));
 			if (langName.empty())
 				continue;
-			languages.push_back({ path.replace_extension().u8string(), langName });
+			std::string code = IO::toString(FilePath(path).replace_extension());
+			languages.push_back({ code, langName });
 		}
 		// languages is order by (user's language) > english > (other languages)
-		std::string systemLocale = Utilities::getSystemLocale();
+		std::string systemLocale = IO::getSystemLocale();
 		auto it = std::find_if(languages.begin(), languages.end(), [&](const Language& language)
 		                       { return language.code == systemLocale; });
-		if (it != languages.end())
+		if (it != languages.end() && it->code != "en")
 			std::swap(*it, languages.front());
-		if (systemLocale == "en")
+		if (systemLocale == "en" || languages.size() == 1)
 			return;
 		it = std::find_if(languages.begin(), languages.end(),
 		                  [](const Language& language) { return language.code == "en"; });
@@ -99,16 +103,16 @@ namespace MikuMikuWorld
 			scanLanguages();
 		if (languages.empty() && code == "auto")
 			return false;
-		auto path = Application::getFullPath("res", "i18n") /
-		            (code == "auto" ? languages.front().code : code);
-		path.replace_extension(".csv");
+		auto& langCode = code == "auto" ? languages.front().code : code;
+		FilePath path =
+		    Application::getInstance().getResourcePath("i18n", langCode).replace_extension(".csv");
 		if (!fs::exists(path) || !fs::is_regular_file(path))
 			return false;
-		currentTranslation = readLanguageFile(path.u8string());
+		currentTranslation = readLanguageFile(IO::toString(path));
 		// Since not all text are translated, we use english as filler for missing keys
-		if (code != "en" && supportLanguage("en"))
-			currentTranslation.merge(
-			    readLanguageFile(Application::getFullPath("res", "i18n", "en.csv").u8string()));
+		if (langCode != "en" && supportLanguage("en"))
+			currentTranslation.merge(readLanguageFile(
+			    IO::toString(Application::getInstance().getResourcePath("i18n", "en.csv"))));
 		return true;
 	}
 

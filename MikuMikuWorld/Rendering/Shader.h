@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include "DirectXMath.h"
 #include <string>
+#include <filesystem>
 #include <unordered_map>
 
 namespace MikuMikuWorld
@@ -14,11 +15,11 @@ namespace MikuMikuWorld
 		std::string name;
 		std::unordered_map<std::string, GLint> locMap;
 
-		void compile(const std::string& source);
+		void compile(const std::filesystem::path& source);
 		GLint getUniformLoc(const std::string& name);
 
 	  public:
-		Shader(const std::string& name, const std::string& source);
+		Shader(const std::string& name, const std::filesystem::path& source);
 		~Shader();
 
 		std::string getName() const;

@@ -11,7 +11,7 @@ namespace MikuMikuWorld
 		TimelineTexture timelineTexture;
 		NoteTexture noteTexture;
 
-		void loadShader(const std::string& filename);
+		void loadShader(const std::string& name);
 	};
 
 	Shader* getShader(const std::string& name);

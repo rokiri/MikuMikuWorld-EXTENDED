@@ -1,4 +1,5 @@
 #include "../IO.h"
+#include "../PlatformIO.h"
 #include "../File.h"
 #include "../Math.h"
 #include "../Stopwatch.h"
@@ -43,18 +44,18 @@ namespace Audio
 
 	mmw::Result decodeAudioFile(std::string filename, SoundBuffer& sound)
 	{
-		if (!IO::File::exists(filename))
+		auto filepath = IO::stringToPath(filename);
+		if (!IO::File::exists(filepath))
 			return mmw::Result(mmw::ResultStatus::Error, "File not found");
 
-		std::string fileExtension = IO::File::getFileExtension(filename);
+		auto fileExtension = IO::toString(IO::File::getFileExtension(filepath));
 		std::transform(fileExtension.begin(), fileExtension.end(), fileExtension.begin(),
 		               ::tolower);
 
 		if (!isSupportedFileFormat(fileExtension))
 			return mmw::Result(mmw::ResultStatus::Error, "Unsupported file format");
 
-		std::string nameWithoutExtension = IO::File::getFilenameWithoutExtension(filename);
-		std::wstring wFilename = IO::mbToWideStr(filename);
+		std::string nameWithoutExtension = IO::toString(IO::File::getFilenameWithoutExtension(filepath));
 
 		IO::File f(filename, IO::FileMode::ReadBinary);
 		std::vector<uint8_t> bytes = f.readAllBytes();
@@ -146,7 +147,7 @@ namespace Audio
 			                                            endFrames);
 	}
 
-	bool SoundPool::isLooping() const { return flags & SoundFlags::LOOP; }
+	bool SoundPool::isLooping() const { return hasFlag(flags, SoundFlags::LOOP); }
 
 	void SoundPool::setVolume(float volume)
 	{
@@ -159,12 +160,12 @@ namespace Audio
 	void SoundPool::initialize(const std::string& path, ma_engine* engine, ma_sound_group* group,
 	                           SoundFlags flags)
 	{
-		std::wstring wPath = IO::mbToWideStr(path);
+		std::wstring wPath = IO::utf8ToWide(path);
 		for (int i = 0; i < pool.size(); i++)
 		{
 			ma_result result = ma_sound_init_from_file_w(
 			    engine, wPath.c_str(), maSoundFlagsDecodeAsync, group, NULL, &pool[i].source);
-			if (flags & SoundFlags::LOOP)
+			if (hasFlag(flags, SoundFlags::LOOP))
 				ma_sound_set_looping(&pool[i].source, true);
 		}
 
@@ -186,7 +187,7 @@ namespace Audio
 		{
 			ma_result result = ma_sound_init_from_data_source(
 			    engine, &sound.buffer, maSoundFlagsDefault, group, &pool[i].source);
-			if (flags & SoundFlags::LOOP)
+			if (hasFlag(flags, SoundFlags::LOOP))
 				ma_sound_set_looping(&pool[i].source, true);
 		}
 
@@ -220,7 +221,7 @@ namespace Audio
 		instance.lastStartTime = start;
 		instance.lastEndTime = end;
 
-		if ((flags & SoundFlags::EXTENDABLE) == 0)
+		if (!hasFlag(flags, SoundFlags::EXTENDABLE))
 			currentIndex = ++currentIndex % pool.size();
 	}
 

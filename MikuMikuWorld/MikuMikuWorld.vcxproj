@@ -202,6 +202,7 @@
     <ClCompile Include="NoteResource.cpp" />
     <ClCompile Include="OpenGlLoader.cpp" />
     <ClCompile Include="NotesPreset.cpp" />
+    <ClCompile Include="PlatformIO.cpp" />
     <ClCompile Include="Rendering\Camera.cpp" />
     <ClCompile Include="Rendering\Framebuffer.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
@@ -264,6 +265,7 @@
     <ClInclude Include="Note.h" />
     <ClInclude Include="NoteTypes.h" />
     <ClInclude Include="NotesPreset.h" />
+    <ClInclude Include="PlatformIO.h" />
     <ClInclude Include="Rendering\AnchorType.h" />
     <ClInclude Include="Rendering\Camera.h" />
     <ClInclude Include="Rendering\Framebuffer.h" />

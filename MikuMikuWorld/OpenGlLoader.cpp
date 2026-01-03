@@ -96,9 +96,10 @@ namespace MikuMikuWorld
 		glfwSetWindowCloseCallback(window, windowCloseCallback);
 		glfwSetWindowMaximizeCallback(window, windowMaximizeCallback);
 
-		std::string iconFilename = IO::wideToUtf8(Application::getFullPath("res", "mmw_icon.png"));
-		if (IO::File::exists(iconFilename))
+		auto iconPath = Application::getInstance().getResourcePath("mmw_icon.png");
+		if (IO::File::exists(iconPath))
 		{
+			std::string iconFilename = IO::toString(iconPath);
 			GLFWimage image{};
 			image.pixels =
 			    stbi_load(iconFilename.c_str(), &image.width, &image.height, 0, 4); // rgba channels

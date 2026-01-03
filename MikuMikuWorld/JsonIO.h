@@ -11,6 +11,12 @@ namespace jsonIO
 		return (js.find(key) != js.end());
 	}
 
+	static bool keyExists(const nlohmann::json& js, const char* key, nlohmann::json::value_t type)
+	{
+		auto it = js.find(key);
+		return (it != js.end()) && it->type() == type;
+	}
+
 	static bool arrayHasData(const nlohmann::json& js, const char* key)
 	{
 		return jsonIO::keyExists(js, key) && js[key].is_array() && js[key].size();

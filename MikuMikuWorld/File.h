@@ -4,11 +4,9 @@
 #include <fstream>
 #include <numeric>
 
+using FilePath = std::filesystem::path;
 namespace IO
 {
-	std::filesystem::path stringToPath(const std::string& str);
-	std::filesystem::path stringToPath(const std::wstring& str);
-
 	enum class FileMode : uint8_t
 	{
 		Read,
@@ -19,15 +17,14 @@ namespace IO
 
 	class File
 	{
-	public:
-		static std::string getFilename(const std::string& filename);
-		static std::string getFileExtension(const std::string& filename);
-		static std::string getFilenameWithoutExtension(const std::string& filename);
-		static std::string getFilepath(const std::string& filename);
-		static size_t getFileSize(const std::string& filename);
-		static bool exists(const std::string& path);
-		static bool exists(const std::wstring& path);
+	  public:
+		static FilePath getFilename(const FilePath& path);
+		static FilePath getFileExtension(const FilePath& path);
+		static FilePath getFilenameWithoutExtension(const FilePath& path);
+		static size_t getFileSize(const FilePath& path);
+		static bool exists(const FilePath& path);
 
+		void open(const FilePath& filepath, FileMode mode);
 		void open(const std::string& filename, FileMode mode);
 		void open(const std::wstring& filename, FileMode mode);
 		void close();
@@ -46,11 +43,12 @@ namespace IO
 		std::string_view getOpenFilename() const { return openFilename; }
 		std::wstring_view getOpenFilenameW() const { return openFilenameW; }
 
+		File(const FilePath& filepath, FileMode mode);
 		File(const std::string& filename, FileMode mode);
 		File(const std::wstring& filename, FileMode mode);
 		~File();
 
-	private:
+	  private:
 		std::fstream stream{};
 		std::string openFilename{};
 		std::wstring openFilenameW{};
@@ -65,18 +63,6 @@ namespace IO
 		OK
 	};
 
-	enum class DialogType : uint8_t
-	{
-		Open,
-		Save
-	};
-
-	enum class DialogSelectType : uint8_t
-	{
-		File,
-		Folder
-	};
-
 	struct FileDialogFilter
 	{
 		std::string filterName;
@@ -86,6 +72,18 @@ namespace IO
 	class FileDialog
 	{
 	  private:
+		enum class DialogType : uint8_t
+		{
+			Open,
+			Save
+		};
+
+		enum class DialogSelectType : uint8_t
+		{
+			File,
+			Folder
+		};
+
 		FileDialogResult showFileDialog(DialogType type, DialogSelectType selectType);
 
 	  public:
@@ -101,22 +99,8 @@ namespace IO
 		FileDialogResult saveFile();
 	};
 
-	inline FileDialogFilter combineFilters(const std::string& filterName,
-	                                       const std::initializer_list<FileDialogFilter>& filters)
-	{
-		std::string filterType;
-		if (!filters.size())
-			return { filterName, "*.*" };
-		filterType.reserve(std::accumulate(filters.begin(), filters.end(), size_t(0),
-		                                   [](size_t sz, const FileDialogFilter& filter)
-		                                   { return sz + filter.filterType.size() + 1; }) -
-		                   1);
-		auto begin = filters.begin(), end = filters.end();
-		filterType += (begin++)->filterType;
-		for (; begin != end; ++begin)
-			filterType.append(";").append(begin->filterType);
-		return { filterName, filterType };
-	}
+	FileDialogFilter combineFilters(const std::string& filterName,
+	                                const std::initializer_list<FileDialogFilter>& filters);
 
 	extern FileDialogFilter mmwsFilter;
 	extern FileDialogFilter susFilter;

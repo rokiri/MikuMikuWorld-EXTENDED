@@ -11,9 +11,7 @@ namespace MikuMikuWorld
 	{
 	  public:
 		static std::string getCurrentDateTime();
-		static std::string getSystemLocale();
 		static std::string getDivisionString(int div);
-		static std::vector<std::string> splitString(const std::string& base, const char delimiter);
 	};
 
 	enum class ResultStatus

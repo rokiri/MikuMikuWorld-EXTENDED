@@ -12,9 +12,9 @@ namespace MikuMikuWorld
 		return it != shaders.end() ? &it->second : nullptr;
 	}
 
-	void ApplicationResource::loadShader(const std::string& filename)
+	void ApplicationResource::loadShader(const std::string& name)
 	{
-		std::string filepath = (Application::getFullPath("res", "shaders") / filename).u8string();
-		shaders.emplace(filename, Shader(filename, filepath));
+		auto path = Application::getInstance().getResourcePath("shaders", IO::stringToPath(name));
+		shaders.emplace(name, Shader(name, path));
 	}
 }

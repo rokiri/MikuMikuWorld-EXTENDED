@@ -1,18 +1,17 @@
 #include "Application.h"
 #include "IO.h"
+#include "PlatformIO.h"
 #include <iostream>
 
 namespace mmw = MikuMikuWorld;
 
 int main()
 {
-	int argc;
-	LPWSTR* args;
-	args = CommandLineToArgvW(GetCommandLineW(), &argc);
-	if (!args)
+	std::vector<std::string> args = IO::getCommandLineArgs();
+	if (args.empty())
 	{
-		IO::messageBox(APP_NAME, "CommandLineToArgvW failed...", IO::MessageBoxButtons::Ok,
-		               IO::MessageBoxIcon::Error);
+		IO::messageBox(APP_NAME, "Something went wrong!\nCommandline arguments not found...",
+		               IO::MessageBoxButtons::Ok, IO::MessageBoxIcon::Error);
 		return 1;
 	}
 
@@ -21,16 +20,11 @@ int main()
 	try
 	{
 #endif
-		std::string dir = IO::File::getFilepath(IO::wideToUtf8(args[0]));
-		mmw::Result result = app.initialize(dir);
-
+		mmw::Result result = app.initialize(args[0]);
 		if (!result.isOk())
-			throw(std::exception(result.getMessage().c_str()));
-
-		//for (int i = 1; i < argc; ++i)
-		//	app.appendOpenFile(IO::wideToUtf8(args[i]));
-
-		// app.handlePendingOpenFiles();
+			throw std::runtime_error(result.getMessage());
+		 for (size_t i = 1; i < args.size(); ++i)
+			app.appendOpenFile(IO::stringToPath(args[i]));
 		app.run();
 #ifndef DEBUG
 	}

@@ -1,6 +1,6 @@
 #include "File.h"
 #include "IO.h"
-#include <Windows.h>
+#include "PlatformIO.h"
 #include <algorithm>
 #include <iostream>
 #include <filesystem>
@@ -9,9 +9,6 @@ namespace fs = std::filesystem;
 
 namespace IO
 {
-	fs::path stringToPath(const std::string& str) { return fs::path(utf8ToWide(str)); }
-	fs::path stringToPath(const std::wstring& str) { return fs::path(str); }
-
 	FileDialogFilter mmwsFilter{ "MikuMikuWorld Score", "*.unchmmws;*.ccmmws;*.mmws" };
 	FileDialogFilter susFilter{ "Sliding Universal Score", "*.sus" };
 	FileDialogFilter uscFilter{ "Universal Sekai Chart", "*.usc" };
@@ -21,6 +18,8 @@ namespace IO
 	FileDialogFilter presetFilter{ "Notes Preset", "*.json" };
 	FileDialogFilter allFilter{ "All Files", "*.*" };
 
+	File::File(const FilePath& filepath, FileMode mode) { open(filepath, mode); }
+
 	File::File(const std::string& filename, FileMode mode) { open(filename, mode); }
 
 	File::File(const std::wstring& filename, FileMode mode) { open(filename, mode); }
@@ -28,7 +27,10 @@ namespace IO
 	File::~File()
 	{
 		if (stream.is_open())
+		{
+			stream.flush();
 			stream.close();
+		}
 	}
 
 	int File::getStreamMode(FileMode mode) const
@@ -48,18 +50,21 @@ namespace IO
 		}
 	}
 
+	void File::open(const FilePath& filepath, FileMode mode)
+	{
+		openFilename = toString(filepath);
+		openFilenameW = toWString(filepath);
+		stream.open(filepath, getStreamMode(mode));
+	}
+
 	void File::open(const std::string& filename, FileMode mode)
 	{
-		openFilename = filename;
-		openFilenameW = IO::utf8ToWide(filename);
-		stream.open(openFilenameW, getStreamMode(mode));
+		open(stringToPath(filename), mode);
 	}
 
 	void File::open(const std::wstring& filename, FileMode mode)
 	{
-		openFilename = IO::wideToUtf8(filename);
-		openFilenameW = filename;
-		stream.open(openFilenameW, getStreamMode(mode));
+		open(stringToPath(filename), mode);
 	}
 
 	void File::close()
@@ -148,107 +153,34 @@ namespace IO
 
 	// --------------------------------------------------------
 
-	std::string File::getFilename(const std::string& filename)
+	FilePath File::getFilename(const FilePath& path) { return path.filename(); }
+
+	FilePath File::getFileExtension(const FilePath& path) { return path.extension(); }
+
+	FilePath File::getFilenameWithoutExtension(const FilePath& path)
 	{
-		return wideToUtf8(stringToPath(filename).filename());
+		return path.filename().replace_extension();
 	}
 
-	std::string File::getFileExtension(const std::string& filename)
+	size_t File::getFileSize(const FilePath& path) { return fs::file_size(path); }
+
+	bool File::exists(const FilePath& path) { return fs::exists(path); }
+
+	FileDialogFilter combineFilters(const std::string& filterName,
+	                                const std::initializer_list<FileDialogFilter>& filters)
 	{
-		return wideToUtf8(stringToPath(filename).extension());
-	}
-
-	std::string File::getFilenameWithoutExtension(const std::string& filename)
-	{
-		return wideToUtf8(stringToPath(filename).filename().replace_extension());
-	}
-
-	std::string File::getFilepath(const std::string& filename)
-	{
-		return wideToUtf8(stringToPath(filename).replace_filename(""));
-	}
-
-	size_t File::getFileSize(const std::string& filename)
-	{
-		return fs::file_size(stringToPath(filename));
-	}
-
-	bool File::exists(const std::string& path) { return fs::exists(stringToPath(path)); }
-
-	bool File::exists(const std::wstring& path) { return fs::exists(path); }
-
-	FileDialogResult FileDialog::showFileDialog(DialogType type, DialogSelectType selectType)
-	{
-		std::wstring wTitle = utf8ToWide(title);
-
-		OPENFILENAMEW ofn;
-		memset(&ofn, 0, sizeof(ofn));
-		ofn.lStructSize = sizeof(ofn);
-		ofn.hwndOwner = reinterpret_cast<HWND>(parentWindowHandle);
-		ofn.lpstrTitle = wTitle.c_str();
-		ofn.nFilterIndex = filterIndex + 1;
-		ofn.nFileOffset = 0;
-		ofn.nMaxFile = MAX_PATH;
-		ofn.Flags = OFN_LONGNAMES | OFN_EXPLORER | OFN_ENABLESIZING | OFN_OVERWRITEPROMPT |
-		            OFN_HIDEREADONLY | OFN_PATHMUSTEXIST;
-
-		std::wstring wDefaultExtension = utf8ToWide(defaultExtension);
-		ofn.lpstrDefExt = wDefaultExtension.c_str();
-
-		std::vector<std::wstring> ofnFilters;
-		ofnFilters.reserve(filters.size());
-
-		/*
-		    since '\0' terminates the string,
-		    we'll do a C# by using ' | ' then replacing it with '\0' when constructing the final
-		   wide string
-		*/
-		std::string filtersCombined;
-		for (const auto& filter : filters)
-		{
-			filtersCombined.append(filter.filterName)
-			    .append(" (")
-			    .append(filter.filterType)
-			    .append(")|")
-			    .append(filter.filterType)
-			    .append("|");
-		}
-
-		std::wstring wFiltersCombined = utf8ToWide(filtersCombined);
-		std::replace(wFiltersCombined.begin(), wFiltersCombined.end(), '|', '\0');
-		ofn.lpstrFilter = wFiltersCombined.c_str();
-
-		std::wstring wInputFilename = utf8ToWide(inputFilename);
-		wchar_t ofnFilename[1024]{ 0 };
-
-		// suppress return value not used warning
-#pragma warning(suppress : 6031)
-		lstrcpynW(ofnFilename, wInputFilename.c_str(), 1024);
-		ofn.lpstrFile = ofnFilename;
-
-		if (type == DialogType::Save)
-		{
-			ofn.Flags |= OFN_HIDEREADONLY;
-			if (GetSaveFileNameW(&ofn))
-			{
-				outputFilename = wideToUtf8(ofn.lpstrFile);
-			}
-			else
-			{
-				// user canceled
-				return FileDialogResult::Cancel;
-			}
-		}
-		else if (GetOpenFileNameW(&ofn))
-		{
-			outputFilename = wideToUtf8(ofn.lpstrFile);
-		}
-		else
-		{
-			return FileDialogResult::Cancel;
-		}
-
-		return outputFilename.empty() ? FileDialogResult::Cancel : FileDialogResult::OK;
+		std::string filterType;
+		if (!filters.size())
+			return { filterName, "*.*" };
+		filterType.reserve(std::accumulate(filters.begin(), filters.end(), size_t(0),
+		                                   [](size_t sz, const FileDialogFilter& filter)
+		                                   { return sz + filter.filterType.size() + 1; }) -
+		                   1);
+		auto begin = filters.begin(), end = filters.end();
+		filterType += (begin++)->filterType;
+		for (; begin != end; ++begin)
+			filterType.append(";").append(begin->filterType);
+		return { filterName, filterType };
 	}
 
 	FileDialogResult FileDialog::openFile()

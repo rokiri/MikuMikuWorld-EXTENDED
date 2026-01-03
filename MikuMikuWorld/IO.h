@@ -47,7 +47,7 @@ namespace IO
 	bool endsWith(const std::string_view& line, const std::string_view& key);
 	bool isDigit(const std::string_view& str);
 	std::string trim(const std::string& line);
-	std::vector<std::string> split(const std::string& line, const std::string& delim);
+	std::vector<std::string> split(const std::string& line, std::string_view delim);
 	std::pair<std::string, std::string> split_first(const std::string& line,
 	                                                const std::string& delim);
 
@@ -78,7 +78,7 @@ namespace IO
 	template <typename... Args> std::string formatString(const char* format, Args... args)
 	{
 		auto length = 1 + std::snprintf(nullptr, 0, format,
-		                                  formatting::to_printable(std::forward<Args>(args))...);
+		                                formatting::to_printable(std::forward<Args>(args))...);
 		if (length <= 0)
 			throw std::runtime_error("An error occurred while attempting to format a string.");
 
@@ -106,7 +106,7 @@ namespace IO
 		return buf;
 	}
 
-	MessageBoxResult messageBox(std::string title, std::string message, MessageBoxButtons buttons,
-	                            MessageBoxIcon icon, void* parentWindow = NULL);
-
+	MessageBoxResult messageBox(const std::string& title, const std::string& message,
+	                            MessageBoxButtons buttons, MessageBoxIcon icon,
+	                            void* parentWindow = NULL);
 }
