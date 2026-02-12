@@ -35,16 +35,15 @@ namespace MikuMikuWorld
 
 		autoSavePath = Application::getInstance().getConfigPath("auto_save");
 		// autoSaveTimer.reset();
-
-		std::thread fetchUpdateThread(&ScoreEditor::fetchUpdate, this);
-		fetchUpdateThread.detach();
+		create();
 	}
 
 	void ScoreEditor::fetchUpdate()
 	{
 		using namespace std::chrono;
-		auto now = system_clock::now();
-		auto diff = duration_cast<minutes>(now - getConfig().lastUpdateCheck).count();
+		auto& config = getConfig();
+		system_clock::time_point now = system_clock::now();
+		int diff = duration_cast<minutes>(now - config.lastUpdateCheck).count();
 		std::cout << "Last update check: " << diff << " minutes ago" << std::endl;
 		if (diff > 60)
 		{
@@ -64,8 +63,8 @@ namespace MikuMikuWorld
 				{
 					auto parsed = nlohmann::json::parse(res->body);
 					std::string tagName = parsed["tag_name"];
-					getConfig().latestFetchAppVersion = tagName.substr(1);
-					getConfig().lastUpdateCheck = now;
+					config.latestFetchAppVersion = tagName.substr(1);
+					config.lastUpdateCheck = now;
 				}
 			}
 			catch (const std::exception& e)
@@ -76,7 +75,7 @@ namespace MikuMikuWorld
 
 		auto& instance = Application::getInstance();
 		auto currentVersion = IO::split(instance.getAppVersion(), ".");
-		auto latestVersion = IO::split(getConfig().latestFetchAppVersion, ".");
+		auto latestVersion = IO::split(config.latestFetchAppVersion, ".");
 
 		if (currentVersion.size() != latestVersion.size())
 		{
@@ -85,7 +84,7 @@ namespace MikuMikuWorld
 		}
 
 		std::cout << "Current version: " << instance.getAppVersion() << std::endl;
-		std::cout << "Latest version: " << getConfig().latestFetchAppVersion << std::endl;
+		std::cout << "Latest version: " << config.latestFetchAppVersion << std::endl;
 
 		for (int i = 0; i < currentVersion.size(); i++)
 		{
@@ -95,8 +94,13 @@ namespace MikuMikuWorld
 			if (latestVersionPart > currentVersionPart)
 			{
 				std::cout << "Update available" << std::endl;
-				//updateAvailableDialog.latestVersion = latestVersionString;
-				//updateAvailableDialog.open = true;
+				std::string title = UI::modalTitle(Text::updateAvailable);
+				std::string content = IO::formatString(localize(Text::updateAvailableDescription),
+				                                       config.latestFetchAppVersion);
+				DialogContent::Action yes = { localize(Text::yes).string,
+					                          &ScoreEditor::openReleasePage };
+				DialogContent::Action no = { localize(Text::no).string, nullptr };
+				dialog.open(title, { content }, { yes, no });
 				return;
 			}
 		}

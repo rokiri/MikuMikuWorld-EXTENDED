@@ -21,7 +21,7 @@ namespace MikuMikuWorld
 		bool closing = false;
 		bool windowDragging = false;
 		bool resetLayout = false;
-		float lastDpiScale = 0.0f;
+		float lastDpiScale = 1.0f;
 		Vector2 position{};
 		Vector2 size{};
 		IO::PlatformData* platfromData = nullptr;
@@ -60,6 +60,7 @@ namespace MikuMikuWorld
 		void writeConfiguration();
 		void appendOpenFile(const FilePath& filepath);
 		void loadResources();
+		void setTitle(const std::string& name);
 		void dispose();
 
 		inline GLFWwindow* getGlfwWindow() { return window; }
@@ -87,6 +88,6 @@ namespace MikuMikuWorld
 		friend ApplicationResource& getResources();
 		friend Shader* getShader(const std::string& name);
 		// Localization
-		friend const TranslationString& localize(const std::string& text);
+		friend Localization& getLocalization();
 	};
 }

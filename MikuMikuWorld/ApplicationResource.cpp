@@ -3,7 +3,7 @@
 
 namespace MikuMikuWorld
 {
-	ApplicationResource& MikuMikuWorld::getResources() { return Application::instance->resource; }
+	ApplicationResource& getResources() { return Application::instance->resource; }
 
 	Shader* getShader(const std::string& name)
 	{

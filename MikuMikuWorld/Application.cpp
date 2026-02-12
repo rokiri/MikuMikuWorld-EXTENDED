@@ -46,6 +46,11 @@ namespace MikuMikuWorld
 
 		loadResources();
 
+#ifndef DEBUG
+		std::thread fetchUpdateThread(&ScoreEditor::fetchUpdate, editor.get());
+		fetchUpdateThread.detach();
+#endif
+
 		initialized = true;
 		return Result::Ok();
 	}
@@ -162,6 +167,7 @@ namespace MikuMikuWorld
 				config.language = "auto";
 				localization.setLanguage("auto");
 			}
+			language = config.language;
 		}
 
 		float dpiX = 1.0f, dpiY = 1.0f;
@@ -192,6 +198,7 @@ namespace MikuMikuWorld
 
 		if (windowState.closing)
 		{
+			glfwSetWindowShouldClose(window, 1);
 			// if (!editor->isUpToDate())
 			//{
 			//	switch (unsavedChangesResult)
@@ -286,6 +293,13 @@ namespace MikuMikuWorld
 			localization.setLanguage("auto");
 		}
 		language = config.language;
+	}
+
+	void Application::setTitle(const std::string& name)
+	{
+		if (!window)
+			return;
+		glfwSetWindowTitle(window, IO::formatString("%s - %s", APP_NAME, name).c_str());
 	}
 
 	void Application::run()
