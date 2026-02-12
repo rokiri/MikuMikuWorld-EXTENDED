@@ -224,7 +224,7 @@ namespace MikuMikuWorld
 		for (const auto& pBinding : allInputBindings)
 		{
 			auto& binding = (input.*pBinding);
-			auto& j_binding = j_input[binding.name] = json::array();
+			auto& j_binding = j_input[binding.name.data()] = json::array();
 			for (size_t i = 0; i < binding.count; ++i)
 				if (binding.bindings[i].keyCode != ImGuiKey_None)
 					j_binding.push_back(ToSerializedString(binding.bindings[i]));

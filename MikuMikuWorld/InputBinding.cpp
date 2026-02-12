@@ -290,7 +290,7 @@ namespace ImGui
 		       ImGui::IsKeyPressed((ImGuiKey)binding.keyCode, repeat);
 	}
 
-	bool Shortcut(const InputBinding& binding, ImGuiInputFlags_ flags)
+	bool Shortcut(const InputBinding& binding, ImGuiInputFlags flags)
 	{
 		return ImGui::Shortcut(static_cast<ImGuiKeyChord>(binding), flags);
 	}
@@ -313,7 +313,7 @@ namespace ImGui
 		return false;
 	}
 
-	bool AnyShortcut(const MultiInputBinding& bindings, ImGuiInputFlags_ flags)
+	bool AnyShortcut(const MultiInputBinding& bindings, ImGuiInputFlags flags)
 	{
 		bool active = false;
 		for (int i = 0; i < bindings.count; ++i)
