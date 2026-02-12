@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include "Text.h"
+#include "Utilities.h"
 
 namespace MikuMikuWorld
 {
@@ -22,37 +23,59 @@ namespace MikuMikuWorld
 
 	struct Localization
 	{
+		using MapType = std::unordered_map<std::string_view, TranslationString>;
+
 		std::vector<Language> languages;
-		std::unordered_map<std::string, TranslationString> currentTranslation;
+		MapType currentTranslation;
 
 		void scanLanguages();
 		bool supportLanguage(const std::string& locale);
 		bool setLanguage(const std::string& locale);
+
+		MapType::iterator insertText(std::string text, TranslationString str);
+		MapType::iterator updateText(std::string_view text, TranslationString str);
+
+	  private:
+		void readLanguageFile(const std::string& filename);
+
+		std::vector<char> keyStorage;
 	};
 
-	const TranslationString& localize(const std::string& text);
+	Localization& getLocalization();
+	const TranslationString& localize(std::string_view text);
+	template <typename StrFactory, typename... Args>
+	inline auto localizeOrInsert(std::string_view text, StrFactory&& f, Args&&... args) ->
+	    typename std::enable_if_t<
+	        std::is_constructible_v<std::string, std::invoke_result_t<StrFactory, Args...>>,
+	        const TranslationString&>
+	{
+		auto& localizer = getLocalization();
+		auto it = localizer.currentTranslation.find(text);
+		if (it != localizer.currentTranslation.end())
+			return it->second;
+		std::string str(text),
+		    val = std::invoke(std::forward<StrFactory>(f), std::forward<Args>(args)...);
+		return localizer.insertText(std::move(str), { std::move(val) })->second;
+	}
 
-	inline constexpr const char* insertModeTexts[]{
-		Text::select,   Text::tap,           Text::hold,   Text::holdStep, Text::flick,
-		Text::critical, Text::trace,         Text::guide,  Text::damage,   Text::dummy,
-		Text::bpm,      Text::timeSignature, Text::hiSpeed
-	};
+	MMW_TEXT_TYPE insertModeTexts[]{ Text::select, Text::tap,      Text::hold,  Text::holdStep,
+		                             Text::flick,  Text::critical, Text::trace, Text::guide,
+		                             Text::damage, Text::dummy,    Text::bpm,   Text::timeSignature,
+		                             Text::hiSpeed };
 
-	inline constexpr const char* flickTypeTexts[]{ Text::none,     Text::defaultValue,
-		                                           Text::left,     Text::right,
-		                                           Text::down,     Text::downLeft,
-		                                           Text::downRight };
+	MMW_TEXT_TYPE flickTypeTexts[]{ Text::none, Text::defaultValue, Text::left,     Text::right,
+		                            Text::down, Text::downLeft,     Text::downRight };
 
-	inline constexpr const char* easeTypeTexts[]{ Text::linear, Text::easeIn, Text::easeOut,
-		                                          Text::easeInOut, Text::easeOutIn };
+	MMW_TEXT_TYPE easeTypeTexts[]{ Text::linear, Text::easeIn, Text::easeOut, Text::easeInOut,
+		                           Text::easeOutIn };
 
-	inline constexpr const char* stepTypeTexts[]{ Text::normal, Text::hidden, Text::skip };
+	MMW_TEXT_TYPE stepTypeTexts[]{ Text::normal, Text::hidden, Text::skip };
 
-	inline constexpr const char* guideColorTexts[]{
-		//
-		Text::guideNeutral, Text::guideRed,    Text::guideGreen, Text::guideBlue,
-		Text::guideYellow,  Text::guidePurple, Text::guideCyan,  Text::guideBlack
-	};
+	MMW_TEXT_TYPE guideColorTexts[]{ Text::guideGreen, Text::guideYellow };
 
-	inline constexpr const char* fadeTypeTexts[]{ Text::fadeOut, Text::fadeNone, Text::fadeIn };
+	MMW_TEXT_TYPE guideColorAllTexts[]{ Text::guideNeutral, Text::guideRed,    Text::guideGreen,
+		                                Text::guideBlue,    Text::guideYellow, Text::guidePurple,
+		                                Text::guideCyan,    Text::guideBlack };
+
+	MMW_TEXT_TYPE fadeTypeTexts[]{ Text::fadeOut, Text::fadeNone, Text::fadeIn };
 }

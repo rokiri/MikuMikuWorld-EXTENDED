@@ -9,30 +9,6 @@ namespace fs = std::filesystem;
 
 namespace MikuMikuWorld
 {
-	static std::unordered_map<std::string, TranslationString>
-	readLanguageFile(const std::string& filename)
-	{
-		std::unordered_map<std::string, TranslationString> translation;
-		translation.reserve(320);
-		std::ifstream file(filename);
-		std::string line;
-		for (size_t i = 1; std::getline(file, line); i++)
-		{
-			auto&& [text, comment] = IO::split_first(line, "#");
-			if (text.empty())
-				continue;
-			auto&& [key, value] = IO::split_first(text, ",");
-			key = IO::trim(key);
-			value = IO::trim(value);
-			if (key.empty() || value.empty())
-				fprintf(stderr, "Invalid translation key on line %zd of '%s'", i, filename.c_str());
-			else if (translation.try_emplace(key, TranslationString{ value }).second == false)
-				fprintf(stderr, "Duplicated translation key '%s' in '%s'", key.c_str(),
-				        filename.c_str());
-		}
-		return translation;
-	}
-
 	static std::string readLanguageName(const std::string& filename)
 	{
 		std::string name;
@@ -70,8 +46,9 @@ namespace MikuMikuWorld
 			std::string langName = readLanguageName(IO::toString(path));
 			if (langName.empty())
 				continue;
-			std::string code = IO::toString(FilePath(path).replace_extension());
-			languages.push_back({ code, langName });
+			std::string_view code = filename;
+			code.remove_suffix(std::strlen(".csv"));
+			languages.push_back({ std::string(code), langName });
 		}
 		// languages is order by (user's language) > english > (other languages)
 		std::string systemLocale = IO::getSystemLocale();
@@ -104,25 +81,90 @@ namespace MikuMikuWorld
 		if (languages.empty() && code == "auto")
 			return false;
 		auto& langCode = code == "auto" ? languages.front().code : code;
-		FilePath path =
-		    Application::getInstance().getResourcePath("i18n", langCode).replace_extension(".csv");
+		Application& app = Application::getInstance();
+		FilePath path = app.getResourcePath("i18n", langCode).replace_extension(".csv");
 		if (!fs::exists(path) || !fs::is_regular_file(path))
 			return false;
-		currentTranslation = readLanguageFile(IO::toString(path));
+		currentTranslation.clear();
+		keyStorage.clear();
+		readLanguageFile(IO::toString(path));
 		// Since not all text are translated, we use english as filler for missing keys
 		if (langCode != "en" && supportLanguage("en"))
-			currentTranslation.merge(readLanguageFile(
-			    IO::toString(Application::getInstance().getResourcePath("i18n", "en.csv"))));
+			readLanguageFile(IO::toString(app.getResourcePath("i18n", "en.csv")));
 		return true;
 	}
 
-	const TranslationString& localize(const std::string& text)
+	auto Localization::insertText(std::string text, TranslationString str)
+	    -> Localization::MapType::iterator
 	{
-		auto& translation = Application::instance->localization.currentTranslation;
-		auto it = translation.find(text);
-		if (it == translation.end())
-			it = translation.emplace(text, TranslationString{ std::string(text) }).first;
-		return it->second;
+		if ((text.size() + keyStorage.size()) > keyStorage.capacity())
+		{
+			std::vector<char> newStorage;
+			newStorage.reserve(std::max<size_t>(keyStorage.size() * 1.5, 4096));
+			std::copy(keyStorage.begin(), keyStorage.end(), std::back_inserter(newStorage));
+			Localization::MapType newTranslation;
+			newTranslation.reserve(std::max<size_t>(currentTranslation.size(), 320));
+			for (auto&& [key, value] : currentTranslation)
+			{
+				ptrdiff_t offset = key.data() - keyStorage.data();
+				newTranslation.insert(
+				    { std::string_view(newStorage.data() + offset, key.size()), std::move(value) });
+			}
+			keyStorage = std::move(newStorage);
+			currentTranslation = std::move(newTranslation);
+		}
+		size_t cur = keyStorage.size();
+		keyStorage.insert(keyStorage.end(), text.begin(), text.end());
+		std::string_view key = { keyStorage.data() + cur, text.size() };
+		auto&& [it, inserted] = currentTranslation.try_emplace(key, std::move(str));
+		if (!inserted)
+			keyStorage.erase(keyStorage.begin() + cur, keyStorage.end());
+		return it;
+	}
+
+	Localization::MapType::iterator Localization::updateText(std::string_view text,
+	                                                         TranslationString str)
+	{
+		auto& trans = getLocalization().currentTranslation;
+		auto it = trans.find(text);
+		if (it == trans.end())
+			return insertText(std::string(text), std::move(str));
+		it->second = std::move(str);
+		return it;
+	}
+
+	void Localization::readLanguageFile(const std::string& filename)
+	{
+		std::ifstream file(filename);
+		std::string line;
+		for (size_t i = 1; std::getline(file, line); i++)
+		{
+			auto&& [text, comment] = IO::split_first(line, "#");
+			if (text.empty())
+				continue;
+			auto&& [key, value] = IO::split_first(text, ",");
+			key = IO::trim(key);
+			value = IO::trim(value);
+			if (key.empty() || value.empty())
+				fprintf(stderr, "Invalid translation key on line %zd of '%s'", i, filename.c_str());
+			else
+				insertText(std::move(key), { std::move(value) });
+		}
+	}
+
+	Localization& getLocalization() { return Application::instance->localization; }
+
+	const TranslationString& localize(std::string_view text)
+	{
+		auto& localizer = getLocalization();
+		auto it = localizer.currentTranslation.find(text);
+		if (it != localizer.currentTranslation.end())
+			return it->second;
+#ifdef _DEBUG
+		printf("Translation key for '%.*s' not found!\n", unsigned(text.size()), text.data());
+#endif
+		std::string str(text);
+		return localizer.insertText(str, { str })->second;
 	}
 
 	// Size checks
@@ -131,6 +173,6 @@ namespace MikuMikuWorld
 	static_assert(std::size(flickTypeTexts) == size_t(FlickType::FlickTypeCount));
 	static_assert(std::size(easeTypeTexts) == size_t(EaseType::EaseTypeCount));
 	static_assert(std::size(stepTypeTexts) == size_t(EditHoldStepType::HoldStepTypeCount));
-	static_assert(std::size(guideColorTexts) == size_t(GuideColor::GuideColorCount));
+	static_assert(std::size(guideColorAllTexts) == size_t(GuideColor::GuideColorCount));
 	static_assert(std::size(fadeTypeTexts) == size_t(FadeType::FadeTypeCount));
 }

@@ -3,8 +3,9 @@
 
 namespace MikuMikuWorld::Text
 {
+#define MMW_TEXT_TYPE constexpr inline std::string_view
 #define MMW_TEXT_2(NAME, KEY)                                                                      \
-	constexpr static const char* NAME { KEY }
+	MMW_TEXT_TYPE NAME { KEY }
 #define MMW_TEXT_1(NAME) MMW_TEXT_2(NAME, #NAME)
 #define MMW_TEXT_SELECT(_1, _2, name, ...) name
 #define MMW_EXP(txt) txt
