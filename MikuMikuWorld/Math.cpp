@@ -8,12 +8,9 @@ namespace MikuMikuWorld
 		return start + percentage * (end - start);
 	}
 
-	float unlerp(float start, float end, float value)
+	float unlerp(float start, float end, float value, float fallback)
 	{
-		if (end != start)
-			return (value - start) / (end - start);
-		else
-			return 0;
+		return end != start ? (value - start) / (end - start) : fallback;
 	}
 
 	double lerpD(double start, double end, double percentage)
@@ -21,15 +18,16 @@ namespace MikuMikuWorld
 		return start + percentage * (end - start);
 	}
 
-	double unlerpD(double start, double end, double value)
+	double unlerpD(double start, double end, double value, double fallback)
 	{
-		if (end != start)
-			return (value - start) / (end - start);
-		else
-			return 0;
+		return end != start ? (value - start) / (end - start) : fallback;
 	}
 
-	float easeIn(float start, float end, float ratio) { return lerp(start, end, ratio * ratio); }
+	float easeIn(float start, float end, float ratio)
+	{
+		//
+		return lerp(start, end, ratio * ratio);
+	}
 
 	float easeOut(float start, float end, float ratio)
 	{
@@ -64,7 +62,7 @@ namespace MikuMikuWorld
 
 	bool isWithinRange(float x, float left, float right) { return x >= left && x <= right; }
 
-	std::function<float(float, float, float)> getEaseFunction(EaseType ease)
+	EaseFunction getEaseFunction(EaseType ease)
 	{
 		switch (ease)
 		{
