@@ -1,172 +1,201 @@
 #pragma once
 #include "Constants.h"
 #include "NoteTypes.h"
+#include "Math.h"
 #include <string>
 #include <vector>
-#include <stdexcept>
+#include <map>
+#include <unordered_map>
+#include <unordered_set>
+#include <type_traits>
+#include <algorithm>
 
 namespace MikuMikuWorld
 {
-	constexpr int MIN_NOTE_WIDTH = 1;
-	constexpr int MAX_NOTE_WIDTH = 12;
-	constexpr int MIN_LANE = 0;
-	constexpr int MAX_LANE = 11;
-	constexpr int NUM_LANES = 12;
+	constexpr std::string_view SE_PERFECT = "perfect";
+	constexpr std::string_view SE_FLICK = "flick";
+	constexpr std::string_view SE_TICK = "tick";
+	constexpr std::string_view SE_FRICTION = "friction";
+	constexpr std::string_view SE_CONNECT = "connect";
+	constexpr std::string_view SE_CRITICAL_TAP = "critical_tap";
+	constexpr std::string_view SE_CRITICAL_FLICK = "critical_flick";
+	constexpr std::string_view SE_CRITICAL_TICK = "critical_tick";
+	constexpr std::string_view SE_CRITICAL_FRICTION = "critical_friction";
+	constexpr std::string_view SE_CRITICAL_CONNECT = "critical_connect";
+	constexpr std::string_view SE_DAMAGE = "damage";
 
-	constexpr const char* SE_PERFECT = "perfect";
-	constexpr const char* SE_FLICK = "flick";
-	constexpr const char* SE_TICK = "tick";
-	constexpr const char* SE_FRICTION = "friction";
-	constexpr const char* SE_CONNECT = "connect";
-	constexpr const char* SE_CRITICAL_TAP = "critical_tap";
-	constexpr const char* SE_CRITICAL_FLICK = "critical_flick";
-	constexpr const char* SE_CRITICAL_TICK = "critical_tick";
-	constexpr const char* SE_CRITICAL_FRICTION = "critical_friction";
-	constexpr const char* SE_CRITICAL_CONNECT = "critical_connect";
-
-	constexpr const char* SE_NAMES[] = { SE_PERFECT,         SE_FLICK,         SE_TICK,
-		                                 SE_FRICTION,        SE_CONNECT,       SE_CRITICAL_TAP,
-		                                 SE_CRITICAL_FLICK,  SE_CRITICAL_TICK, SE_CRITICAL_FRICTION,
-		                                 SE_CRITICAL_CONNECT };
-
-	constexpr float flickArrowWidths[] = { 0.95f, 1.25f, 1.8f, 2.3f, 2.6f, 3.2f };
-
-	constexpr float flickArrowHeights[] = { 1, 1.05f, 1.2f, 1.4f, 1.5f, 1.6f };
-
-	enum class ZIndex : int32_t
-	{
-		HoldLine,
-		Guide,
-		HoldTick,
-		Note,
-		FrictionTick,
-		zCount
+	constexpr std::string_view SE_NAMES[] = {
+		SE_PERFECT,          SE_FLICK,         SE_TICK,
+		SE_FRICTION,         SE_CONNECT,       SE_CRITICAL_TAP,
+		SE_CRITICAL_FLICK,   SE_CRITICAL_TICK, SE_CRITICAL_FRICTION,
+		SE_CRITICAL_CONNECT, SE_DAMAGE
 	};
 
-	struct NoteTextures
+	struct Note
 	{
-		int notes;
-		int holdPath;
-		int touchLine;
-		int ccNotes;
-		int guideColors;
-		int dummyNotes;
-	};
-
-	extern NoteTextures noteTextures;
-
-	class Note
-	{
-	  private:
-		NoteType type;
-
-	  public:
-		static int getNextID();
-
-		id_t ID;
-		id_t parentID;
-		int tick;
-		float lane;
-		float width;
-		bool critical{ false };
-		bool friction{ false };
-		bool dummy{ false };
+		tick_t tick = 0;
+		id_t layer = 0;
+		id_t ID = -1;
+		id_t holdID = -1;
+		NoteType type{ NoteType::Tap };
+		NoteFlag flag{ NoteFlag::None };
 		FlickType flick{ FlickType::None };
+		EaseType ease{ EaseType::Linear };
 
-		int layer{ 0 };
+		float lane = 0.0f;
+		float width = 3.0f;
+		float guideAlpha = 1.0f;
 
-		explicit Note(NoteType _type);
-		explicit Note(NoteType _type, int tick, float lane, float width);
-		Note();
-
-		constexpr NoteType getType() const { return type; }
-		constexpr bool isHold() const
+		constexpr inline bool canFlick() const { return type == NoteType::Tap && !isHidden(); }
+		constexpr inline bool canTrace() const { return type == NoteType::Tap && !isHidden(); }
+		constexpr inline bool canCrit() const
 		{
-			return type == NoteType::Hold || type == NoteType::HoldMid || type == NoteType::HoldEnd;
+			return type == NoteType::Tap || type == NoteType::Tick;
 		}
+		constexpr inline bool canDummy() const { return !isHidden(); }
 
-		bool isFlick() const;
-		bool hasEase() const;
-		bool canFlick() const;
-		bool canTrace() const;
+		constexpr inline bool isHold() const { return holdID != -1; }
+		constexpr inline bool isFlick() const { return canFlick() && flick != FlickType::None; }
+		constexpr inline bool isCrit() const
+		{
+			return canCrit() && hasFlag(flag, NoteFlag::Critical);
+		}
+		constexpr inline bool isTrace() const
+		{
+			return canTrace() && hasFlag(flag, NoteFlag::Trace);
+		}
+		constexpr inline bool isDummy() const
+		{
+			return canDummy() && hasFlag(flag, NoteFlag::Dummy);
+		}
+		constexpr inline bool isHidden() const { return hasFlag(flag, NoteFlag::Hidden); }
+		constexpr inline bool isAttached() const
+		{
+			return isHold() && !isHidden() && !hasFlag(flag, NoteFlag::NonAttached) &&
+			       hasFlag(flag, NoteFlag::Attached);
+		}
+		constexpr inline bool hasEase() const { return isHold() && !isAttached(); }
 	};
 
-	struct HoldStep
+	using NoteCollection = std::unordered_map<id_t, Note>;
+	using NoteOrderedCollection = std::multimap<tick_t, Note*>;
+	using NoteViewCollection = std::unordered_map<id_t, Note*>;
+	struct NotesContext; // Forward declaration
+
+	struct HoldNoteStep
 	{
-		id_t ID;
-		HoldStepType type;
-		EaseType ease;
+		id_t ID{ -1 }; // note id of the step
+		HoldNoteFlag flag{ HoldNoteFlag::Normal };
+		GuideColor guideColor{ GuideColor::Green };
+		FadeType fadeType{ FadeType::Out };
+
+		constexpr inline bool isCrit() const { return hasFlag(flag, HoldNoteFlag::Critical); }
+		constexpr inline bool isGuide() const { return hasFlag(flag, HoldNoteFlag::Guide); }
+		constexpr inline bool isDummy() const { return hasFlag(flag, HoldNoteFlag::Dummy); }
+
+		constexpr inline bool canSetAlpha() const
+		{
+			return isGuide() && fadeType == FadeType::Custom;
+		}
 	};
 
-	class HoldNote
+	class HoldNote : public HoldNoteStep
 	{
 	  public:
-		HoldStep start;
-		std::vector<HoldStep> steps;
-		id_t end;
+		// Steps are all the notes in the holds
+		// A hold must always has atleast 2 steps (Begin, End)
+		// These must always be ordered by the sort predicate
+		std::vector<id_t> steps;
+		// Joints are steps that isn't a attached to the hold
+		// The first and last step of a hold must be a joint
+		// These are generate from note data and thus must be kept in sync with them
+		std::vector<id_t> joints;
+		// Seperators are steps that change the hold note look and function
+		// HoldNote has a default step
+		std::vector<HoldNoteStep> separators;
 
-		HoldNoteType startType{};
-		HoldNoteType endType{};
-
-		FadeType fadeType{ FadeType::Out };
-		GuideColor guideColor{ GuideColor::Green };
-
-		bool dummy;
-
-		constexpr bool isGuide() const
+		template <typename C = std::less<>> struct StepComparer
 		{
-			return startType == HoldNoteType::Guide || endType == HoldNoteType::Guide;
-		}
+			constexpr bool operator()(const Note& n1, const Note& n2) const noexcept
+			{
+				C c{};
+				return c(n1.tick, n2.tick) || c(n2.tick, n1.tick) ? c(n1.tick, n2.tick)
+				                                                  : c(n1.lane, n2.lane);
+			}
+			constexpr bool operator()(const Note* n1, const Note* n2) const noexcept
+			{
+				return operator()(*n1, *n2);
+			}
+		};
 
-		/**
-		 * @brief Retrieve HoldStep according to given `index` within `[-1, steps.size()-1]`,
-		 *        where -1 stands for the start step
-		 * @throw `std::out_of_range` if `index` is invalid
-		 * @warning Reference returned by this method can be invalidated by vector reallocation
-		 */
-		HoldStep& operator[](int index)
+		template <typename C = std::less<>> struct StepIdComparer : public StepComparer<C>
 		{
-			if (index < -1 || index >= (int)steps.size())
-				throw std::out_of_range("Index out of range in HoldNote[]");
-			return index == -1 ? start : steps[index];
-		}
-		/**
-		 * @brief Retrieve HoldStep according to given `index` within `[-1, steps.size()-1]`,
-		 *        where -1 stands for the start step
-		 * @throw `std::out_of_range` if `index` is invalid
-		 * @warning Reference returned by this method can be invalidated by vector reallocation
-		 */
-		const HoldStep& operator[](int index) const
+			const NoteCollection& notes;
+			StepIdComparer(const NoteCollection& n) : notes(n) {}
+			using StepComparer<C>::operator();
+			constexpr bool operator()(id_t s1, id_t s2) const noexcept
+			{
+				return operator()(notes.at(s1), notes.at(s2));
+			}
+			constexpr bool operator()(id_t s1, const Note& n2) const noexcept
+			{
+				return operator()(notes.at(s1), n2);
+			}
+			constexpr bool operator()(const Note& n1, id_t s2) const noexcept
+			{
+				return operator()(n1, notes.at(s2));
+			}
+		};
+
+		template <typename C = std::less<>> struct HoldStepComparer : public StepIdComparer<C>
 		{
-			if (index < -1 || index >= (int)steps.size())
-				throw std::out_of_range("Index out of range in HoldNote[]");
-			return index == -1 ? start : steps[index];
-		}
-		/**
-		 * @brief Retrieve note ID according to given `index` within `[-1, steps.size()]`,
-		 *        where -1 stands for the start note and `steps.size()` stands for the end note
-		 * @throw `std::out_of_range` if `index` is invalid
-		 */
-		int id_at(int index) const
-		{
-			if (index < -1 || index > (int)steps.size())
-				throw std::out_of_range("Index out of range in HoldNote::id_at");
-			return (index == steps.size()) ? end : (index == -1 ? start.ID : steps[index].ID);
-		}
+			HoldStepComparer(const NoteCollection& n) : StepIdComparer<C>(n) {}
+			using StepIdComparer<C>::operator();
+			constexpr bool operator()(const HoldNoteStep& s1, const HoldNoteStep& s2) const noexcept
+			{
+				return operator()(s1.ID, s2.ID);
+			}
+			constexpr bool operator()(const HoldNoteStep& s1, id_t s2) const noexcept
+			{
+				return operator()(s1.ID, s2);
+			}
+			constexpr bool operator()(id_t s1, const HoldNoteStep& s2) const noexcept
+			{
+				return operator()(s1, s2.ID);
+			}
+			constexpr bool operator()(const HoldNoteStep& s1, const Note& n2) const noexcept
+			{
+				return operator()(s1.ID, n2);
+			}
+			constexpr bool operator()(const Note& n1, const HoldNoteStep& s2) const noexcept
+			{
+				return operator()(n1, s2.ID);
+			}
+		};
+
+		void insertStep(Note& note, NoteCollection& notes, bool swaps = false, bool update = true);
+		void sortSteps(NoteCollection& notes, bool swaps = false);
+		void updateJoints(NoteCollection& notes);
+		void updateFading(NoteCollection& notes);
+
+		// Find the first joint not less than the step
+		const Note* jointBeforeStep(const Note& step, const NoteCollection& notes) const;
+		// Find the last joint not greater than the step
+		const Note* jointAfterStep(const Note& step, const NoteCollection& notes) const;
+
+		HoldNoteStep& holdStepAt(const Note& step, const NoteCollection& notes);
+		const HoldNoteStep& holdStepAt(const Note& step, const NoteCollection& notes) const;
+	};
+	using HoldNoteCollection = std::unordered_map<id_t, HoldNote>;
+
+	struct NotesContext
+	{
+		NoteCollection notes;
+		HoldNoteCollection holdNotes;
 	};
 
-	struct Score;
-
-	void cycleFlick(Note& note);
-	void cycleStepEase(HoldStep& note);
-	void cycleStepType(HoldStep& note);
-	void sortHoldSteps(const Score& score, HoldNote& note);
-	int findHoldStep(const HoldNote& note, int stepID);
-
-	int getFlickArrowSpriteIndex(const Note& note);
-	int getNoteSpriteIndex(const Note& note);
-	int getCcNoteSpriteIndex(const Note& note);
-	int getDummySpriteIndex(const Note& note);
-	int getFrictionSpriteIndex(const Note& note);
-	std::string_view getNoteSE(const Note& note, const Score& score);
+	void setNotePosition(Note& n1, const Note& n2);
+	void swapNotePosition(Note& n1, Note& n2);
+	void swapNoteProperties(Note& n1, Note& n2);
+	std::string_view getNoteSE(const Note& note);
 }

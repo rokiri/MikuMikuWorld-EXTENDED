@@ -1,16 +1,30 @@
 #pragma once
-#include <stdint.h>
+#include <cstdint>
+#include <utility>
+#include "Enum.h"
 
 namespace MikuMikuWorld
 {
 	enum class NoteType : uint8_t
 	{
 		Tap,
-		Hold,
-		HoldMid,
-		HoldEnd,
+		Tick,
 		Damage,
+		NoteTypeCount
 	};
+
+	enum class NoteFlag : uint8_t
+	{
+		None,
+		Critical = 1 << 0,
+		Trace = 1 << 1,
+		Dummy = 1 << 2,
+		Attached = 1 << 3,
+		Hidden = 1 << 4,
+		LongNote = 1 << 5, // Use for rendering, has no other effect
+		NonAttached = 1 << 6, // Override Attached flag, for case where it need to be preserved
+	};
+	DECLARE_ENUM_FLAG_OPERATORS(NoteFlag)
 
 	enum class FlickType : uint8_t
 	{
@@ -24,19 +38,9 @@ namespace MikuMikuWorld
 		FlickTypeCount
 	};
 
-	constexpr const char* flickTypes[]{
-		"none", "default", "left", "right", "down", "down_left", "down_right"
-	};
+	inline constexpr const char* flickTypes[]{ "none", "default",   "left",      "right",
+		                                       "down", "down_left", "down_right" };
 
-	enum class HoldStepType : uint8_t
-	{
-		Normal,
-		Hidden,
-		Skip,
-		HoldStepTypeCount
-	};
-
-	constexpr const char* stepTypes[]{ "normal", "hidden", "skip" };
 
 	enum class EaseType : uint8_t
 	{
@@ -48,28 +52,45 @@ namespace MikuMikuWorld
 		EaseTypeCount
 	};
 
-	constexpr const char* easeNames[]{ "linear", "in", "out", "inout", "outin" };
+	inline constexpr const char* easeTypes[]{ "linear", "in", "out", "inout", "outin" };
 
-	constexpr const char* easeTypes[]{ "linear", "ease_in", "ease_out", "ease_in_out",
-		                               "ease_out_in" };
-
-	enum class HoldNoteType : uint8_t
+	enum class HoldNoteFlag : uint16_t
 	{
-		Normal,
-		Hidden,
-		Guide
+		Normal = 0,
+		Critical = 1 << 0,
+		Dummy = 1 << 1,
+		Guide = 1 << 2,
 	};
+	DECLARE_ENUM_FLAG_OPERATORS(HoldNoteFlag)
 
-	constexpr const char* holdTypes[]{ "normal", "hidden", "guide" };
+	// constexpr const char* holdTypes[]{ "normal", "hidden", "guide" };
 
-	enum class HoldEndType : uint8_t
+	enum class EditHoldJointType : uint8_t
 	{
 		Normal,
 		Trace,
-		Hidden
+		Hidden,
+		JointTypeCount
 	};
 
-	constexpr const char* holdEndTypes[]{ "normal", "trace", "hidden" };
+	inline constexpr const char* holdEndTypes[]{ "normal", "trace", "hidden" };
+
+	enum class EditHoldStepType : uint8_t
+	{
+		Normal,
+		Hidden,
+		Skip,
+		HoldStepTypeCount
+	};
+
+	inline constexpr const char* stepTypes[]{ "normal", "hidden", "skip" };
+
+	enum class ClassicGuideColor : uint8_t
+	{
+		Green,
+		Yellow,
+		GuideColorCount
+	};
 
 	enum class GuideColor : uint8_t
 	{
@@ -84,11 +105,8 @@ namespace MikuMikuWorld
 		GuideColorCount
 	};
 
-	constexpr const char* guideColors[]{ "neutral", "red",    "green", "blue",
-		                                 "yellow",  "purple", "cyan",  "black" };
-	constexpr const char* guideColorsForString[]{ "guide_neutral", "guide_red",    "guide_green",
-		                                          "guide_blue",    "guide_yellow", "guide_purple",
-		                                          "guide_cyan",    "guide_black" };
+	inline constexpr const char* guideColors[]{ "neutral", "red",    "green", "blue",
+		                                        "yellow",  "purple", "cyan",  "black" };
 
 	enum class FadeType : uint8_t
 	{
@@ -97,7 +115,7 @@ namespace MikuMikuWorld
 		In
 	};
 
-	constexpr const char* fadeTypes[]{ "fade_out", "fade_none", "fade_in" };
+	inline constexpr const char* fadeTypes[] = { "out", "none", "in" };
 
 	enum class HiSpeedEaseType : uint8_t
 	{
@@ -106,5 +124,11 @@ namespace MikuMikuWorld
 		EaseTypeCount
 	};
 
-	constexpr const char* hiSpeedEaseNames[] = { "hi_speed_ease_none", "hi_speed_ease_linear" };
+	using id_t = int32_t;
+	using tick_t = int32_t;
+	using beat_t = float;
+	using qnote_t = float;
+	using secs_t = double;
+	using measure_t = int32_t;
+	using layered_tick_t = std::pair<id_t, tick_t>;
 }

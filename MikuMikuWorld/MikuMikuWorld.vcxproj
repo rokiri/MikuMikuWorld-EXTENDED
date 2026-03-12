@@ -281,6 +281,7 @@
     <ClInclude Include="ScoreContext.h" />
     <ClInclude Include="ScoreEditorTimeline.h" />
     <ClInclude Include="ScoreEditorWindows.h" />
+    <ClInclude Include="ScoreEvents.h" />
     <ClInclude Include="ScoreSerializer.h" />
     <ClInclude Include="ScoreSerializeWindow.h" />
     <ClInclude Include="ScoreStats.h" />
@@ -294,7 +295,6 @@
     <ClInclude Include="Tempo.h" />
     <ClInclude Include="ScoreEditor.h" />
     <ClInclude Include="Text.h" />
-    <ClInclude Include="TimelineMode.h" />
     <ClInclude Include="UI.h" />
     <ClInclude Include="UscSerializer.h" />
     <ClInclude Include="Utilities.h" />

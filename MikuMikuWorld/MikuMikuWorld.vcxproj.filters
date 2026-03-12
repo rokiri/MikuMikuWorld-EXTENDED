@@ -316,9 +316,6 @@
     <ClInclude Include="ScoreEditorWindows.h">
       <Filter>ScoreEditor\Include</Filter>
     </ClInclude>
-    <ClInclude Include="TimelineMode.h">
-      <Filter>ScoreEditor\Include</Filter>
-    </ClInclude>
     <ClInclude Include="ScoreEditorTimeline.h">
       <Filter>ScoreEditor\Include</Filter>
     </ClInclude>
@@ -365,6 +362,9 @@
       <Filter>Score\Include</Filter>
     </ClInclude>
     <ClInclude Include="Sonolus.h">
+      <Filter>Score\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="ScoreEvents.h">
       <Filter>Score\Include</Filter>
     </ClInclude>
     <ClInclude Include="Enum.h">

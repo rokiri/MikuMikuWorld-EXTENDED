@@ -33,9 +33,19 @@ namespace MikuMikuWorld
 	const ImU32 bgFallbackColor =
 	    ImGui::ColorConvertFloat4ToU32(ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
 
-	const Color noteTint{ 1.0f, 1.0f, 1.0f, 1.0f };
-	const Color hoverTint{ 1.0f, 1.0f, 1.0f, 0.70f };
-	const Color otherLayerTint{ 0.5f, 0.5f, 0.5f, 1.0f };
+	constexpr Color noteTint{ 1.0f, 1.0f, 1.0f, 1.0f };
+	constexpr Color hoverTint{ 1.0f, 1.0f, 1.0f, 0.70f };
+	constexpr Color otherLayerTint{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+	constexpr Color stepOutlines[] = { 0xFFEBFFEB, 0xFFFFFD6D, 0xFFCCCCCC, 0xFFCCCCCC,
+		                               0xFF8C8842, 0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC,
+		                               0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC };
+
+	constexpr Color stepFills[] = { 0x00FFFFFF, 0x00FFFFFF, 0xFF66B622, 0xFF15A0C9,
+		                            0xFFE0E0E0, 0xFF7B73D6, 0xFF9DD673, 0xFFD67B73,
+		                            0xFF73CED6, 0xFFCD73D6, 0xFFD6AC73, 0xFF000000 };
+
+	constexpr Color dummyOutline = { 1.0f, 0.12f, 0.34f, 1.0f };
 
 	static ImVec4 generateDarkColor(const ImVec4& color)
 	{

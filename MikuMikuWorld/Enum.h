@@ -39,8 +39,6 @@
 		return lhs;                                                                                \
 	}
 
-
-
 template <typename TEnum, typename TUnder = std::underlying_type_t<TEnum>>
 inline constexpr auto hasFlag(TEnum value, TEnum flag) noexcept
     -> std::enable_if_t<std::is_enum_v<TEnum> && std::is_integral_v<TUnder>, bool>
@@ -48,6 +46,27 @@ inline constexpr auto hasFlag(TEnum value, TEnum flag) noexcept
 	TUnder v = static_cast<TUnder>(value);
 	TUnder f = static_cast<TUnder>(flag);
 	return (v & f) == f;
+}
+
+template <typename TEnum, typename TUnder = std::underlying_type_t<TEnum>>
+inline constexpr auto setFlag(TEnum value, TEnum flag, bool enable = true) noexcept
+    -> std::enable_if_t<std::is_enum_v<TEnum> && std::is_integral_v<TUnder>, TEnum>
+{
+	TUnder v = static_cast<TUnder>(value);
+	TUnder f = static_cast<TUnder>(flag);
+	return static_cast<TEnum>(enable ? (v | f) : (v & ~f));
+}
+
+template <typename TEnum, typename TUnder = std::underlying_type_t<TEnum>>
+inline constexpr auto setFlag(TEnum value, TEnum flag, TEnum control) noexcept
+    -> std::enable_if_t<std::is_enum_v<TEnum> && std::is_integral_v<TUnder>, TEnum>
+{
+	TUnder v = static_cast<TUnder>(value);
+	TUnder f = static_cast<TUnder>(flag);
+	TUnder c = static_cast<TUnder>(control);
+
+	// set or unset base on control having the flag or not
+	return static_cast<TEnum>((c & f) == f ? (v | f) : (v & ~f));
 }
 
 template <typename TEnum, typename TUnder = std::underlying_type_t<TEnum>>
@@ -97,6 +116,7 @@ template <typename E> class EnumRange
 	constexpr EnumRange(E start, E max) noexcept : begin_(start), end_(max) {}
 	constexpr EnumRangeIterator<E> begin() const noexcept { return EnumRangeIterator<E>(begin_); }
 	constexpr EnumRangeIterator<E> end() const noexcept { return EnumRangeIterator<E>(end_); }
+	constexpr size_t size() const noexcept { return size_t(end_) - size_t(begin_); }
 
   private:
 	E begin_;
