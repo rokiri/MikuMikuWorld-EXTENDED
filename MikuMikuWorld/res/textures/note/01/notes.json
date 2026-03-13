@@ -406,5 +406,11 @@
             "w": 10,
             "h": 40
         }
-    ]
+    ],
+    "configs": {
+        "noteMargin": 30,
+        "noteSideWidth": 90,
+        "holdMargin": 30,
+        "holdSideWidth": 13
+    }
 }

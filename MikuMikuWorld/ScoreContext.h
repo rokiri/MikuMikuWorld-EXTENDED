@@ -30,13 +30,6 @@ namespace MikuMikuWorld
 		InsertModeMax
 	};
 
-	inline constexpr const char* insertModes[]{
-		"timeline_select",  "timeline_tap",      "timeline_hold",  "timeline_hold_step",
-		"timeline_flick",   "timeline_critical", "timeline_trace", "timeline_guide",
-		"timeline_damage",  "timeline_dummy",    "timeline_bpm",   "timeline_time_signature",
-		"timeline_hi_speed"
-	};
-
 	struct EditArgs
 	{
 		float noteWidth{ 3 };

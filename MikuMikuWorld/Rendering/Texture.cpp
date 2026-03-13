@@ -20,9 +20,13 @@ namespace MikuMikuWorld
 	{
 	}
 
-	float Sprite::getX() const { return x; }
+	float Sprite::getX1() const { return x; }
 
-	float Sprite::getY() const { return y; }
+	float Sprite::getX2() const { return x + width; }
+
+	float Sprite::getY1() const { return y; }
+
+	float Sprite::getY2() const { return y + height; }
 
 	float Sprite::getWidth() const { return width; }
 
@@ -69,8 +73,16 @@ namespace MikuMikuWorld
 						continue;
 					sprites.emplace(
 					    jspr["name"].get<std::string>(),
-					    Sprite(jspr["x"], jspr["y"], jspr["w"], jspr["h"],
-					                                     jspr["name"]));
+					    Sprite(jspr["x"], jspr["y"], jspr["w"], jspr["h"], jspr["name"]));
+				}
+			}
+			if (jsonIO::keyExists(sprJson, "configs"))
+			{
+				for (auto&& [key, value] : sprJson["configs"].items())
+				{
+					if (!value.is_number())
+						continue;
+					configs.emplace(key, value.get<float>());
 				}
 			}
 		}
@@ -81,19 +93,24 @@ namespace MikuMikuWorld
 	std::pair<Vector2, Vector2> Texture::getCoords(const Sprite& sprite) const
 	{
 		assert(sprites.find(sprite.getName()) != sprites.end() && "Sprite is not of this texture!");
-		float x0 = sprite.getX() / width, y0 = sprite.getY() / height;
-		float x1 = (sprite.getX() + sprite.getWidth()) / width,
-		      y1 = (sprite.getY() + sprite.getHeight()) / height;
+		float x0 = sprite.getX1() / width, y0 = sprite.getY1() / height;
+		float x1 = sprite.getX2() / width, y1 = sprite.getY2() / height;
 		return { { x0, y0 }, { x1, y1 } };
 	}
 
 	void Texture::bind() const { glBindTexture(GL_TEXTURE_2D, glID); }
 
-	void Texture::dispose() const
+	void Texture::dispose()
 	{
 		if (glID == 0)
 			return;
 		glDeleteTextures(1, &glID);
+		glID = 0;
+		name.clear();
+		filename.clear();
+		width = 0;
+		height = 0;
+		sprites.clear();
 	}
 
 	const Sprite* Texture::getDefaultSprite() const { return getSprite(name); }
@@ -102,6 +119,12 @@ namespace MikuMikuWorld
 	{
 		auto it = sprites.find(spriteName);
 		return it == sprites.end() ? nullptr : &it->second;
+	}
+
+	float Texture::getConfig(const std::string& configName, float defValue) const
+	{
+		auto it = configs.find(configName);
+		return it == configs.end() ? defValue : it->second;
 	}
 
 	void Texture::createTexture(const std::string& filename, TextureFilterMode minFilter,

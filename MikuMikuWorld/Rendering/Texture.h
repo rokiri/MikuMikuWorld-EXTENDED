@@ -32,8 +32,10 @@ namespace MikuMikuWorld
 	  public:
 		Sprite(float _x, float _y, float _w, float _h, std::string name);
 
-		float getX() const;
-		float getY() const;
+		float getX1() const;
+		float getX2() const;
+		float getY1() const;
+		float getY2() const;
 		float getWidth() const;
 		float getHeight() const;
 		const std::string& getName() const;
@@ -49,11 +51,13 @@ namespace MikuMikuWorld
 		unsigned int glID;
 
 		void createTexture(const std::string& filename,
-		          TextureFilterMode minFilter = TextureFilterMode::Linear,
-		          TextureFilterMode magFilter = TextureFilterMode::Linear);
+		                   TextureFilterMode minFilter = TextureFilterMode::Linear,
+		                   TextureFilterMode magFilter = TextureFilterMode::Linear);
 
-	  public:
+		std::unordered_map<std::string, float> configs;
+		// Don't insert once created since NoteResource require them to be stable
 		std::unordered_map<std::string, Sprite> sprites;
+	  public:
 
 		Texture(const std::string& filename, TextureFilterMode min, TextureFilterMode mag);
 		Texture(const std::string& filename, TextureFilterMode filter);
@@ -69,8 +73,9 @@ namespace MikuMikuWorld
 
 		const Sprite* getDefaultSprite() const;
 		const Sprite* getSprite(const std::string& spriteName) const;
+		float getConfig(const std::string& configName, float defValue = 0) const;
 
 		void bind() const;
-		void dispose() const;
+		void dispose();
 	};
 }

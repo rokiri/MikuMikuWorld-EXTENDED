@@ -8,7 +8,6 @@
 
 namespace MikuMikuWorld
 {
-
 	class TimelineTexture
 	{
 	  public:
@@ -19,6 +18,12 @@ namespace MikuMikuWorld
 
 	  private:
 		std::unique_ptr<Texture> toolbarTex;
+		std::vector<const Sprite*> sprites;
+	};
+
+	struct NoteMapping
+	{
+		float leftX, centerX, rightX, top, bottom;
 	};
 
 	class NoteTexture
@@ -28,6 +33,10 @@ namespace MikuMikuWorld
 		const Sprite* getFlickArrowSprite(const Note& note) const;
 		const Sprite* getFrictionSprite(const Note& note) const;
 		const Sprite* getDummyCrossSprite() const;
+		const Sprite* getHoldNoteSprite(const HoldNoteStep & holdStep) const;
+
+		NoteMapping getTapNoteMapping(const Note& note) const;
+		NoteMapping getHoldStepMapping(const HoldNoteStep & holdStep) const;
 
 		bool load(const std::string& profile);
 		const Texture* getTexture() const;
@@ -38,5 +47,9 @@ namespace MikuMikuWorld
 	  private:
 		std::unique_ptr<Texture> texture;
 		std::vector<std::string> profiles;
+		// Fast lookup
+		std::vector<const Sprite*> sprites;
+		float noteMargin, noteSideWidth;
+		float holdMargin, holdSideWidth;
 	};
 }
