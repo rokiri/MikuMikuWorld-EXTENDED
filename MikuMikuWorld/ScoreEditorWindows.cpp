@@ -1654,11 +1654,15 @@ namespace MikuMikuWorld
 			if (ImGui::CollapsingHeader(localize(Text::timeline), ImGuiTreeNodeFlags_DefaultOpen) &&
 			    UI::beginPropertyTable())
 			{
+				UI::checkboxPropertyRow(Text::matchTimelineSizeToWindow,
+				                        config.matchTimelineSizeToWindow);
 				UI::checkboxPropertyRow(Text::matchNotesSizeToTimeline,
 				                        config.matchNotesSizeToTimeline);
+				ImGui::BeginDisabled(config.matchTimelineSizeToWindow);
 				UI::intPropertyRow(Text::laneWidth, config.timelineWidth, "%dpx",
 				                   ScoreEditorTimeline::MIN_LANE_WIDTH,
 				                   ScoreEditorTimeline::MAX_LANE_WIDTH);
+				ImGui::EndDisabled();
 				ImGui::BeginDisabled(config.matchNotesSizeToTimeline);
 				UI::intPropertyRow(Text::notesHeight, config.notesHeight, "%dpx",
 				                   ScoreEditorTimeline::MIN_NOTES_HEIGHT,

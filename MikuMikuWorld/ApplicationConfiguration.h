@@ -29,6 +29,7 @@ namespace MikuMikuWorld
 
 		// editor settings
 		bool debugEnabled;
+		bool matchTimelineSizeToWindow;
 		bool matchNotesSizeToTimeline;
 		bool drawBackground;
 		bool drawWaveform;

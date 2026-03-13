@@ -112,6 +112,7 @@ namespace MikuMikuWorld
 			j_timeline["notes_height"] = cfg.notesHeight;
 			j_timeline["notes_skin"] = cfg.notesSkin;
 			j_timeline["match_notes_size_to_timeline"] = cfg.matchNotesSizeToTimeline;
+			j_timeline["match_timeline_size_to_window"] = cfg.matchTimelineSizeToWindow;
 			j_timeline["division"] = cfg.division;
 			j_timeline["zoom"] = cfg.zoom;
 			j_timeline["lane_opacity"] = cfg.laneOpacity;
@@ -180,7 +181,7 @@ namespace MikuMikuWorld
 			optional_get_to(j_window, "position", cfg.windowPos);
 			optional_get_to(j_window, "size", cfg.windowSize);
 		}
-		if (jsonIO::keyExists(j_cfg, "timeline"))
+		if (keyExists(j_cfg, "timeline"))
 		{
 			const json& j_timeline = j_cfg["timeline"];
 			optional_get_to(j_timeline, "lane_width", cfg.timelineWidth);
@@ -188,6 +189,8 @@ namespace MikuMikuWorld
 			optional_get_to(j_timeline, "notes_skin", cfg.notesSkin);
 			optional_get_to(j_timeline, "match_notes_size_to_timeline",
 			                cfg.matchNotesSizeToTimeline);
+			optional_get_to(j_timeline, "match_timeline_size_to_window",
+			                cfg.matchTimelineSizeToWindow);
 			optional_get_to(j_timeline, "division", cfg.division);
 			optional_get_to(j_timeline, "zoom", cfg.zoom);
 			optional_get_to(j_timeline, "lane_opacity", cfg.laneOpacity);
@@ -205,7 +208,7 @@ namespace MikuMikuWorld
 			optional_get_to(j_timeline, "show_tick_in_properties", cfg.showTickInProperties);
 		}
 
-		if (jsonIO::keyExists(j_cfg, "theme"))
+		if (keyExists(j_cfg, "theme"))
 		{
 			const json& j_theme = j_cfg["theme"];
 			optional_get_to(j_theme, "accent_color", cfg.accentColor);
@@ -216,7 +219,7 @@ namespace MikuMikuWorld
 			cfg.baseTheme = static_cast<BaseTheme>(baseTheme);
 		}
 
-		if (jsonIO::keyExists(j_cfg, "save"))
+		if (keyExists(j_cfg, "save"))
 		{
 			const json& j_save = j_cfg["save"];
 			optional_get_to(j_save, "auto_save_enabled", cfg.autoSaveEnabled);
@@ -224,7 +227,7 @@ namespace MikuMikuWorld
 			optional_get_to(j_save, "auto_save_max_count", cfg.autoSaveMaxCount);
 		}
 
-		if (jsonIO::keyExists(j_cfg, "audio"))
+		if (keyExists(j_cfg, "audio"))
 		{
 			const json& j_audio = j_cfg["audio"];
 			optional_get_to(j_audio, "se_profile", cfg.seProfileIndex);
@@ -233,14 +236,14 @@ namespace MikuMikuWorld
 			optional_get_to(j_audio, "se_volume", cfg.seVolume);
 		}
 
-		if (jsonIO::keyExists(j_cfg, "update"))
+		if (keyExists(j_cfg, "update"))
 		{
 			const json& j_update = j_cfg["update"];
 			optional_get_to(j_update, "lastUpdate", cfg.lastUpdateCheck);
 			optional_get_to(j_update, "lastVersion", cfg.latestFetchAppVersion);
 		}
 
-		if (jsonIO::keyExists(j_cfg, "config"))
+		if (keyExists(j_cfg, "config"))
 		{
 			const json& j_input = j_cfg["config"];
 			optional_get_to(j_input, "bindings", cfg.input);
