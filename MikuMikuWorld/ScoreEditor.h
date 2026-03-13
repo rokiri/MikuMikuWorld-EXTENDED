@@ -28,6 +28,7 @@ namespace MikuMikuWorld
 		// ScorePropertiesWindow propertiesWindow{};
 		// ScoreNotePropertiesWindow notePropertiesWindow{};
 		EditArgs edit{};
+		PasteData pasteData;
 		//+ ScoreOptionsWindow optionsWindow{};
 		//+ PresetsWindow presetsWindow{};
 		// DebugWindow debugWindow{};

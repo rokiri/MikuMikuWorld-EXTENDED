@@ -58,11 +58,15 @@ namespace IO
 
 	bool startsWith(const std::string_view& line, const std::string_view& key)
 	{
+		if (line.size() < key.size())
+			return false;
 		return std::equal(key.begin(), key.end(), line.begin());
 	}
 
 	bool endsWith(const std::string_view& line, const std::string_view& key)
 	{
+		if (line.size() < key.size())
+			return false;
 		return std::equal(key.rbegin(), key.rend(), line.rbegin());
 	}
 

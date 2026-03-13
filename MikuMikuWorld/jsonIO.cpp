@@ -2,178 +2,11 @@
 #include "Math.h"
 #include "ApplicationConfiguration.h"
 #include "InputBinding.h"
+#include "Score.h"
+#include "Application.h"
 
 using namespace nlohmann;
 using namespace jsonIO;
-
-namespace jsonIO
-{
-	mmw::Note jsonToNote(const json& data, mmw::NoteType type)
-	{
-		mmw::Note note(type);
-
-		note.tick = tryGetValue<int>(data, "tick", 0);
-		note.lane = tryGetValue<float>(data, "lane", 0);
-		note.width = tryGetValue<float>(data, "width", 3);
-
-		if (note.getType() != mmw::NoteType::HoldMid)
-		{
-			note.critical = tryGetValue<bool>(data, "critical", false);
-			note.friction = tryGetValue<bool>(data, "friction", false);
-		}
-
-		if (!note.hasEase())
-		{
-			std::string flickString = tryGetValue<std::string>(data, "flick", mmw::flickTypes[0]);
-			std::transform(flickString.begin(), flickString.end(), flickString.begin(), ::tolower);
-			if (flickString == "up")
-				flickString = mmw::flickTypes[(int)mmw::FlickType::Default];
-
-			for (size_t i = 0; i < std::size(mmw::flickTypes); i++)
-			{
-				if (flickString == mmw::flickTypes[i])
-					note.flick = static_cast<mmw::FlickType>(i);
-			}
-		}
-
-		note.dummy = tryGetValue<bool>(data, "dummy", false);
-
-		return note;
-	}
-
-	static json noteToJson(const mmw::Note& note)
-	{
-		json data;
-		data["tick"] = note.tick;
-		data["lane"] = note.lane;
-		data["width"] = note.width;
-
-		if (note.getType() != mmw::NoteType::HoldMid)
-		{
-			data["critical"] = note.critical;
-			data["friction"] = note.friction;
-		}
-
-		if (!note.hasEase())
-		{
-			data["flick"] = mmw::flickTypes[(int)note.flick];
-		}
-
-		data["dummy"] = note.dummy;
-
-		return data;
-	}
-
-	json noteSelectionToJson(const mmw::Score& score,
-	                         const std::unordered_set<mmw::id_t>& selection,
-	                         const std::unordered_set<mmw::id_t>& hiSpeedSelection, int baseTick)
-	{
-		json retData, notes, holds, damages, hiSpeedChanges;
-		std::unordered_set<mmw::id_t> selectedNotes;
-		std::unordered_set<mmw::id_t> selectedHolds;
-		std::unordered_set<mmw::id_t> selectedDamages;
-
-		for (mmw::id_t id : selection)
-		{
-			if (score.notes.find(id) == score.notes.end())
-				continue;
-
-			const mmw::Note& note = score.notes.at(id);
-			switch (note.getType())
-			{
-			case mmw::NoteType::Tap:
-				selectedNotes.insert(note.ID);
-				break;
-			case mmw::NoteType::Hold:
-				selectedHolds.insert(note.ID);
-				break;
-
-			case mmw::NoteType::HoldMid:
-			case mmw::NoteType::HoldEnd:
-				selectedHolds.insert(note.parentID);
-				break;
-
-			case mmw::NoteType::Damage:
-				selectedDamages.insert(note.ID);
-				break;
-			default:
-				break;
-			}
-		}
-
-		for (mmw::id_t id : selectedNotes)
-		{
-			const mmw::Note& note = score.notes.at(id);
-			json data = noteToJson(note);
-			data["tick"] = note.tick - baseTick;
-
-			notes.push_back(data);
-		}
-		for (mmw::id_t id : selectedDamages)
-		{
-			const mmw::Note& note = score.notes.at(id);
-			json data = noteToJson(note);
-			data["tick"] = note.tick - baseTick;
-
-			damages.push_back(data);
-		}
-		for (int id : hiSpeedSelection)
-		{
-			const mmw::HiSpeedChange& hispeed = score.hiSpeedChanges.at(id);
-			json data; 
-			data["tick"] = hispeed.tick - baseTick;
-			data["speed"] = hispeed.speed;
-			data["skip"] = hispeed.skips;
-			data["ease"] = hispeed.ease;
-			data["hideNotes"] = hispeed.hideNotes;
-
-			hiSpeedChanges.push_back(data);
-		}
-
-		for (mmw::id_t id : selectedHolds)
-		{
-			const mmw::HoldNote& hold = score.holdNotes.at(id);
-			const mmw::Note& start = score.notes.at(hold.start.ID);
-			const mmw::Note& end = score.notes.at(hold.end);
-
-			json holdData, stepsArray;
-
-			json holdStart = noteToJson(start);
-			holdStart["tick"] = start.tick - baseTick;
-			holdStart["ease"] = mmw::easeTypes[(int)hold.start.ease];
-			holdStart["type"] = mmw::holdTypes[(int)hold.startType];
-
-			for (auto& step : hold.steps)
-			{
-				const mmw::Note& mid = score.notes.at(step.ID);
-				json stepData = noteToJson(mid);
-				stepData["tick"] = mid.tick - baseTick;
-				stepData["type"] = mmw::stepTypes[(int)step.type];
-				stepData["ease"] = mmw::easeTypes[(int)step.ease];
-
-				stepsArray.push_back(stepData);
-			}
-
-			json holdEnd = noteToJson(end);
-			holdEnd["tick"] = end.tick - baseTick;
-			holdEnd["type"] = mmw::holdTypes[(int)hold.endType];
-
-			holdData["start"] = holdStart;
-			holdData["steps"] = stepsArray;
-			holdData["end"] = holdEnd;
-			holdData["fade"] = mmw::fadeTypes[(int)hold.fadeType];
-			holdData["guide"] = mmw::guideColors[(int)hold.guideColor];
-			holdData["dummy"] = hold.dummy;
-			holds.push_back(holdData);
-		}
-
-		retData["notes"] = notes;
-		retData["holds"] = holds;
-		retData["damages"] = damages;
-		retData["hiSpeedChanges"] = hiSpeedChanges;
-		return retData;
-	}
-}
 
 namespace std::chrono
 {
@@ -412,5 +245,636 @@ namespace MikuMikuWorld
 			const json& j_input = j_cfg["config"];
 			optional_get_to(j_input, "bindings", cfg.input);
 		}
+	}
+
+	static_assert(std::size(flickTypes) == size_t(FlickType::FlickTypeCount));
+	static void to_json(json& j, const FlickType& flick)
+	{
+		j = arrayGetItemSafe(flickTypes, flick);
+	}
+	static void from_json(const json& j, FlickType& flick)
+	{
+		std::string flickString = j.get<std::string>();
+		std::transform(flickString.begin(), flickString.end(), flickString.begin(), ::tolower);
+		// Maintain compatibility with old flick type names
+		if (flickString == "up")
+		{
+			flick = FlickType::Default;
+			return;
+		}
+		flick = arrayFindOrDefault(flickTypes, flickString, FlickType::None);
+	}
+
+	constexpr static const char* easeNames[]{ "linear", "ease_in", "ease_out", "ease_in_out",
+		                                      "ease_out_in" };
+	static_assert(std::size(easeNames) == size_t(EaseType::EaseTypeCount));
+	static void to_json(json& j, const EaseType& ease) { j = arrayGetItemSafe(easeNames, ease); }
+	static void from_json(const json& j, EaseType& ease)
+	{
+		std::string easeString = j.get<std::string>();
+		std::transform(easeString.begin(), easeString.end(), easeString.begin(), ::tolower);
+		// Maintain compatibility with old ease type names
+		if (easeString == "in")
+		{
+			ease = EaseType::EaseIn;
+			return;
+		}
+		if (easeString == "out")
+		{
+			ease = EaseType::EaseOut;
+			return;
+		}
+		ease = arrayFindOrDefault(easeNames, easeString, EaseType::Linear);
+	}
+
+	static_assert(std::size(guideColors) == size_t(GuideColor::GuideColorCount));
+	static void to_json(json& j, const GuideColor& color)
+	{
+		j = arrayGetItemSafe(guideColors, color);
+	}
+	static void from_json(const json& j, GuideColor& color)
+	{
+		std::string colorString = j.get<std::string>();
+		std::transform(colorString.begin(), colorString.end(), colorString.begin(), ::tolower);
+		color = arrayFindOrDefault(guideColors, colorString, GuideColor::Green);
+	}
+
+	static_assert(std::size(fadeTypes) == size_t(FadeType::FadeTypeCount));
+	static void to_json(json& j, const FadeType& fadeType)
+	{
+		j = arrayGetItemSafe(fadeTypes, fadeType);
+	}
+	static void from_json(const json& j, FadeType& fadeType)
+	{
+		std::string fadeString = j.get<std::string>();
+		std::transform(fadeString.begin(), fadeString.end(), fadeString.begin(), ::tolower);
+		fadeType = arrayFindOrDefault(fadeTypes, fadeString, FadeType::Out);
+	}
+
+	constexpr const char* hiSpeedEaseNames[] = { "ease_none", "linear" };
+	static_assert(std::size(hiSpeedEaseNames) == size_t(HiSpeedEaseType::EaseTypeCount));
+	static void to_json(json& j, const HiSpeedEaseType& ease)
+	{
+		j = arrayGetItemSafe(hiSpeedEaseNames, ease);
+	}
+	static void from_json(const json& j, HiSpeedEaseType& ease)
+	{
+		switch (j.type())
+		{
+		case json::value_t::number_float:
+			// How does this even happened?
+			ease = static_cast<HiSpeedEaseType>(j.get<float>());
+			break;
+		case json::value_t::number_integer:
+			ease = static_cast<HiSpeedEaseType>(j.get<int>());
+			break;
+		case json::value_t::number_unsigned:
+			ease = static_cast<HiSpeedEaseType>(j.get<unsigned>());
+			break;
+		case json::value_t::string:
+		{
+			std::string easeString = j.get<std::string>();
+			std::transform(easeString.begin(), easeString.end(), easeString.begin(), ::tolower);
+			ease = arrayFindOrDefault(hiSpeedEaseNames, easeString, HiSpeedEaseType::None);
+			break;
+		}
+		default:
+			throw std::runtime_error("Invalid data type for HiSpeedEaseType");
+		}
+	}
+
+	static void base_note_to_json(json& data, const Note& note, tick_t offsetTick)
+	{
+		data["tick"] = note.tick + offsetTick;
+		data["lane"] = note.lane;
+		data["width"] = note.width;
+	}
+	static void base_note_from_json(const json& data, Note& note)
+	{
+		note.tick = tryGetValue<int>(data, "tick", 0);
+		note.lane = tryGetValue<float>(data, "lane", 0.f);
+		note.width = tryGetValue<float>(data, "width", 3.f);
+	}
+
+	static void dummy_note_to_json(json& data, const Note& note)
+	{
+		if (note.isHidden())
+		{
+			data["type"] = "hidden";
+			data["dummy"] = false;
+		}
+		else
+		{
+			data["type"] = hasFlag(note.flag, NoteFlag::Attached) ? "skip" : "normal";
+			data["dummy"] = note.isDummy();
+		}
+	}
+	static void dummy_note_from_json(const json& data, Note& note)
+	{
+		const std::string* type = tryGetValue<const std::string*>(data, "type");
+		if (type && *type == "hidden")
+		{
+			note.flag = setFlag(note.flag, NoteFlag::Hidden);
+			note.flag = setFlag(note.flag, NoteFlag::Dummy, false);
+		}
+		else
+		{
+			note.flag = setFlag(note.flag, NoteFlag::Hidden, false);
+			note.flag = setFlag(note.flag, NoteFlag::Attached | NoteFlag::NonAttached,
+			                    type && *type == "skip");
+			note.flag = setFlag(note.flag, NoteFlag::Dummy, tryGetValue(data, "dummy", false));
+		}
+	}
+
+	static void tap_note_to_json(json& data, const Note& note, tick_t offsetTick)
+	{
+		base_note_to_json(data, note, offsetTick);
+		data["critical"] = hasFlag(note.flag, NoteFlag::Critical);
+		data["friction"] = hasFlag(note.flag, NoteFlag::Trace);
+		data["flick"] = note.flick;
+	}
+	static void tap_note_from_json(const json& data, Note& note)
+	{
+		note.type = NoteType::Tap;
+		base_note_from_json(data, note);
+		note.flag = setFlag(note.flag, NoteFlag::Critical, tryGetValue(data, "critical", false));
+		note.flag = setFlag(note.flag, NoteFlag::Trace, tryGetValue(data, "friction", false));
+		note.flick = tryGetValue(data, "flick", FlickType::None);
+	}
+
+	static void tick_note_to_json(json& data, const Note& note, tick_t offsetTick)
+	{
+		base_note_to_json(data, note, offsetTick);
+		data["critical"] = hasFlag(note.flag, NoteFlag::Critical);
+	}
+	static void tick_note_from_json(const json& data, Note& note)
+	{
+		note.type = NoteType::Tick;
+		base_note_from_json(data, note);
+		note.flag = setFlag(note.flag, NoteFlag::Critical, tryGetValue(data, "critical", false));
+	}
+
+	static void step_note_to_json(json& data, const Note& note, const HoldNoteStep& step,
+	                              tick_t offsetTick)
+	{
+		switch (note.type)
+		{
+		case NoteType::Tap:
+			tap_note_to_json(data, note, offsetTick);
+			data["extype"] = "tap";
+			break;
+		case NoteType::Tick:
+			tick_note_to_json(data, note, offsetTick);
+			data["extype"] = "tick";
+			break;
+		case NoteType::Damage:
+			base_note_to_json(data, note, offsetTick);
+			data["extype"] = "damage";
+			break;
+		default:
+			throw std::runtime_error("Unsupported NoteType!");
+		}
+		if (note.isHidden())
+		{
+			data["type"] = "hidden";
+			data["dummy"] = false;
+		}
+		else
+		{
+			data["type"] = note.isAttached() ? "skip" : "normal";
+			data["dummy"] = note.isDummy();
+		}
+		data["ease"] = note.ease;
+		if (step.canSetAlpha())
+			data["alpha"] = note.guideAlpha;
+	}
+	static void step_note_from_json(const json& data, Note& note, const HoldNoteStep& step)
+	{
+		const std::string* extype = tryGetValue<const std::string*>(data, "extype");
+		if (extype && *extype == "tap")
+			tap_note_from_json(data, note);
+		else if (extype && *extype == "damage")
+		{
+			note.type = NoteType::Damage;
+			base_note_from_json(data, note);
+		}
+		else
+			// default to tick note for step note
+			tick_note_from_json(data, note);
+		const std::string* type = tryGetValue<const std::string*>(data, "type");
+		if (type && (*type == "hidden" || *type == "invisible"))
+		{
+			note.flag = setFlag(note.flag, NoteFlag::Hidden);
+			note.flag = setFlag(note.flag, NoteFlag::Dummy, false);
+		}
+		else
+		{
+			if (type && (*type == "skip" || *type == "ignored"))
+				note.flag = setFlag(note.flag, NoteFlag::Attached);
+			note.flag = setFlag(note.flag, NoteFlag::Dummy, tryGetValue(data, "dummy", false));
+		}
+		note.ease = tryGetValue(data, "ease", EaseType::Linear);
+		optional_get_to(data, "alpha", note.guideAlpha);
+		if (!keyExists(data, "critical", json::value_t::boolean))
+			note.flag = setFlag(note.flag, NoteFlag::Critical, step.isCrit());
+	}
+
+	static void terminal_step_note_to_json(json& data, const Note& note, const HoldNoteStep& step,
+	                                       tick_t offsetTick)
+	{
+		switch (note.type)
+		{
+		case NoteType::Tap:
+			tap_note_to_json(data, note, offsetTick);
+			data["extype"] = "tap";
+			break;
+		case NoteType::Tick:
+			tick_note_to_json(data, note, offsetTick);
+			data["extype"] = "tick";
+			break;
+		case NoteType::Damage:
+			tap_note_to_json(data, note, offsetTick);
+			data["extype"] = "damage";
+			break;
+		default:
+			throw std::runtime_error("Unsupported NoteType!");
+		}
+		if (step.isGuide())
+		{
+			data["type"] = "guide";
+			data["dummy"] = note.isDummy();
+			data["ntype"] = note.isHidden()                          ? "hidden"
+			                : hasFlag(note.flag, NoteFlag::Attached) ? "skip"
+			                                                         : "normal";
+		}
+		else if (note.isHidden())
+		{
+			data["type"] = "hidden";
+			data["dummy"] = false;
+		}
+		else
+		{
+			data["type"] = hasFlag(note.flag, NoteFlag::Attached) ? "skip" : "normal";
+			data["dummy"] = note.isDummy();
+		}
+		data["ease"] = note.ease;
+		if (step.canSetAlpha())
+			data["alpha"] = note.guideAlpha;
+	}
+	static void terminal_step_note_from_json(const json& data, Note& note, const json& holdData,
+	                                         HoldNoteStep& step)
+	{
+		const std::string* extype = tryGetValue<const std::string*>(data, "extype");
+		if (extype && *extype == "tick")
+			tick_note_from_json(data, note);
+		else if (extype && *extype == "damage")
+		{
+			tap_note_from_json(data, note);
+			note.type = NoteType::Damage;
+		}
+		else
+			tap_note_from_json(data, note);
+		const std::string* type = tryGetValue<const std::string*>(data, "type");
+		if (type && *type == "guide")
+		{
+			step.flag = setFlag(step.flag, HoldNoteFlag::Guide);
+			const std::string* ntype = tryGetValue<const std::string*>(data, "ntype");
+			note.flag = setFlag(note.flag, NoteFlag::Attached, ntype && *ntype == "skip");
+			note.flag = setFlag(note.flag, NoteFlag::Hidden, !ntype || *ntype == "hidden");
+			note.flag = setFlag(note.flag, NoteFlag::Dummy, tryGetValue(data, "dummy", false));
+		}
+		else if (type && *type == "hidden")
+		{
+			step.flag = setFlag(step.flag, HoldNoteFlag::Guide, false);
+			note.flag = setFlag(note.flag, NoteFlag::Hidden);
+			note.flag = setFlag(note.flag, NoteFlag::Dummy, false);
+		}
+		else
+		{
+			step.flag = setFlag(step.flag, HoldNoteFlag::Guide, false);
+			note.flag = setFlag(note.flag, NoteFlag::Hidden, false);
+			if (type && *type == "skip")
+				note.flag = setFlag(note.flag, NoteFlag::Attached);
+			note.flag = setFlag(note.flag, NoteFlag::Dummy, tryGetValue(data, "dummy", false));
+		}
+		note.flag = setFlag(note.flag, NoteFlag::LongNote);
+		note.ease = tryGetValue(data, "ease", EaseType::Linear);
+		optional_get_to(data, "alpha", note.guideAlpha);
+	}
+
+	static void hold_note_step_to_json(json& data, const HoldNoteStep& step)
+	{
+		if (step.isGuide())
+		{
+			data["critical"] = step.isCrit();
+			data["dummy"] = step.isDummy();
+		}
+		// Not making these properties exclusive allow compatibility with CC version
+		// else
+		{
+			data["guide"] = step.guideColor;
+			data["fade"] = step.fadeType;
+		}
+	}
+	static void hold_note_step_from_json(const json& data, HoldNoteStep& step,
+	                                     const json& startData)
+	{
+		step.guideColor = tryGetValue(data, "guide", GuideColor::Green);
+		step.fadeType = tryGetValue(data, "fade", FadeType::Out);
+		step.flag = setFlag(step.flag, HoldNoteFlag::Dummy, tryGetValue(data, "dummy", false));
+		bool critical;
+		if (keyExists(data, "critical", json::value_t::boolean))
+			critical = data["critical"];
+		else
+			critical = tryGetValue(startData, "critical", false);
+		step.flag = setFlag(step.flag, HoldNoteFlag::Critical, critical);
+	}
+
+	static void hispeed_to_json(json& data, const HiSpeed& hispeed, tick_t offsetTick)
+	{
+		data["tick"] = hispeed.tick + offsetTick;
+		data["speed"] = hispeed.speed;
+		data["skip"] = hispeed.skips;
+		data["ease"] = hispeed.ease == HiSpeedEaseType::Linear ? 1 : 0; // for backward compat
+		data["easeType"] = hispeed.ease;
+		data["hideNotes"] = hispeed.hideNotes;
+	}
+	static void hispeed_from_json(const json& data, HiSpeed& hispeed)
+	{
+		hispeed.tick = data["tick"];
+		hispeed.speed = tryGetValue(data, "speed", 1.f);
+		hispeed.skips = tryGetValue(data, "skip", 0.0f);
+		const char* easeKey =
+		    keyExists(data, "easeType", json::value_t::string) ? "easeType" : "ease";
+		hispeed.ease = tryGetValue(data, easeKey, HiSpeedEaseType::None);
+		hispeed.hideNotes = tryGetValue(data, "hideNotes", false);
+	}
+
+	void selected_score_to_json(json& data, const Score& score,
+	                            const NoteViewCollection& selectedNotes,
+	                            const HiSpeedRefCollection& selectedHispeed, tick_t baseTick,
+	                            id_t currentLayer)
+	{
+		json& notes = data["notes"] = json::array();
+		json& damages = data["damages"] = json::array();
+		json& ticks = data["ticks"] = json::array();
+		json& holds = data["holds"] = json::array();
+		json& hiSpeedChanges = data["hiSpeedChanges"] = json::array();
+		data["origin"] = APP_NAME;
+		data["version"] = Application::getInstance().getAppVersion();
+
+		std::unordered_set<id_t> selectedHolds;
+		std::unordered_map<id_t, std::vector<Note*>> selectedSteps;
+		for (auto&& [_, pnote] : selectedNotes)
+		{
+			if (!pnote->isHold())
+				continue;
+			selectedHolds.emplace(pnote->holdID);
+			selectedSteps[pnote->holdID].push_back(pnote);
+		}
+		// Remove any holds that doesn't have at least 2 steps
+		for (auto it = selectedSteps.begin(); it != selectedSteps.end();)
+		{
+			if (it->second.size() < 2)
+			{
+				selectedHolds.erase(it->first);
+				it = selectedSteps.erase(it);
+			}
+			else
+				++it;
+		}
+
+		for (auto&& [_, pnote] : selectedNotes)
+		{
+			if (pnote->isHold() && selectedHolds.count(pnote->holdID))
+				continue;
+			json* pdata;
+			switch (pnote->type)
+			{
+			case NoteType::Tap:
+				pdata = &notes.emplace_back();
+				tap_note_to_json(*pdata, *pnote, -baseTick);
+				break;
+			case NoteType::Tick:
+				pdata = &ticks.emplace_back();
+				tick_note_to_json(*pdata, *pnote, -baseTick);
+				break;
+			case NoteType::Damage:
+				pdata = &damages.emplace_back();
+				tap_note_to_json(*pdata, *pnote, -baseTick);
+				break;
+			default:
+				throw std::runtime_error("Unsupported NoteType!");
+			}
+			dummy_note_to_json(*pdata, *pnote);
+		}
+		for (auto&& [id, steps] : selectedSteps)
+		{
+			std::stable_sort(steps.begin(), steps.end(), HoldNote::StepComparer());
+			auto stepIt = steps.begin(), endIt = steps.end();
+
+			const HoldNote& hold = score.holdNotes.at(id);
+			auto nextHoldStepIt =
+			    std::upper_bound(hold.separators.begin(), hold.separators.end(), *steps.front(),
+			                     HoldNote::HoldStepComparer(score.notes));
+			const HoldNoteStep* holdStep =
+			    nextHoldStepIt == hold.separators.begin() ? &hold : &*std::prev(nextHoldStepIt);
+
+			json* holdData = &holds.emplace_back();
+			hold_note_step_to_json(*holdData, *holdStep);
+
+			json* holdStart = &(*holdData)["start"];
+			const Note* start = *stepIt;
+			terminal_step_note_to_json(*holdStart, *start, *holdStep, -baseTick);
+
+			++stepIt, --endIt;
+			json* stepsArray = &((*holdData)["steps"] = json::array());
+			for (; stepIt != endIt; ++stepIt)
+			{
+				Note& step = **stepIt;
+				if (nextHoldStepIt != hold.separators.end() && nextHoldStepIt->ID == step.ID)
+				{
+					++nextHoldStepIt;
+					break;
+				}
+				step_note_to_json(stepsArray->emplace_back(), step, *holdStep, -baseTick);
+			}
+
+			while (stepIt != endIt)
+			{
+				holdData = &(*holdData)["next"];
+				holdStart = &(*holdData)["start"];
+				start = *stepIt;
+
+				holdStep =
+				    nextHoldStepIt == hold.separators.begin() ? &hold : &*std::prev(nextHoldStepIt);
+				hold_note_step_to_json(*holdData, *holdStep);
+				terminal_step_note_to_json(*holdStart, *start, *holdStep, -baseTick);
+
+				++stepIt;
+				stepsArray = &((*holdData)["steps"] = json::array());
+				for (; stepIt != endIt; ++stepIt)
+				{
+					Note& step = **stepIt;
+					if (nextHoldStepIt != hold.separators.end() && nextHoldStepIt->ID == step.ID)
+					{
+						++nextHoldStepIt;
+						break;
+					}
+					step_note_to_json(stepsArray->emplace_back(), step, *holdStep, -baseTick);
+				}
+			}
+
+			json& holdEnd = (*holdData)["end"];
+			const Note& end = **stepIt;
+			terminal_step_note_to_json(holdEnd, end, *holdStep, -baseTick);
+		}
+		for (auto&& [layer, tick] : selectedHispeed)
+		{
+			// If 2 hispeeds at the same tick are selected,
+			// always prioritise the one in the current layer
+			if (layer != currentLayer && selectedHispeed.count({ currentLayer, tick }))
+				continue;
+			hispeed_to_json(hiSpeedChanges.emplace_back(),
+			                score.layers[layer].hiSpeedChanges.at(tick), -baseTick);
+		}
+	}
+
+	bool is_paste_data_empty(const nlohmann::json& data)
+	{
+		return !arrayHasData(data, "notes") && !arrayHasData(data, "damages") &&
+		       !arrayHasData(data, "ticks") && !arrayHasData(data, "holds") &&
+		       !arrayHasData(data, "hiSpeedChanges");
+	}
+
+	void paste_data_from_json(const json& data, PasteData& pasteData)
+	{
+		int nextNoteID = 0, nextHoldID = 0;
+		pasteData.notes.clear();
+		pasteData.holdNotes.clear();
+		pasteData.hiSpeedChanges.clear();
+
+		if (arrayHasData(data, "notes"))
+		{
+			for (const auto& entry : data["notes"])
+			{
+				Note& note = pasteData.notes[nextNoteID];
+				note.ID = nextNoteID++;
+				tap_note_from_json(entry, note);
+				dummy_note_from_json(entry, note);
+			}
+		}
+
+		if (arrayHasData(data, "damages"))
+		{
+			for (const auto& entry : data["damages"])
+			{
+				Note& note = pasteData.notes[nextNoteID];
+				note.ID = nextNoteID++;
+				note.type = NoteType::Damage;
+				base_note_from_json(entry, note);
+				dummy_note_from_json(entry, note);
+			}
+		}
+
+		if (arrayHasData(data, "ticks"))
+		{
+			for (const auto& entry : data["ticks"])
+			{
+				Note& note = pasteData.notes[nextNoteID];
+				note.ID = nextNoteID++;
+				tick_note_from_json(entry, note);
+				dummy_note_from_json(entry, note);
+			}
+		}
+
+		if (arrayHasData(data, "holds"))
+		{
+			for (const auto& entry : data["holds"])
+			{
+				if (!keyExists(entry, "start", json::value_t::object))
+					continue;
+
+				const json* holdStepData = &entry;
+				const json* holdStart = &entry["start"];
+				HoldNote& hold = pasteData.holdNotes[nextHoldID];
+				HoldNoteStep* holdStep = &hold;
+				hold.ID = nextHoldID++;
+				hold_note_step_from_json(*holdStepData, *holdStep, *holdStart);
+
+				Note* start = &pasteData.notes[nextNoteID];
+				start->ID = nextNoteID++;
+				start->holdID = hold.ID;
+				terminal_step_note_from_json(*holdStart, *start, *holdStepData, *holdStep);
+				hold.steps.push_back(start->ID);
+
+				if (arrayHasData(*holdStepData, "steps"))
+				{
+					const json& stepsArray = holdStepData->at("steps");
+					hold.steps.reserve(stepsArray.size() + 2);
+					for (const auto& step : stepsArray)
+					{
+						Note& mid = pasteData.notes[nextNoteID];
+						mid.ID = nextNoteID++;
+						mid.holdID = hold.ID;
+						step_note_from_json(step, mid, *holdStep);
+						hold.steps.push_back(mid.ID);
+					}
+				}
+
+				while (keyExists(*holdStepData, "next", json::value_t::object))
+				{
+					holdStepData = &(*holdStepData)["next"];
+					holdStart = &(*holdStepData)["start"];
+					holdStep = &hold.separators.emplace_back();
+					hold_note_step_from_json(*holdStepData, *holdStep, *holdStart);
+
+					start = &pasteData.notes[nextNoteID];
+					start->ID = nextNoteID++;
+					start->holdID = hold.ID;
+					terminal_step_note_from_json(*holdStart, *start, *holdStepData, *holdStep);
+					holdStep->ID = start->ID;
+					hold.steps.push_back(start->ID);
+
+					if (!arrayHasData(*holdStepData, "steps"))
+						continue;
+					const json& stepsArray = holdStepData->at("steps");
+					hold.steps.reserve(hold.steps.size() + stepsArray.size() + 2);
+					for (const auto& step : stepsArray)
+					{
+						Note& mid = pasteData.notes[nextNoteID];
+						mid.ID = nextNoteID++;
+						mid.holdID = hold.ID;
+						step_note_from_json(step, mid, *holdStep);
+						hold.steps.push_back(mid.ID);
+					}
+				}
+
+				Note& end = pasteData.notes[nextNoteID];
+				end.ID = nextNoteID++;
+				end.holdID = hold.ID;
+				if (keyExists(*holdStepData, "end"))
+					terminal_step_note_from_json((*holdStepData)["end"], end, *holdStepData,
+					                             *holdStep);
+
+				hold.steps.push_back(end.ID);
+				hold.sortSteps(pasteData.notes);
+			}
+		}
+
+		if (arrayHasData(data, "hiSpeedChanges"))
+		{
+			for (const auto& entry : data["hiSpeedChanges"])
+			{
+				if (!keyExists(entry, "tick"))
+					continue;
+				HiSpeed hispeed;
+				hispeed_from_json(entry, hispeed);
+				pasteData.hiSpeedChanges[hispeed.tick] = hispeed;
+			}
+		}
+
+		pasteData.pasting =
+		    pasteData.notes.size() || pasteData.holdNotes.size() || pasteData.hiSpeedChanges.size();
 	}
 }

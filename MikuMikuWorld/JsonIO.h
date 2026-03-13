@@ -1,15 +1,12 @@
 #pragma once
 #include <json.hpp>
 #include <unordered_set>
-
-namespace mmw = MikuMikuWorld;
+#include "Note.h"
+#include "ScoreEvents.h"
 
 namespace jsonIO
 {
-	static bool keyExists(const nlohmann::json& js, const char* key)
-	{
-		return (js.find(key) != js.end());
-	}
+	static bool keyExists(const nlohmann::json& js, const char* key) { return js.contains(key); }
 
 	static bool keyExists(const nlohmann::json& js, const char* key, nlohmann::json::value_t type)
 	{
@@ -19,7 +16,7 @@ namespace jsonIO
 
 	static bool arrayHasData(const nlohmann::json& js, const char* key)
 	{
-		return jsonIO::keyExists(js, key) && js[key].is_array() && js[key].size();
+		return jsonIO::keyExists(js, key, nlohmann::json::value_t::array) && js[key].size();
 	}
 
 	template <typename T> T tryGetValue(const nlohmann::json& js, const char* key, T def = {})
@@ -35,15 +32,6 @@ namespace jsonIO
 			return j[k].get_to(v);
 		return v;
 	}
-
-	mmw::Note jsonToNote(const nlohmann::json& data, mmw::NoteType type);
-
-	nlohmann::json noteToJson(const mmw::Note& note);
-
-	nlohmann::json noteSelectionToJson(const mmw::Score& score,
-	                                   const std::unordered_set<mmw::id_t>& selection,
-	                                   const std::unordered_set<mmw::id_t>& hiSpeedSelection,
-	                                   int baseTick);
 }
 
 namespace std::chrono
@@ -69,4 +57,13 @@ namespace MikuMikuWorld
 	struct ApplicationConfiguration;
 	void to_json(nlohmann::json& j, const ApplicationConfiguration& cfg);
 	void from_json(const nlohmann::json& j, ApplicationConfiguration& cfg);
+
+	struct Score;
+	void selected_score_to_json(nlohmann::json& data, const Score& score,
+	                            const NoteViewCollection& selectedNotes,
+	                            const HiSpeedRefCollection& selectedHispeed, tick_t baseTick,
+	                            id_t currentLayer);
+	struct PasteData;
+	bool is_paste_data_empty(const nlohmann::json& data);
+	void paste_data_from_json(const nlohmann::json& data, PasteData& pasteData);
 }

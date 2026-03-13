@@ -88,18 +88,20 @@ namespace MikuMikuWorld
 		}
 	};
 
-	struct PasteData
+	struct PasteData : public NotesContext
 	{
-		std::unordered_map<id_t, Note> notes;
-		std::unordered_map<id_t, HoldNote> holds;
-		std::unordered_map<id_t, Note> damages;
-		std::unordered_map<id_t, HiSpeedChange> hiSpeedChanges;
+		NoteOrderedCollection notesOrderedView;
+		HiSpeedCollection hiSpeedChanges;
 		bool pasting{ false };
-		int offsetTicks{};
-		int offsetLane{};
-		int midLane{};
-		int minLaneOffset{};
-		int maxLaneOffset{};
+
+		float width{};
+		float minLane{};
+
+		void cancelPaste();
+		void startPaste();
+		void load(const nlohmann::json& data);
+		void updatePasteSize();
+		void flip();
 	};
 
 	enum class SelectionFlag : uint16_t
@@ -191,18 +193,13 @@ namespace MikuMikuWorld
 		void deleteSelection();
 		void flipSelection();
 		void cutSelection();
-		void copySelection();
-		void paste(bool flip);
-		void duplicateSelection(bool flip);
-		void doPasteData(const nlohmann::json& data, bool flip);
-		void cancelPaste();
-		void confirmPaste();
+		void copySelection() const;
+		void paste(PasteData& pasteData, float offsetLane, tick_t offsetTick, id_t holdID = -1);
 		void shrinkSelection(tick_t spacing);
 		void compressSelection();
 
 		void connectHoldsInSelection();
 		void splitHoldInSelection();
-		void repeatMidsInSelection();
 		/**
 		 * @brief Convert normal holds or guide notes within selection into traces
 		 * @param division Current division. Used to determine the ticks between two trace notes
