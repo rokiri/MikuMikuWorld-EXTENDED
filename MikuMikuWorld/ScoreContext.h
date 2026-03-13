@@ -8,6 +8,7 @@
 #include "Score.h"
 #include "ScoreStats.h"
 #include <unordered_set>
+#include <atomic>
 
 namespace MikuMikuWorld
 {
@@ -133,13 +134,17 @@ namespace MikuMikuWorld
 		std::string filename;
 		ScoreStats scoreStats;
 		HistoryManager history;
-		Audio::AudioManager audio;
+		std::unique_ptr<Audio::AudioContext> audio;
 		Audio::WaveformMipChain waveformL, waveformR;
 
 		bool upToDate{ true };
 		bool showAllLayers = false;
 		SelectionFlag selectedFlag = SelectionFlag::None;
 
+		bool isPendingLoadMusic{ false };
+		std::string pendingLoadMusicFilename{};
+		std::unique_ptr<std::atomic_bool> isMusicLoading =
+		    std::make_unique<std::atomic_bool>(false);
 
 		int recentHistoryUndo = 0;
 		id_t nextNoteID = 0;

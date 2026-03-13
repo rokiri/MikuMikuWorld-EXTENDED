@@ -4,7 +4,6 @@
 #include "../Math.h"
 #include "../Stopwatch.h"
 
-#define MINIAUDIO_IMPLEMENTATION
 #include "Sound.h"
 #include <algorithm>
 
@@ -42,86 +41,12 @@ namespace Audio
 		effectiveSampleRate = 0;
 	}
 
-	mmw::Result decodeAudioFile(std::string filename, SoundBuffer& sound)
+	bool isSupportedFileFormat(std::string_view fileExtension)
 	{
-		auto filepath = IO::stringToPath(filename);
-		if (!IO::File::exists(filepath))
-			return mmw::Result(mmw::ResultStatus::Error, "File not found");
-
-		auto fileExtension = IO::toString(IO::File::getFileExtension(filepath));
-		std::transform(fileExtension.begin(), fileExtension.end(), fileExtension.begin(),
-		               ::tolower);
-
-		if (!isSupportedFileFormat(fileExtension))
-			return mmw::Result(mmw::ResultStatus::Error, "Unsupported file format");
-
-		std::string nameWithoutExtension = IO::toString(IO::File::getFilenameWithoutExtension(filepath));
-
-		IO::File f(filename, IO::FileMode::ReadBinary);
-		std::vector<uint8_t> bytes = f.readAllBytes();
-		f.close();
-
-		if (fileExtension == ".mp3")
-		{
-			ma_dr_mp3_config mp3Config{};
-			uint64_t frameCount{};
-			int16_t* samples = ma_dr_mp3_open_memory_and_read_pcm_frames_s16(
-			    bytes.data(), bytes.size(), &mp3Config, &frameCount, nullptr);
-			if (samples == nullptr)
-				return mmw::Result(mmw::ResultStatus::Error, "Failed to decode mp3");
-
-			sound.initialize(nameWithoutExtension, mp3Config.sampleRate, mp3Config.channels,
-			                 frameCount, samples);
-			return mmw::Result::Ok();
-		}
-		else if (fileExtension == ".wav")
-		{
-			uint32_t channels{};
-			uint32_t sampleRate{};
-			uint64_t frameCount{};
-			int16_t* samples = ma_dr_wav_open_memory_and_read_pcm_frames_s16(
-			    bytes.data(), bytes.size(), &channels, &sampleRate, &frameCount, nullptr);
-			if (samples == nullptr)
-				return mmw::Result(mmw::ResultStatus::Error, "Failed to decode wav");
-
-			sound.initialize(nameWithoutExtension, sampleRate, channels, frameCount, samples);
-			return mmw::Result::Ok();
-		}
-		else if (fileExtension == ".flac")
-		{
-			uint32_t channels{};
-			uint32_t sampleRate{};
-			uint64_t frameCount{};
-			int16_t* samples = ma_dr_flac_open_memory_and_read_pcm_frames_s16(
-			    bytes.data(), bytes.size(), &channels, &sampleRate, &frameCount, nullptr);
-			if (samples == nullptr)
-				return mmw::Result(mmw::ResultStatus::Error, "Failed to decode flac");
-
-			sound.initialize(nameWithoutExtension, sampleRate, channels, frameCount, samples);
-			return mmw::Result::Ok();
-		}
-		else if (fileExtension == ".ogg")
-		{
-			int32_t channels{};
-			int32_t sampleRate{};
-			int16_t* samples;
-			int32_t frameCount = stb_vorbis_decode_memory(bytes.data(), bytes.size(), &channels,
-			                                              &sampleRate, &samples);
-			if (samples == nullptr)
-				return mmw::Result(mmw::ResultStatus::Error, "Failed to decode ogg vorbis");
-
-			sound.initialize(nameWithoutExtension, sampleRate, channels, frameCount, samples);
-			return mmw::Result::Ok();
-		}
-
-		// Getting here should mean an unsupported file format
-		return mmw::Result(mmw::ResultStatus::Error, "Unsupported file format");
-	}
-
-	bool isSupportedFileFormat(const std::string_view& fileExtension)
-	{
-		return std::find(supportedFileFormats.begin(), supportedFileFormats.end(), fileExtension) !=
-		       supportedFileFormats.end();
+		for (auto&& format : { ".mp3", ".wav", ".flac", ".ogg" })
+			if (format == fileExtension)
+				return true;
+		return false;
 	}
 
 	ma_uint64 SoundPool::getDurationInFrames() const
@@ -160,11 +85,11 @@ namespace Audio
 	void SoundPool::initialize(const std::string& path, ma_engine* engine, ma_sound_group* group,
 	                           SoundFlags flags)
 	{
-		std::wstring wPath = IO::utf8ToWide(path);
 		for (int i = 0; i < pool.size(); i++)
 		{
-			ma_result result = ma_sound_init_from_file_w(
-			    engine, wPath.c_str(), maSoundFlagsDecodeAsync, group, NULL, &pool[i].source);
+			ma_result result =
+			    ma_sound_init_from_file_w(engine, IO::utf8ToWide(path).c_str(),
+			                              maSoundFlagsDecodeAsync, group, NULL, &pool[i].source);
 			if (hasFlag(flags, SoundFlags::LOOP))
 				ma_sound_set_looping(&pool[i].source, true);
 		}
@@ -173,11 +98,19 @@ namespace Audio
 		currentIndex = 0;
 	}
 
-	void SoundPool::initialize(const std::string& name, const std::string& path, ma_engine* engine,
-	                           ma_sound_group* group, SoundFlags flags)
+	void SoundPool::initialize(ma_sound* source, ma_engine* engine, ma_sound_group* group,
+	                           SoundFlags flags)
 	{
-		this->name = name;
-		initialize(path, engine, group, flags);
+		for (int i = 0; i < pool.size(); i++)
+		{
+			ma_result result =
+			    ma_sound_init_copy(engine, source, maSoundFlagsDefault, group, &pool[i].source);
+			if (hasFlag(flags, SoundFlags::LOOP))
+				ma_sound_set_looping(&pool[i].source, true);
+		}
+
+		this->flags = flags;
+		currentIndex = 0;
 	}
 
 	void SoundPool::initialize(SoundBuffer& sound, ma_engine* engine, ma_sound_group* group,
@@ -201,12 +134,6 @@ namespace Audio
 			ma_sound_uninit(&instance.source);
 	}
 
-	void SoundPool::extendInstanceDuration(SoundInstance& instance, float newEndTime)
-	{
-		ma_sound_set_stop_time_in_milliseconds(&instance.source, newEndTime * 1000);
-		instance.lastEndTime = newEndTime;
-	}
-
 	void SoundPool::play(float start, float end)
 	{
 		SoundInstance& instance = pool[currentIndex];
@@ -214,12 +141,12 @@ namespace Audio
 		instance.seek(0);
 		ma_sound_set_start_time_in_milliseconds(&instance.source, start * 1000);
 
-		if (end > -1)
+		if (end >= 0)
 			ma_sound_set_stop_time_in_milliseconds(&instance.source, end * 1000);
 
 		instance.play();
-		instance.lastStartTime = start;
-		instance.lastEndTime = end;
+		instance.absoluteStart = start;
+		instance.absoluteEnd = end;
 
 		if (!hasFlag(flags, SoundFlags::EXTENDABLE))
 			currentIndex = ++currentIndex % pool.size();
@@ -230,8 +157,8 @@ namespace Audio
 		for (auto& instance : pool)
 		{
 			instance.stop();
-			instance.lastStartTime = 0;
-			instance.lastEndTime = 0;
+			instance.absoluteStart = 0;
+			instance.absoluteEnd = 0;
 		}
 	}
 

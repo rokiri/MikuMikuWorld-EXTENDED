@@ -21,6 +21,7 @@ namespace MikuMikuWorld
 	  private:
 		ScoreEditorState state;
 		ScoreContext context{};
+		Audio::AudioManager audio;
 		PresetManager presetManager;
 		std::unique_ptr<Renderer> renderer;
 		EditorToolbar toolbar;

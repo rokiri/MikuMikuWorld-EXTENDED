@@ -21,15 +21,13 @@ namespace MikuMikuWorld
 {
 	ScoreEditor::ScoreEditor()
 	{
-		
-
-		//context.audio.initializeAudioEngine();
-		//context.audio.setMasterVolume(config.masterVolume);
-		//context.audio.setMusicVolume(config.bgmVolume);
-		//context.audio.setSoundEffectsVolume(config.seVolume);
-		//context.audio.loadSoundEffects();
-		//context.audio.setSoundEffectsProfileIndex(config.seProfileIndex);
-
+		const auto& config = getConfig();
+		audio.initializeAudioEngine();
+		audio.setMasterVolume(config.masterVolume);
+		audio.setMusicVolume(config.bgmVolume);
+		audio.setSoundEffectsVolume(config.seVolume);
+		audio.loadSoundEffects();
+		audio.setSoundEffectsProfileIndex(config.seProfileIndex);
 		//timeline.setDivision(config.division);
 		//timeline.setZoom(config.zoom);
 
@@ -112,17 +110,17 @@ namespace MikuMikuWorld
 	void ScoreEditor::savePresets(const FilePath& path) { presetManager.savePresets(path); }
 	void ScoreEditor::writeSettings()
 	{
-		//config.masterVolume = context.audio.getMasterVolume();
-		//config.bgmVolume = context.audio.getMusicVolume();
-		//config.seVolume = context.audio.getSoundEffectsVolume();
-
+		auto& config = getConfig();
+		config.masterVolume = audio.getMasterVolume();
+		config.bgmVolume = audio.getMusicVolume();
+		config.seVolume = audio.getSoundEffectsVolume();
 		//config.division = timeline.getDivision();
 		//config.zoom = timeline.getZoom();
 	}
 
 	void ScoreEditor::uninitialize()
 	{
-		//context.audio.uninitializeAudioEngine();
+		audio.uninitializeAudioEngine();
 		//timeline.background.dispose();
 	}
 
@@ -233,6 +231,11 @@ namespace MikuMikuWorld
 		//	context.audio.setSoundEffectsProfileIndex(config.seProfileIndex);
 		//}
 
+		if (config.seProfileIndex != audio.getSoundEffectsProfileIndex())
+		{
+			// audio.stopSoundEffects(false);
+			audio.setSoundEffectsProfileIndex(config.seProfileIndex);
+		}
 		//if (propertiesWindow.isPendingLoadMusic)
 		//{
 		//	loadMusic(propertiesWindow.pendingLoadMusicFilename);
@@ -608,15 +611,15 @@ namespace MikuMikuWorld
 				//if (ImGui::MenuItem("Delete Old Auto Save (Max)"))
 				//	deleteOldAutoSave(config.autoSaveMaxCount);
 
-				//bool audioRunning = context.audio.isEngineStarted();
-				//if (ImGui::MenuItem(audioRunning ? "Stop Audio" : "Start Audio",
-				//                    audioRunning ? ICON_FA_VOLUME_UP : ICON_FA_VOLUME_MUTE))
-				//{
-				//	if (audioRunning)
-				//		context.audio.stopEngine();
-				//	else
-				//		context.audio.startEngine();
-				//}
+				bool audioRunning = audio.isEngineStarted();
+				if (ImGui::MenuItem(audioRunning ? "Stop Audio" : "Start Audio",
+				                    audioRunning ? ICON_FA_VOLUME_UP : ICON_FA_VOLUME_MUTE))
+				{
+					if (audioRunning)
+						audio.stopEngine();
+					else
+						audio.startEngine();
+				}
 
 				ImGui::EndMenu();
 			}

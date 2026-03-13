@@ -176,6 +176,9 @@
     <ClCompile Include="PlatformIO.cpp">
       <Filter>IO</Filter>
     </ClCompile>
+    <ClCompile Include="Audio\Waveform.cpp">
+      <Filter>Audio</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SUS.h">

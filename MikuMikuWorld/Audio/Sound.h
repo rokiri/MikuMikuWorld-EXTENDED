@@ -11,6 +11,7 @@
 #include <stb_vorbis.c>
 #include <miniaudio.h>
 #include "../Utilities.h"
+#include "../Enum.h"
 
 namespace Audio
 {
@@ -18,7 +19,7 @@ namespace Audio
 
 	constexpr const char* soundEffectsProfileNames[]{ "SE 01", "SE 02" };
 
-	enum SoundFlags : uint8_t
+	enum class SoundFlags : uint8_t
 	{
 		NONE = 0,
 		LOOP = 1 << 0,
@@ -55,18 +56,11 @@ namespace Audio
 		}
 	};
 
-	constexpr std::array<std::string_view, 4> supportedFileFormats = { ".mp3", ".wav", ".flac",
-		                                                               ".ogg" };
-
-	MikuMikuWorld::Result decodeAudioFile(std::string filename, SoundBuffer& sound);
-	bool isSupportedFileFormat(const std::string_view& fileExtension);
+	bool isSupportedFileFormat(std::string_view fileExtension);
 
 	struct SoundInstance
 	{
-		std::string name;
 		ma_sound source;
-		float lastStartTime{};
-		float lastEndTime{};
 
 		// The absolute start time in seconds
 		float absoluteStart{};
@@ -107,18 +101,10 @@ namespace Audio
 			return time;
 		}
 
-		void extendDuration(float currentTime, float newAbsoluteEnd, float timeScale)
+		void extendDuration(float newAbsoluteEnd)
 		{
-			const float engineTime =
-			    static_cast<float>(ma_engine_get_time_in_milliseconds(source.engineNode.pEngine)) /
-			    1000.0f;
-			const float duration = newAbsoluteEnd - absoluteStart;
-			const float instanceTime = currentTime - absoluteStart;
-			const float newEndTime = ((duration - instanceTime) / timeScale) + engineTime;
-
 			absoluteEnd = newAbsoluteEnd;
-			lastEndTime = newEndTime;
-			ma_sound_set_stop_time_in_milliseconds(&source, newEndTime * 1000);
+			ma_sound_set_stop_time_in_milliseconds(&source, newAbsoluteEnd * 1000);
 		}
 	};
 
@@ -138,29 +124,25 @@ namespace Audio
 		void setVolume(float volume);
 		float getVolume() const;
 
-		void extendInstanceDuration(SoundInstance& instance, float newEndTime);
 		void play(float start, float end);
 		void stopAll();
 
 		bool isPlaying(const SoundInstance& soundInstance) const;
 		bool isAnyPlaying() const;
 
-		void initialize(const std::string& name, const std::string& path, ma_engine* engine,
-		                ma_sound_group* group, SoundFlags flags);
+		void initialize(ma_sound* source, ma_engine* engine, ma_sound_group* group,
+		                SoundFlags flags);
 		void initialize(const std::string& path, ma_engine* engine, ma_sound_group* group,
 		                SoundFlags flags);
 		void initialize(SoundBuffer& sound, ma_engine* engine, ma_sound_group* group,
 		                SoundFlags flags);
 		void dispose();
 
-		std::string getName() const { return name; }
 		int getCurrentIndex() const { return currentIndex; }
 
 	  private:
 		float volume{ 1.0f };
 		int currentIndex{ 0 };
-
-		std::string name{};
 	};
 
 	struct SoundEffectProfile
