@@ -146,6 +146,15 @@ namespace MikuMikuWorld
 		return isClose(f, zero) || isClose(val - f, zero);
 	}
 
+	template <typename IntType>
+	static std::pair<IntType, IntType> integerDivide(IntType x, IntType y)
+	{
+		// Due to div_t member order not defined by the standard
+		// We need to access the member directly to ensure the correct order
+		auto divResult = std::div(x, y);
+		return std::make_pair(divResult.quot, divResult.rem);
+	}
+
 	float lerp(float start, float end, float ratio);
 	float unlerp(float start, float end, float value, float fallback = 0);
 	double lerpD(double start, double end, double ratio);
