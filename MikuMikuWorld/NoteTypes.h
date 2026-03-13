@@ -112,10 +112,13 @@ namespace MikuMikuWorld
 	{
 		Out,
 		None,
-		In
+		In,
+		Custom,
+		Classic,
+		FadeTypeCount
 	};
 
-	inline constexpr const char* fadeTypes[] = { "out", "none", "in" };
+	inline constexpr const char* fadeTypes[] = { "out", "none", "in", "custom", "default" };
 
 	enum class HiSpeedEaseType : uint8_t
 	{

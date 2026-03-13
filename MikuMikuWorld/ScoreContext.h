@@ -7,7 +7,6 @@
 #include "JsonIO.h"
 #include "Score.h"
 #include "ScoreStats.h"
-#include "TimelineMode.h"
 #include <unordered_set>
 
 namespace MikuMikuWorld
@@ -58,6 +57,7 @@ namespace MikuMikuWorld
 		bool hiSpeedHideNotes{ false };
 
 		void changeInsertMode(InsertMode newMode);
+		bool isNoteInsertMode() const;
 	};
 
 	class EditorScoreData
@@ -102,92 +102,91 @@ namespace MikuMikuWorld
 		int maxLaneOffset{};
 	};
 
-	class ScoreContext
+	enum class SelectionFlag : uint16_t
 	{
-	  public:
+		None,
+		CanTrace = 1 << 0,
+		CanCritical = 1 << 1,
+		CanFlick = 1 << 2,
+		CanDummy = 1 << 3,
+		HasHoldNote = 1 << 4,
+		HasGuideNote = 1 << 5,
+		HasAnyHoldMid = 1 << 6,
+		HasAnyHoldNoteStep = 1 << 7,
+		CanEase = 1 << 8, // Any hold start + hold mid not attached
+		CanChangeAlpha = 1 << 9,
+		CanConnectHold = 1 << 10,
+		// Flag for properties window
+		DirtyProperty = 1 << 15,
+
+	};
+
+	struct ScoreContext
+	{
+		static constexpr id_t LAYER_ALL = -1;
+
 		Score score;
 		EditorScoreData workingData;
+		ScoreMetadata metadata;
+		std::string filename;
 		ScoreStats scoreStats;
 		HistoryManager history;
 		Audio::AudioManager audio;
-		PasteData pasteData{};
-		std::unordered_set<id_t> selectedNotes;
-		std::unordered_set<id_t> selectedHiSpeedChanges;
-
 		Audio::WaveformMipChain waveformL, waveformR;
 
-		int currentTick{};
 		bool upToDate{ true };
-
-		int selectedLayer = 0;
 		bool showAllLayers = false;
+		SelectionFlag selectedFlag = SelectionFlag::None;
 
-		bool hasSelection() const
-		{
-			return selectedNotes.size() > 0 || selectedHiSpeedChanges.size() > 0;
-		}
 
-		bool hasHoldInSelection() const
-		{
-			for (id_t id : selectedNotes)
-			{
-				const Note& n = score.notes.at(id);
-				if (n.getType() == NoteType::Hold || n.getType() == NoteType::HoldMid ||
-				    n.getType() == NoteType::HoldEnd)
-					return true;
-			}
-			return false;
-		}
+		id_t nextNoteID = 0;
+		id_t nextHoldID = 0;
 
-		std::unordered_set<int> getHoldsFromSelection()
-		{
-			std::unordered_set<int> holds;
-			for (id_t id : selectedNotes)
-			{
-				const Note& note = score.notes.at(id);
-				if (note.getType() == NoteType::Hold)
-					holds.insert(note.ID);
-				else if (note.getType() == NoteType::HoldMid || note.getType() == NoteType::HoldEnd)
-					holds.insert(note.parentID);
-			}
+		id_t selectedLayer = 0;
+		NoteViewCollection selectedNotes;
+		HiSpeedRefCollection selectedHiSpeedChanges;
+		std::vector<Note*> hoveringNotes;
+		NoteOrderedCollection notesOrderedView; // fast lookup
+		WaypointOrderedCollection waypointOrderedView;
 
-			return holds;
-		}
+		int minNoteWidth() const noexcept;
+		int maxNoteWidth() const noexcept;
+		int maxNoteWidth(float lane) const noexcept;
+		int minLane() const noexcept;
+		int maxLane() const noexcept;
+		int maxLane(float width) const noexcept;
+		EaseType maxEase() const noexcept;
+		FlickType maxFlick() const noexcept;
 
-		double getTimeAtCurrentTick() const
-		{
-			return accumulateDuration(currentTick, TICKS_PER_BEAT, score.tempoChanges);
-		}
-
-		bool selectionHasEase() const;
-		bool selectionHasHold() const;
-		bool selectionHasStep() const;
-		bool selectionHasFlickable() const;
-		bool selectionCanConnect() const;
-		bool selectionCanChangeHoldType() const;
-		bool selectionCanChangeFadeType() const;
-		inline bool isNoteSelected(const Note& note)
-		{
-			return selectedNotes.find(note.ID) != selectedNotes.end();
-		}
-		inline void selectAll()
-		{
-			selectedNotes.clear();
-			for (auto& it : score.notes)
-				selectedNotes.insert(it.first);
-		}
-		inline void clearSelection() { selectedNotes.clear(); }
-
-		void setStep(HoldStepType step);
+		void setStep(EditHoldStepType step);
 		void setFlick(FlickType flick);
 		void setEase(EaseType ease);
-		void setHoldType(HoldNoteType hold);
 		void setFadeType(FadeType fade);
 		void setGuideColor(GuideColor color);
 		void setLayer(int layer);
-		void toggleCriticals();
-		void toggleFriction();
-		void toggleDummy();
+		void setCriticals(int critical = true);
+		void setCriticalHold(int critical = true);
+		void setFriction(int friction = true);
+		void setDummy(int dummy = true);
+		void setDummyHold(int dummy = true);
+		void setGuideAlpha(float alpha);
+
+		void updateSelectionFlag();
+
+		bool hasAnySelected() const;
+		bool hasAnyNoteSelected() const;
+		bool hasAnyHispeedSelected() const;
+		bool hasNoteSelected(id_t noteID) const;
+		bool hasNoteSelected(const Note& note) const;
+		bool hasHispeedSelected(const HiSpeed& hispeed) const;
+		tick_t getMinTickFromSelection() const;
+
+		void selectNote(Note& note);
+		void selectHiSpeed(const HiSpeed& hispeed);
+		void deselectNote(const Note& note);
+		void deselectHiSpeed(const HiSpeed& hispeed);
+		void selectAll(id_t layer = LAYER_ALL);
+		void deselectAll();
 
 		void deleteSelection();
 		void flipSelection();
@@ -198,7 +197,7 @@ namespace MikuMikuWorld
 		void doPasteData(const nlohmann::json& data, bool flip);
 		void cancelPaste();
 		void confirmPaste();
-		void shrinkSelection(Direction direction);
+		void shrinkSelection(tick_t spacing);
 		void compressSelection();
 
 		void connectHoldsInSelection();
@@ -209,15 +208,39 @@ namespace MikuMikuWorld
 		 * @param division Current division. Used to determine the ticks between two trace notes
 		 * @param deleteOrigin Delete the original hold notes or not
 		 */
-		void convertHoldToTraces(int division, bool deleteOrigin);
+		void convertHoldToTraces(int quarterDivision, bool deleteHold, bool update = true);
 
-		void lerpHiSpeeds(int division, EaseType ease);
+		void lerpHiSpeeds(int quarterDivision, EaseType ease);
 
 		void convertHoldToGuide(GuideColor color);
-		void convertGuideToHold();
+		void convertGuideToHold(bool critical);
+		void convertHoldToNone();
 
+		void updateViews();
 		void undo();
 		void redo();
 		void pushHistory(std::string description, const Score& prev, const Score& current);
+
+		Note* insertNote(const Note& note, id_t holdID = -1, bool update = true);
+		// Will affect any view that referencing the note, like selection
+		// Please make a copy if you need to erase them while iterating
+		void eraseNote(Note& note, bool update = true);
+		std::tuple<HoldNote&, Note&, Note&> insertHold(const Note& startNote, const Note& endNote,
+		                                               const HoldNoteStep& step,
+		                                               bool update = true);
+		void eraseHold(HoldNote& hold, bool update = true);
+		// Connects two holds together
+		id_t connectHolds(id_t currHoldID, id_t nextHoldID, bool update = true);
+		std::pair<id_t, id_t> splitHoldAt(HoldNote& hold, size_t index, bool update = true);
+		void insertTempoChange(const Tempo& tempo);
+		void insertTimeSignature(const TimeSignature& timeSig);
+		HiSpeed& insertHispeedChange(const HiSpeed& hispeed, bool update = true);
+		Waypoint& insertWaypoint(tick_t tick, const std::string& name);
+		void eraseWaypoint(id_t waypointID);
+		void insertSkill(tick_t tick);
+
+		bool isLayerVisible(id_t layer) const;
+		bool isLayerInteractive(id_t layer) const;
+		bool isLayerSelected(id_t layer) const;
 	};
 }

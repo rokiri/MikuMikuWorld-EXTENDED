@@ -309,6 +309,118 @@
             "y": 384
         },
         {
+            "name": "timeline_guide_neutral_custom",
+            "w": 64,
+            "h": 64,
+            "x": 0,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_red_custom",
+            "w": 64,
+            "h": 64,
+            "x": 64,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_green_custom",
+            "w": 64,
+            "h": 64,
+            "x": 128,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_blue_custom",
+            "w": 64,
+            "h": 64,
+            "x": 192,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_yellow_custom",
+            "w": 64,
+            "h": 64,
+            "x": 256,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_purple_custom",
+            "w": 64,
+            "h": 64,
+            "x": 320,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_cyan_custom",
+            "w": 64,
+            "h": 64,
+            "x": 384,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_black_custom",
+            "w": 64,
+            "h": 64,
+            "x": 448,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_neutral_default",
+            "w": 64,
+            "h": 64,
+            "x": 0,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_red_default",
+            "w": 64,
+            "h": 64,
+            "x": 64,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_green_default",
+            "w": 64,
+            "h": 64,
+            "x": 128,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_blue_default",
+            "w": 64,
+            "h": 64,
+            "x": 192,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_yellow_default",
+            "w": 64,
+            "h": 64,
+            "x": 256,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_purple_default",
+            "w": 64,
+            "h": 64,
+            "x": 320,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_cyan_default",
+            "w": 64,
+            "h": 64,
+            "x": 384,
+            "y": 256
+        },
+        {
+            "name": "timeline_guide_black_default",
+            "w": 64,
+            "h": 64,
+            "x": 448,
+            "y": 256
+        },
+        {
             "name": "timeline_hold_linear",
             "w": 64,
             "h": 64,
