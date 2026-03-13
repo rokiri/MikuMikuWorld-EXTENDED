@@ -29,9 +29,10 @@ namespace MikuMikuWorld
 		io.ConfigViewportsNoDefaultParent = false;
 		io.ConfigViewportsNoAutoMerge = true;
 		io.ConfigDpiScaleViewports = true;
-		io.ConfigDpiScaleFonts = true;
+		io.ConfigDpiScaleFonts = false;
 		io.ConfigDockingTransparentPayload = true;
-		ImGui::GetStyle().HoverFlagsForTooltipMouse = ImGuiHoveredFlags_DelayNormal;
+		ImGui::GetStyle().HoverFlagsForTooltipMouse =
+		    ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary;
 
 		io.IniFilename = configFilename.c_str();
 
@@ -174,6 +175,7 @@ namespace MikuMikuWorld
 
 			ImGui::GetStyle().ScaleAllSizes(dpiScale / styleScale);
 			styleScale = dpiScale;
+			ImGui::GetStyle().FontScaleDpi = dpiScale;
 		}
 
 		if (config.accentColor != accentColor)
@@ -210,8 +212,7 @@ namespace MikuMikuWorld
 		fontConfig.OversampleH = 1;
 		fontConfig.RasterizerMultiply = 1.05f;
 
-		auto font =
-		    ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size, &fontConfig);
+		ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size, &fontConfig);
 	}
 
 	void ImGuiManager::loadIconFont(const std::string& filename, int start, int end, float size)
