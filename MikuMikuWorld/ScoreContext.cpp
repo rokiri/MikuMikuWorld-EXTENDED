@@ -142,7 +142,6 @@ namespace MikuMikuWorld
 			return;
 
 		bool edit = false;
-		Score prev = score;
 		std::unordered_set<id_t> updatingHolds;
 		for (auto&& [ID, pnote] : selectedNotes)
 		{
@@ -218,7 +217,7 @@ namespace MikuMikuWorld
 
 		if (edit)
 		{
-			pushHistory("Change step type", prev, score);
+			pushHistory("Change step type");
 			updateSelectionFlag();
 		}
 	}
@@ -232,7 +231,6 @@ namespace MikuMikuWorld
 			return;
 
 		bool edit = false;
-		Score prev = score;
 		for (auto&& [ID, pnote] : selectedNotes)
 		{
 			Note& note = *pnote;
@@ -268,7 +266,7 @@ namespace MikuMikuWorld
 
 		if (edit)
 		{
-			pushHistory("Change flick", prev, score);
+			pushHistory("Change flick");
 			updateSelectionFlag();
 		}
 	}
@@ -303,7 +301,7 @@ namespace MikuMikuWorld
 
 		if (edit)
 		{
-			pushHistory("Change ease", prev, score);
+			pushHistory("Change ease");
 			updateSelectionFlag();
 		}
 	}
@@ -313,7 +311,6 @@ namespace MikuMikuWorld
 		if (!hasAnyNoteSelected())
 			return;
 
-		Score prev = score;
 		bool edit = false;
 		std::unordered_set<HoldNoteStep*> updatedStep;
 		for (auto&& [_, pnote] : selectedNotes)
@@ -333,7 +330,7 @@ namespace MikuMikuWorld
 
 		if (edit)
 		{
-			pushHistory("Change fade", prev, score);
+			pushHistory("Change fade");
 			updateSelectionFlag();
 		}
 	}
@@ -343,7 +340,6 @@ namespace MikuMikuWorld
 		if (!hasAnyNoteSelected())
 			return;
 
-		Score prev = score;
 		bool edit = false;
 		std::unordered_set<HoldNoteStep*> updatedStep;
 		for (auto&& [_, pnote] : selectedNotes)
@@ -391,7 +387,7 @@ namespace MikuMikuWorld
 
 		if (edit)
 		{
-			pushHistory("Change guide", prev, score);
+			pushHistory("Change guide");
 			updateSelectionFlag();
 		}
 	}
@@ -402,7 +398,6 @@ namespace MikuMikuWorld
 			return;
 
 		bool edit = false;
-		Score prev = score;
 		for (auto&& [_, pnote] : selectedNotes)
 		{
 			Note& note = *pnote;
@@ -430,7 +425,7 @@ namespace MikuMikuWorld
 
 		if (edit)
 		{
-			pushHistory("Change layer", prev, score);
+			pushHistory("Change layer");
 			updateSelectionFlag();
 		}
 	}
@@ -619,7 +614,7 @@ namespace MikuMikuWorld
 
 		if (edit)
 		{
-			pushHistory("Change trace notes", prev, score);
+			pushHistory("Change trace notes");
 			updateSelectionFlag();
 		}
 	}
@@ -630,7 +625,6 @@ namespace MikuMikuWorld
 			return;
 		bool (*setFunc)(bool) = dummy < 0 ? flip : dummy > 0 ? set : unset;
 
-		Score prev = score;
 		bool edit = false;
 		for (auto&& [_, pnote] : selectedNotes)
 		{
@@ -646,7 +640,7 @@ namespace MikuMikuWorld
 
 		if (edit)
 		{
-			pushHistory("Change dummy note", prev, score);
+			pushHistory("Change dummy note");
 			updateSelectionFlag();
 		}
 	}
@@ -973,7 +967,7 @@ namespace MikuMikuWorld
 
 		deselectAll();
 		hoveringNotes.clear();
-		pushHistory("Delete notes", prev, score);
+		pushHistory("Delete notes");
 	}
 
 	void ScoreContext::flipSelection()
@@ -981,7 +975,6 @@ namespace MikuMikuWorld
 		if (hasAnyNoteSelected())
 			return;
 
-		Score prev = score;
 		static_assert(int(FlickType::FlickTypeCount) == 7, "Make sure nothing broke here!");
 		for (auto&& [_, pnote] : selectedNotes)
 		{
@@ -1005,7 +998,7 @@ namespace MikuMikuWorld
 			}
 		}
 
-		pushHistory("Flip notes", prev, score);
+		pushHistory("Flip notes");
 	}
 
 	void ScoreContext::cutSelection()
@@ -1305,7 +1298,6 @@ namespace MikuMikuWorld
 	{
 		if (selectedNotes.size() < 2)
 			return;
-		Score prev = score;
 
 		std::unordered_map<id_t, Layer> updatingLayers;
 		std::unordered_set<id_t> updatingHold;
@@ -1431,7 +1423,7 @@ namespace MikuMikuWorld
 		for (const auto& holdID : updatingHold)
 			score.holdNotes.at(holdID).sortSteps(score.notes, !metadata.isExtendedScore);
 
-		pushHistory("Compress notes", prev, score);
+		pushHistory("Compress selection");
 	}
 
 	void ScoreContext::connectHoldsInSelection()
@@ -1638,51 +1630,6 @@ namespace MikuMikuWorld
 			pushHistory("Lerp hispeeds");
 	}
 
-	void ScoreContext::updateViews()
-	{
-		hoveringNotes.clear();
-		notesOrderedView.clear();
-
-		for (auto&& [ID, note] : score.notes)
-		{
-			notesOrderedView.emplace(note.tick, &note);
-		}
-	}
-
-	void ScoreContext::undo()
-	{
-		if (history.hasUndo())
-		{
-			score = history.undo();
-			clearSelection();
-
-			//UI::setWindowTitle((workingData.filename.size()
-			//                        ? File::getFilename(workingData.filename)
-			//                        : windowUntitled) +
-			//                   "*");
-			upToDate = false;
-
-			scoreStats.calculateStats(score);
-		}
-	}
-
-	void ScoreContext::redo()
-	{
-		if (history.hasRedo())
-		{
-			score = history.redo();
-			clearSelection();
-
-			//UI::setWindowTitle((workingData.filename.size()
-			//                        ? File::getFilename(workingData.filename)
-			//                        : windowUntitled) +
-			//                   "*");
-			upToDate = false;
-
-			scoreStats.calculateStats(score);
-		}
-	}
-
 	void ScoreContext::convertHoldToGuide(GuideColor color)
 	{
 		if (!hasAnyNoteSelected())
@@ -1724,7 +1671,7 @@ namespace MikuMikuWorld
 		}
 
 		if (edit)
-			pushHistory("Convert hold to guide", prev, score);
+			pushHistory("Convert hold to guide");
 	}
 
 	void ScoreContext::convertGuideToHold(bool critical)
@@ -1764,19 +1711,7 @@ namespace MikuMikuWorld
 		}
 
 		if (edit)
-			pushHistory("Convert guide to hold", prev, score);
-	}
-
-	void ScoreContext::pushHistory(std::string description, const Score& prev, const Score& curr)
-	{
-		history.pushHistory(description, prev, curr);
-
-		//UI::setWindowTitle((workingData.filename.size() ? File::getFilename(workingData.filename)
-		//                                                : windowUntitled) +
-		//                   "*");
-		scoreStats.calculateStats(score);
-
-		upToDate = false;
+			pushHistory("Convert guide to hold");
 	}
 
 	void ScoreContext::convertHoldToNone()
@@ -1861,6 +1796,52 @@ namespace MikuMikuWorld
 			updateSelectionFlag();
 			pushHistory("Convert slides into none");
 		}
+	}
+
+	void ScoreContext::updateViews()
+	{
+		hoveringNotes.clear();
+		notesOrderedView.clear();
+
+		for (auto&& [ID, note] : score.notes)
+		{
+			notesOrderedView.emplace(note.tick, &note);
+		}
+	}
+
+	void ScoreContext::undo()
+	{
+		if (history.hasUndo())
+		{
+			score = history.undo();
+			deselectAll();
+			selectedLayer = std::clamp<id_t>(selectedLayer, 0, score.layers.size() - 1);
+			upToDate = recentHistoryUndo == history.undoCount();
+			updateViews();
+
+			scoreStats.calculateStats(score);
+		}
+	}
+
+	void ScoreContext::redo()
+	{
+		if (history.hasRedo())
+		{
+			score = history.redo();
+			deselectAll();
+			selectedLayer = std::clamp<id_t>(selectedLayer, 0, score.layers.size() - 1);
+			upToDate = recentHistoryUndo == history.undoCount();
+			updateViews();
+
+			scoreStats.calculateStats(score);
+		}
+	}
+
+	void ScoreContext::pushHistory(std::string_view description)
+	{
+		history.pushHistory(History{ std::string(description), score });
+		scoreStats.calculateStats(score);
+		upToDate = false;
 	}
 
 	Note* ScoreContext::insertNote(const Note& note, id_t holdID, bool update)

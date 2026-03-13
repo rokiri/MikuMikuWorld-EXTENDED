@@ -141,6 +141,7 @@ namespace MikuMikuWorld
 		SelectionFlag selectedFlag = SelectionFlag::None;
 
 
+		int recentHistoryUndo = 0;
 		id_t nextNoteID = 0;
 		id_t nextHoldID = 0;
 
@@ -216,7 +217,7 @@ namespace MikuMikuWorld
 		void updateViews();
 		void undo();
 		void redo();
-		void pushHistory(std::string description, const Score& prev, const Score& current);
+		void pushHistory(std::string_view description);
 
 		Note* insertNote(const Note& note, id_t holdID = -1, bool update = true);
 		// Will affect any view that referencing the note, like selection
