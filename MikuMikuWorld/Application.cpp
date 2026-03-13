@@ -42,7 +42,7 @@ namespace MikuMikuWorld
 		IO::initializePlatform(windowState.platfromData, this);
 
 		editor = std::make_unique<ScoreEditor>();
-		// editor->loadPresets(appDir + "library");
+		editor->loadPresets(getConfigPath("library"));
 
 		loadResources();
 
@@ -312,7 +312,7 @@ namespace MikuMikuWorld
 			update();
 		}
 
-		// editor->savePresets(appDir + "library");
+		editor->savePresets(getConfigPath("library"));
 		writeConfiguration();
 	}
 }

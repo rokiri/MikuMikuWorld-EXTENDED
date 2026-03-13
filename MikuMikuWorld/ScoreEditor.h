@@ -21,7 +21,7 @@ namespace MikuMikuWorld
 	  private:
 		ScoreEditorState state;
 		ScoreContext context{};
-		// PresetManager presetManager;
+		PresetManager presetManager;
 		std::unique_ptr<Renderer> renderer;
 		EditorToolbar toolbar;
 		// ScoreEditorTimeline timeline{};
@@ -29,6 +29,7 @@ namespace MikuMikuWorld
 		// ScoreNotePropertiesWindow notePropertiesWindow{};
 		EditArgs edit{};
 		PasteData pasteData;
+		PresetsWindow presetsWindow{};
 		//+ ScoreOptionsWindow optionsWindow{};
 		//+ PresetsWindow presetsWindow{};
 		// DebugWindow debugWindow{};
@@ -68,8 +69,8 @@ namespace MikuMikuWorld
 		void drawMenubar();
 		void help();
 
-		// inline void loadPresets(std::string path) { presetManager.loadPresets(path); }
-		// inline void savePresets(std::string path) { presetManager.savePresets(path); }
+		void loadPresets(const FilePath& path);
+		void savePresets(const FilePath& path);
 
 		void writeSettings();
 		void uninitialize();

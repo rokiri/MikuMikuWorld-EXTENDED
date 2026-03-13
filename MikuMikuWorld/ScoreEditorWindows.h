@@ -68,8 +68,8 @@ namespace MikuMikuWorld
 		DialogResult updateCreationDialog();
 
 	  public:
-		void update(ScoreContext& context, PresetManager& presetManager);
-	};
+		static const char* getWindowName();
+		void update(PresetManager& presetManager, ScoreContext& context, PasteData& pasteData);
 
 	class DebugWindow
 	{

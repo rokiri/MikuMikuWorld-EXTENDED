@@ -108,6 +108,8 @@ namespace MikuMikuWorld
 		std::cout << "No update" << std::endl;
 	}
 
+	void ScoreEditor::loadPresets(const FilePath& path) { presetManager.loadPresets(path); }
+	void ScoreEditor::savePresets(const FilePath& path) { presetManager.savePresets(path); }
 	void ScoreEditor::writeSettings()
 	{
 		//config.masterVolume = context.audio.getMasterVolume();
