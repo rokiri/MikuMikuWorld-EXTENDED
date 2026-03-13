@@ -4,6 +4,7 @@
 #include "Rendering/Renderer.h"
 #include "NoteResource.h"
 #include <memory>
+#include <future>
 
 namespace MikuMikuWorld
 {
@@ -13,13 +14,20 @@ namespace MikuMikuWorld
 		bool wantOpenScore{ false };
 		bool wantExportScore{ false };
 		bool wantSaveScore{ false };
+		bool wantSaveAsScore{ false };
+		bool wantClosing{ false };
 		std::vector<FilePath> pendingOpenFiles;
+		std::vector<id_t> pendingCloseTimelines;
 	};
 
 	class ScoreEditor
 	{
 	  private:
 		ScoreEditorState state;
+		std::map<id_t, ScoreEditorTimeline> timelines;
+		id_t currTimelineId{ 0 };
+		id_t nextTimelineId{ 0 };
+		ScoreEditorTimeline* currTimeline;
 		ScoreContext* currContext;
 		Audio::AudioManager audio;
 		PresetManager presetManager;
@@ -56,12 +64,13 @@ namespace MikuMikuWorld
 
 		void create();
 		void open();
+		void close();
 		void loadScore(std::string filename);
 		void loadMusic(std::string filename);
 		size_t updateRecentFilesList(const std::string& entry);
-		void exportScore();
-		bool saveAs();
-		bool trySave(std::string);
+		void exportScore(ScoreContext& context);
+		bool saveAs(ScoreContext& context);
+		bool save(ScoreContext& context);
 		void autoSave();
 		int deleteOldAutoSave(int count);
 		void appendOpenFile(const FilePath& filepath);

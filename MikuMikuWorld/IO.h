@@ -90,20 +90,20 @@ namespace IO
 		return buf;
 	}
 
-	static std::string formatFixedFloatTrimmed(float value, int precision = 7,
-	                                           const char* format = "%.*f")
+	static bool formatFixedFloatTrimmed(std::string& buf, float value, int precision = 7,
+	                                    const char* format = "%.*f")
 	{
 		auto length = std::snprintf(NULL, 0, format, precision, value) + 1;
 		if (length < 0)
-			return "NaN";
-		std::string buf(length, '\0');
-		std::snprintf(buf.data(), length, format, precision, value);
+			return false;
+		size_t curLength = buf.length();
+		std::snprintf(&buf.append(length, '\0')[curLength], length, format, precision, value);
 		buf.pop_back();
 		// Trim trailing zeros
 		size_t end = buf.find_last_not_of('0');
 		if (end != std::string::npos)
 			buf.erase(buf[end] == '.' ? end : end + 1);
-		return buf;
+		return true;
 	}
 
 	MessageBoxResult messageBox(const std::string& title, const std::string& message,

@@ -11,7 +11,6 @@ namespace MikuMikuWorld
 	{
 	  public:
 		static std::string getCurrentDateTime();
-		static std::string getDivisionString(int div);
 	};
 
 	enum class ResultStatus
@@ -50,53 +49,31 @@ namespace MikuMikuWorld
 		using type = typename std::remove_reference_t<T>::size_type;
 	};
 
-	template <typename ArrayType, typename IndexType, typename SizeType = typename size_type_trait<ArrayType>::type>
-	static auto arrayGetItemSafe(ArrayType& arr, IndexType idx) -> decltype(arr[SizeType(0)])
+	template <typename ArrayType, typename IndexType,
+	          typename SizeType = typename size_type_trait<ArrayType>::type>
+	static auto arrayGetItemSafe(ArrayType& arr, IndexType idx) -> decltype(*std::begin(arr))
 	{
 		SizeType index = static_cast<SizeType>(idx);
 		if (index < 0 || index >= std::size(arr))
-			throw std::runtime_error("Index out of range!");
-		return arr[index];
+			throw std::range_error("Index out of range!");
+		return *std::next(std::begin(arr), index);
 	}
 
-	template <typename ArrayType> static size_t arrayLength(const ArrayType& arr)
+	template <typename Cont>
+	static inline bool isArrayIndexInBounds(size_t index, const Cont& arr)
 	{
-		static_assert(std::is_array_v<ArrayType>);
-		return (sizeof(arr) / sizeof(arr[0]));
+		return index >= 0 && index < std::size(arr);
 	}
 
-	template <typename Array>
-	static inline bool isArrayIndexInBounds(size_t index, const Array& arr)
+	template <typename ArrayType, typename ValueType, typename RetType>
+	static RetType arrayFindOrDefault(ArrayType& arr, ValueType&& val, RetType def)
 	{
-		return index >= 0 && index < arrayLength(arr);
-	}
-
-	template <typename T>
-	static inline bool isArrayIndexInBounds(size_t index, const std::vector<T>& arr)
-	{
-		return index >= 0 && index < arr.size();
-	}
-
-	template <typename Type>
-	static size_t findArrayItem(const Type& item, const Type array[], size_t length)
-	{
-		for (int i = 0; i < length; i++)
-		{
-			if (array[i] == item)
-				return i;
-		}
-
-		return -1;
-	}
-
-	static size_t findArrayItem(const char* item, const char* const array[], size_t length)
-	{
-		for (int i = 0; i < length; i++)
-		{
-			if (!strcmp(item, array[i]))
-				return i;
-		}
-
-		return -1;
+		typename size_type_trait<ArrayType>::type i = 0;
+		for (auto&& item : arr)
+			if (item == val)
+				return static_cast<RetType>(i);
+			else
+				++i;
+		return def;
 	}
 }

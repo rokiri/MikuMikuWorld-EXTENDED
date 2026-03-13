@@ -1,319 +1,274 @@
 #pragma once
 #include "Background.h"
-#include "Constants.h"
-#include "ImGui/imgui_internal.h"
-#include "Rendering/Camera.h"
+#include "ScoreContext.h"
 #include "Rendering/Framebuffer.h"
 #include "Rendering/Renderer.h"
-#include "ScoreContext.h"
-#include "TimelineMode.h"
+#include <variant>
+#include <future>
 
 namespace MikuMikuWorld
 {
-	void scrollTimeline(ScoreContext& context, const int tick);
-	enum class StepDrawType
-	{
-		NormalStep,
-		SkipStep,
-		InvisibleHold,
-		InvisibleHoldCritical,
-		GuideNeutral,
-		GuideRed,
-		GuideGreen,
-		GuideBlue,
-		GuideYellow,
-		GuidePurple,
-		GuideCyan,
-		GuideBlack,
-		StepDrawTypeMax
-	};
-
-	constexpr std::array<ImU32, (int)StepDrawType::StepDrawTypeMax> stepDrawOutlineColors[] = {
-		0xFFAAFFAA, 0xFFFFFFAA, 0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC,
-		0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC, 0xFFCCCCCC
-	};
-
-	constexpr std::array<ImU32, (int)StepDrawType::StepDrawTypeMax> stepDrawFillColors[] = {
-		0x00FFFFFF, 0x00FFFFFF, 0xFF66B622, 0xFF15A0C9, 0xFFEDEDED, 0xFF7B73D6,
-		0xFF9DD673, 0xFFD67B73, 0xFF73CED6, 0xFFCD73D6, 0xFFD6AC73, 0xFF000000
-	};
-
-	class StepDrawData
-	{
-	  public:
-		int tick{};
-		float lane{};
-		float width{};
-		StepDrawType type{};
-
-		int layer = -1;
-
-		StepDrawData() {}
-		StepDrawData(int _tick, float _lane, float _width, StepDrawType _type, int layer = -1)
-		    : tick{ _tick }, lane{ _lane }, width{ _width }, type{ _type }, layer{ layer }
-		{
-		}
-
-		StepDrawData(const Note& n, StepDrawType _type, int layer = -1)
-		    : tick{ n.tick }, lane{ n.lane }, width{ n.width }, type{ _type }, layer{ layer }
-		{
-		}
-
-		inline constexpr ImU32 getFillColor() const { return stepDrawFillColors->at((int)type); }
-		inline constexpr ImU32 getOutlineColor() const
-		{
-			return stepDrawOutlineColors->at((int)type);
-		}
-	};
+	using EventArgs = std::variant<Tempo, HiSpeed, TimeSignature, Waypoint>;
 
 	class ScoreEditorTimeline
 	{
+	  public:
+		ScoreContext context;
+
+		void update(EditArgs& edit, PasteData& pasteData);
+		void updateInBackground();
+
+		int getQuarterDivision() const noexcept;
+		void setQuarterDivision(int division);
+		float getLaneDivision() const noexcept;
+		void setLaneDivision(float division);
+		bool isPlaying() const;
+		void setPlaying(bool playing);
+		void stop();
+		float getPlaybackSpeed() const noexcept;
+		void setPlaybackSpeed(float speed);
+		void jumpToPrevDivision();
+		void jumpToNextDivision();
+		void scrollToCursor(float direction = 0);
+		void scrollTo(secs_t time, float pivot = -1);
+		ImVec2 getZoom() const;
+		void setZoomY(float newZoomY, float pivot = -1);
+		void openEvent(const EventArgs& args);
+
+		void loadMusic(const std::string& filename);
+		void loadScore(Score score, ScoreMetadata metadata, const std::string& filename);
+
+		ScoreEditorTimeline(id_t id, Audio::AudioManager& manager);
+		const char* getWindowName() const;
+		void setWindowName(std::string_view name);
+
+		secs_t getCurrentTime() const;
+		tick_t getCurrentTick() const;
+		measure_t getCurrentMeasure() const;
+
 	  private:
-		int noteCutoffX = 30;
-		int noteSliceWidth = 90;
-		int noteOffsetX = 5;
-		int notesSliceSize = 18;
-		int holdCutoffX = 33;
-		int holdSliceWidth = 10;
-		int holdSliceSize = 5;
+		enum DrawChannel
+		{
+			Channel_Hold,
+			Channel_Guide,
+			Channel_HoldOutline,
+			Channel_TapNote,
+			Channel_Outline,
+			Channel_Friction,
+			Channel_Arrow,
 
-		TimelineMode currentMode{ TimelineMode::Select };
-		float laneOffset{};
-		float maxOffset = 10000;
-		float minOffset{};
-		float offset{};
-		float visualOffset{};
-		float scrollStartY{};
-		float zoom = 1.0f;
+			Channel_Base,
+			Channel_Hover = Channel_Base * 2,
+			Channel_Count = Channel_Base * 3
+		};
+		void drawTimeline(ImDrawList* drawList);
+		void drawTapNote(ImDrawList* drawList, const Note& note, const Color& tint, int baseChannel,
+		                 const NotesContext& notesContext, float laneOffset = 0,
+		                 tick_t tickOffset = 0);
+		void drawTickNote(ImDrawList* drawList, const Note& note, const Color& tint,
+		                  int baseChannel, const NotesContext& notesContext, float laneOffset = 0,
+		                  tick_t tickOffset = 0);
+		void drawNoteOutline(ImDrawList* drawList, const Note& note, const Color& outline,
+		                     const Color& fill, int baseChannel, float laneOffset = 0,
+		                     tick_t tickOffset = 0);
+		void drawNote(ImDrawList* drawList, const Note& note, const Color& tint, int baseChannel,
+		              const NotesContext& notesContext, float laneOffset = 0,
+		              tick_t tickOffset = 0);
+		void drawHoldCurve(ImDrawList* drawList, const Note& start, const Note& end,
+		                   const HoldNoteStep& holdStep, float startPercent, float endPercent,
+		                   const Color& startTint, const Color& endTint, int baseChannel,
+		                   float laneOffset = 0, tick_t tickOffset = 0);
+		using CanNoteDrawFunc = bool (*)(const Note&, void* args);
+		using GetColorFunc = Color (*)(const Note&, void* args);
+		using GetChannelFunc = DrawChannel (*)(const Note&, void* args);
+		void drawHoldNote(ImDrawList* drawList, const HoldNote& hold,
+		                  const NotesContext& notesContext, tick_t startTick, tick_t endTick,
+		                  CanNoteDrawFunc canDraw, GetColorFunc getTint, GetChannelFunc getChannel,
+		                  void* args = nullptr, float laneOffset = 0, tick_t tickOffset = 0);
 
-		static constexpr float unitHeight = 0.15f;
-		static constexpr float scrollUnit = 50;
-		static constexpr float minZoom = 0.25f;
-		static constexpr float maxZoom = 1920.0f;
-		static constexpr double waveformSecondsPerPixel = 0.005;
-		static constexpr float noteControlWidth = 12;
+		void drawWaveform(ImDrawList* drawList, ImU32 waveformColor,
+		                  const Audio::WaveformMipChain& waveform, float secondsPerPixel,
+		                  float direction);
 
-		static constexpr float minPlaybackSpeed = 0.25f;
-		static constexpr float maxPlaybackSpeed = 1.00f;
+		using NoteTransformValidator = bool (ScoreEditorTimeline::*)(const Note&, EditArgs&);
+		using NoteTransformer = void (ScoreEditorTimeline::*)(Note&, EditArgs&);
+		void noteControl(const char* id, Note& note, const ImVec2& pos, const ImVec2& size,
+		                 EditArgs& edit, ImGuiMouseCursor cursor, NoteTransformValidator validator,
+		                 NoteTransformer transformer);
+		bool canNoteResizeL(const Note& note, EditArgs& edit);
+		void noteResizeL(Note& note, EditArgs& edit);
+		bool canNoteResizeR(const Note& note, EditArgs& edit);
+		void noteResizeR(Note& note, EditArgs& edit);
+		bool canNoteMove(const Note& note, EditArgs& edit);
+		void noteMove(Note& note, EditArgs& edit);
+		void noteSelector();
+		id_t findHoveringHoldNote();
 
-		float minNoteYDistance{};
-		int hoverLane{};
-		int hoverTick{};
-		id_t hoveringNote{};
-		id_t holdingNote{};
-		int holdLane{};
-		int holdTick{};
-		int lastSelectedTick{};
-		int division = 8;
+		static bool eventControl(ImDrawList* drawList, const char* txt, ImU32 color, float xMin,
+		                         float y, bool enabled);
+		bool bpmControl(ImDrawList* drawList, const Tempo& tempo, bool enable = true);
+		bool timeSignatureControl(ImDrawList* drawList, const TimeSignature& ts,
+		                          bool enabled = true);
+		bool hiSpeedControl(ImDrawList* drawList, const HiSpeed& hispeed, bool selected,
+		                    bool enabled = true);
+		bool skillControl(ImDrawList* drawList, tick_t tick, bool enabled = true);
+		bool feverControl(ImDrawList* drawList, const Fever& fever, bool enabled = true);
+		bool waypointControl(ImDrawList* drawList, const Waypoint& waypoint, bool enabled = true);
+
+		Tempo getPreviewTempo(const EditArgs& edit) const;
+		TimeSignature getPreviewTimeSignatrue(const EditArgs& edit) const;
+		HiSpeed getPreviewHispeed(const EditArgs& edit) const;
+		void eventEditor();
+
+		void updateTimelineOffset();
+		void updateContextMenu(PasteData& pasteData);
+		void updateStatusBar();
+		void updateScrollBar(ImDrawList* drawList);
+		void updatePlayback();
+		void updateNotes(ImDrawList* drawList, EditArgs& edit, PasteData& pasteData);
+		void updateNote(Note& note, EditArgs& edit);
+		void updatePreviewNote(EditArgs& edit);
+		void updateScoreEvents(ImDrawList* drawList, EditArgs& edit, PasteData& pasteData);
+		void debug();
+
+	  private:
+		ImVec2 absScreenPos;
+		ImVec2 maxScreenPos;
+		ImVec2 timelineScreenPos;
+		ImVec2 timelineScreenSize;
+		ImVec2 timelinePos;
+		ImVec2 timelineSize;
+		ImVec2 leftPanelScreenPos;
+		ImVec2 rightPanelScreenPos;
+		ImVec2 panelScreenSize;
+		ImVec2 toolbarScreenPos;
+
+		ImVec2 targetOffset = { 0, 0 };
+		ImVec2 visualOffset = { 0, 0 };
+		secs_t prevTime = 0;
+		secs_t curTime = 0;
+		secs_t lastFrameTime = 0;
+		secs_t maxTime = 18;
+		float zoomX = 1.0f;
+		float zoomY = 2.0f;
+		float laneDivision = 1; // 1 = 12 lanes
+		int quarterDivision = 2;
+		tick_t mouseTick = 0;
+		float mouseLane = 0;
+		tick_t shiftingTick = 0;
+		float shiftingLane = 0;
+		secs_t dragStartTime = 0;
+		float dragStartLane = 0;
+		float playbackSpeed = 1;
+		float noteHeight = MIN_NOTES_HEIGHT;
+		float selectHoverTimer = 0.5f;
+		id_t grabbingNote = -1;
+		tick_t snapTick{};
+		tick_t inputTick{};
+		float inputLane{};
+		float hispeedPanelStartX{};
+		float hispeedExPanelStartX{};
+
+		const id_t windowID;
+		const std::string windowNameKey;
+		std::string windowName;
+
+		bool mouseClicked = false;
+		bool mouseInTimeline = false;
+		bool playing = false;
+		bool snapToTargetTime = false;
+		bool isInsertingNote = false;
+		bool isInsertingHold = false;
+		bool isInsertingEvent = false;
+		bool isDragSelecting = false;
+		bool isMovingNote = false;
+		bool shouldOpenEventEditor = false;
+		bool drawHoldStepOutlines = true;
 		SnapMode snapMode = SnapMode::Relative;
+		InsertMode insMode = InsertMode::Select;
 
-		bool mouseInTimeline{ false };
-		bool isHoveringNote{ false };
-		bool isHoldingNote{ false };
-		bool isMovingNote{ false };
-		bool skipUpdateAfterSortingSteps{ false };
-		bool dragging{ false };
-		bool insertingHold{ false };
-
-		float time{};
-		float timeLastFrame{};
-		float playStartTime{};
-		float songPos{};
-		float songPosLastFrame{};
-		float playbackSpeed{ 1.0f };
-		bool playing{ false };
-
-		Camera camera;
-		std::unique_ptr<Framebuffer> framebuffer;
-		ImVec2 size;
-		ImVec2 position;
-		ImVec2 prevPos;
-		ImVec2 prevSize;
-		ImRect boundaries;
-
-		ImVec2 ctrlMousePos;
-		ImVec2 dragStart;
-		ImVec2 mousePos;
-
-		Score prevUpdateScore;
-
-		struct InputNotes
-		{
-			Note tap;
-			Note holdStart;
-			Note holdEnd;
-			Note holdStep;
-			Note damage;
-		} inputNotes{ Note(NoteType::Tap), Note(NoteType::Hold), Note(NoteType::HoldEnd),
-			          Note(NoteType::HoldMid), Note(NoteType::Damage) };
-
-		struct NoteTransform
-		{
-			int tick{};
-
-			float lane{}, width{};
-
-			static NoteTransform fromNote(const Note& note)
-			{
-				return NoteTransform{ note.tick, note.lane, note.width };
-			}
-
-			bool isSame(const Note& note) const
-			{
-				return tick == note.tick && lane == note.lane && width == note.width;
-			}
-
-		} noteTransformOrigin;
-
-		std::vector<StepDrawData> drawSteps;
+		NotesContext previewNotes;
+		EventArgs eventEditArgs;
+		Background background;
+		ImDrawListSplitter drawSplitter;
+		std::future<void> loadMusicFuture;
 		std::unordered_set<std::string> playingNoteSounds;
-		static constexpr float audioOffsetCorrection = 0.02f;
-		static constexpr float audioLookAhead = 0.05f;
-
-		void updateScrollbar();
-		void updateScrollingPosition();
-
-		void drawWaveform(ScoreContext& context);
-
-		void drawHoldCurve(const Note& n1, const Note& n2, EaseType ease, bool isGuide,
-		                   bool isDummy, Renderer* renderer, const Color& tint,
-		                   const int offsetTick = 0, const int offsetLane = 0,
-		                   const float startAlpha = 1, const float endAlpha = 1,
-		                   const GuideColor guideColor = GuideColor::Green,
-		                   const int selectedLayer = -1);
-		void drawHoldNote(const std::unordered_map<id_t, Note>& notes, const HoldNote& note,
-		                  Renderer* renderer, const Color& tint, const int selectedLayer = -1,
-		                  const int offsetTicks = 0, const int offsetLane = 0);
-		void drawHoldMid(Note& note, HoldStepType type, Renderer* renderer, const Color& tint,
-		                 const bool selectedLayer = true);
-		void drawOutline(const StepDrawData& data, const int selectedLayer = -1);
-		void drawFlickArrow(const Note& note, Renderer* renderer, const Color& tint,
-		                    const int offsetTick = 0, const int offsetLane = 0,
-		                    const bool selectedLayer = true);
-		void drawDummyCrossMark(const Note& note, Renderer* renderer, const Color& tint,
-		                        const int offsetTick = 0, const int offsetLane = 0,
-		                        const bool selectedLayer = true);
-
-		void drawNote(const Note& note, Renderer* renderer, const Color& tint,
-		              const int offsetTick = 0, const int offsetLane = 0,
-		              const bool selectedLayer = true);
-		void drawCcNote(const Note& note, Renderer* renderer, const Color& tint,
-		                const int offsetTick = 0, const int offsetLane = 0,
-		                const bool selectedLayer = true);
-		bool noteControl(ScoreContext& context, const Note& note, const ImVec2& pos,
-		                 const ImVec2& sz, const char* id, ImGuiMouseCursor cursor);
-		bool bpmControl(const ScoreContext& context, const Tempo& tempo);
-		bool bpmControl(const ScoreContext& context, float bpm, int tick, bool enabled);
-		bool timeSignatureControl(const ScoreContext& context, int numerator, int denominator,
-		                          int tick, bool enabled);
-		bool skillControl(const ScoreContext& context, const SkillTrigger& skill);
-		bool skillControl(const ScoreContext& context, int tick, bool enabled);
-		bool feverControl(const ScoreContext& context, const Fever& fever);
-		bool feverControl(const ScoreContext& context, int tick, bool start, bool enabled);
-		bool hiSpeedControl(const ScoreContext& context, const HiSpeedChange& hiSpeed);
-		bool hiSpeedControl(const ScoreContext& context, int tick, float speed, int layer,
-		                    float skip, HiSpeedEaseType ease, bool hideNotes,
-		                    bool selected = false);
-		bool waypointControl(const ScoreContext& context, const Waypoint& waypoint);
-		bool waypointControl(const ScoreContext& context, std::string name, int tick);
-
-		void drawInputNote(Renderer* renderer);
-		void previewInput(const ScoreContext& context, EditArgs& edit, Renderer* renderer);
-		void previewPaste(ScoreContext& context, Renderer* renderer);
-		void executeInput(ScoreContext& context, EditArgs& edit);
-		void eventEditor(ScoreContext& context);
-
-		void insertNote(ScoreContext& context, EditArgs& edit);
-		void insertHold(ScoreContext& context, EditArgs& edit);
-		void insertHoldStep(ScoreContext& context, EditArgs& edit, int holdId);
-		void insertEvent(ScoreContext& context, EditArgs& edit);
-		void insertDamage(ScoreContext& context, EditArgs& edit);
-
-		void updateNoteSE(ScoreContext& context);
-
-		void contextMenu(ScoreContext& context);
 
 	  public:
-		float laneWidth = 26;
-		float notesHeight = 28;
-		bool drawHoldStepOutlines = true;
-		Background background;
+		constexpr static float ORIGIN_X = 6.f;
+		constexpr static float ORIGIN_Y = 1.f;
+		constexpr static float UNIT_X = 16.f; // = 16 lanes
+		constexpr static float UNIT_Y = 5.f;  // = 5 seconds
+		constexpr static float ZOOM_Y_MIN = 1 / 4.f;
+		constexpr static float ZOOM_Y_MAX = 64.f;
+		constexpr static float ZOOM_Y_WHEEL_MAX = 192.f;
+		constexpr static float ZOOM_Y_FACTOR = 1.25f;
+		constexpr static float TIMELINE_SIZE_FACTOR = 0.55f;
+		constexpr static float PANEL_SIZE_MIN = 175; // px
+		constexpr static float WHEEL_FACTOR = 0.25f;
+		constexpr static float PAN_FACTOR = 0.05f;
+		constexpr static float TIMELINE_SCREEN_Y_MIN_OFFSET = 30; // px
 
-		struct EventEditParams
+		constexpr static float MEASURE_X_OFFSET = 30;
+		constexpr static float BEAT_X_OFFSET = 12;
+		constexpr static float PLAYBACK_CURSOR_SIZE = 12;
+
+		constexpr static int NUM_LANES = 12;
+		constexpr static int MIN_LANE_WIDTH = 24;
+		constexpr static int MAX_LANE_WIDTH = 72;
+		constexpr static int MIN_NOTES_HEIGHT = 24;
+		constexpr static int MAX_NOTES_HEIGHT = 72;
+
+		constexpr static float NOTE_CTRL_WIDTH = 12;
+		constexpr static float NOTE_SIDE_PADDING = 5;
+		constexpr static float NOTE_SIDE_WIDTH = 18;
+		constexpr static float HOLD_PATH_PADDING = 2;
+		constexpr static float HOLD_NOTE_SIDE_WIDTH = 5;
+		constexpr static float HOLD_MID_PADDING = 5;
+
+		constexpr static int QUART_DIVISIONS[]{ 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 480 };
+		constexpr static int LANE_DIVISIONS[]{ 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 96, 192 };
+
+		constexpr static float MIN_PLAYBACK_SPEED = 0.25f;
+		constexpr static float MAX_PLAYBACK_SPEED = 1.00f;
+
+		constexpr static float AUDIO_LOOK_AHEAD = 0.05f;
+		constexpr static float AUDIO_CORRECTION_OFFSET = 0.02f;
+
+		enum StepType
 		{
-			EventType type = EventType::None;
-			id_t editId = static_cast<id_t>(-1);
+			Step_Normal,
+			Step_Skip,
+			Step_Hidden,
+			Step_HiddenCritical,
+			Step_GuideNeutral,
+			Step_GuideRed,
+			Step_GuideGreen,
+			Step_GuideBlue,
+			Step_GuideYellow,
+			Step_GuidePurple,
+			Step_GuideCyan,
+			Step_GuideBlack,
+			Step_Max
+		};
 
-			float editBpm = 120.0f;
-			int editTimeSignatureNumerator = 4;
-			int editTimeSignatureDenominator = 4;
+		constexpr static const char windowUntitled[] = "Untitled";
 
-			float editHiSpeed = 1.0f;
-			float editHiSpeedSkip = 0.0f;
-			HiSpeedEaseType editHiSpeedEase = HiSpeedEaseType::None;
-			bool editHiSpeedHideNote = false;
-
-			std::string editName = "";
-		} eventEdit{};
-
-		int snapTickFromPos(double posY) const;
-		int positionToTick(double pos) const;
-		float tickToPosition(int tick) const;
-		float getNoteYPosFromTick(int tick) const;
-
-		int laneFromCenterPosition(const ScoreContext& context, int lane, int width);
-		float positionToLane(float pos) const;
-		float laneToPosition(float lane) const;
-
-		const inline float getTimelineStartX() const { return position.x + laneOffset; }
-		const inline float getTimelineEndX() const
-		{
-			return getTimelineStartX() + (laneWidth * 12);
-		}
-		const inline float getTimelineStartX(const ScoreContext& context) const
-		{
-			return getTimelineStartX() - (laneWidth * context.workingData.laneExtension);
-		}
-		const inline float getTimelineEndX(const ScoreContext& context) const
-		{
-			return getTimelineEndX() + (laneWidth * context.workingData.laneExtension);
-		}
-
-		constexpr inline float getZoom() const { return zoom; }
-		void setZoom(float zoom);
-
-		constexpr inline int getDivision() const { return division; }
-		void setDivision(int div) { division = std::clamp(div, 4, 1920); }
-
-		constexpr inline bool isMouseInTimeline() const { return mouseInTimeline; }
-		bool isNoteVisible(const Note& note, int offsetTicks = 0) const;
-
-		int findClosestHold(ScoreContext& context, int lane, int tick);
-		bool isMouseInHoldPath(const Note& n1, const Note& n2, EaseType ease, float x, float y);
-		constexpr inline bool isPlaying() const { return playing; }
-		void setPlaying(ScoreContext& context, bool state);
-		void stop(ScoreContext& context);
-		void calculateMaxOffsetFromScore(const Score& score);
-
-		void update(ScoreContext& context, EditArgs& edit, Renderer* renderer);
-		void updateNotes(ScoreContext& context, EditArgs& edit, Renderer* renderer);
-		void updateNote(ScoreContext& context, EditArgs& edit, Note& note);
-		void updateInputNotes(const ScoreContext& context, EditArgs& edit);
-		void debug(ScoreContext& context);
-
-		void previousTick(ScoreContext& context);
-		void nextTick(ScoreContext& context);
-		int roundTickDown(int tick, int division);
-		void focusCursor(ScoreContext& context, Direction direction);
-
-		constexpr inline TimelineMode getMode() const { return currentMode; }
-		void changeMode(TimelineMode mode, EditArgs& edit);
-
-		constexpr inline float getPlaybackSpeed() const { return playbackSpeed; }
-		void setPlaybackSpeed(ScoreContext& context, float speed);
-
-		void scrollTimeline(ScoreContext& context, const int tick);
-
-		ScoreEditorTimeline();
+	  private:
+		ImVec2 screenCenter() const noexcept;
+		float screenCenterX() const noexcept;
+		float screenCenterY() const noexcept;
+		// Translate position from the timeline pos to absolute screen pos and vice versa
+		ImVec2 toScreen(ImVec2 pos) const noexcept;
+		float toScreenPosX(float lane) const noexcept;
+		float toScreenPosY(secs_t secs) const noexcept;
+		ImVec2 fromScreen(ImVec2 screenPos) const noexcept;
+		float toLanePos(float screenX) const noexcept;
+		secs_t toTimePos(float screenY) const noexcept;
+		// Translate units from the timeline to the screen
+		float toScreenWidth(float lanes) const noexcept;
+		float toScreenHeight(secs_t secs) const noexcept;
+		float toLaneUnit(float width) const noexcept;
+		secs_t toTimeUnit(float height) const noexcept;
 	};
 }

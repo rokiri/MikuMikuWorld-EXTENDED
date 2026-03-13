@@ -27,8 +27,6 @@ namespace MikuMikuWorld
 		audio.setSoundEffectsVolume(config.seVolume);
 		audio.loadSoundEffects();
 		audio.setSoundEffectsProfileIndex(config.seProfileIndex);
-		//timeline.setDivision(config.division);
-		//timeline.setZoom(config.zoom);
 
 		autoSavePath = Application::getInstance().getConfigPath("auto_save");
 		// autoSaveTimer.reset();
@@ -114,8 +112,6 @@ namespace MikuMikuWorld
 		config.masterVolume = audio.getMasterVolume();
 		config.bgmVolume = audio.getMusicVolume();
 		config.seVolume = audio.getSoundEffectsVolume();
-		//config.division = timeline.getDivision();
-		//config.zoom = timeline.getZoom();
 	}
 
 	void ScoreEditor::uninitialize()
@@ -169,6 +165,33 @@ namespace MikuMikuWorld
 		//serializeWindow.update(*this, context, timeline);
 		if (getConfig().debugEnabled)
 			debugWindow.update(audio);
+
+		ImGuiWindow* dockSpace = ImGui::FindWindowByName("InvisibleWindow");
+		ImGuiID dockSpaceId = dockSpace ? dockSpace->GetID("InvisibleWindowDockSpace") : 0;
+		constexpr auto timelineFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+										ImGuiWindowFlags_NoScrollWithMouse;
+		for (auto&& [id, timeline] : timelines)
+		{
+			bool closing = false;
+			if (dockSpace)
+				ImGui::SetNextWindowDockID(dockSpaceId, ImGuiCond_Once);
+			auto extraFlags = timeline.context.upToDate ? 0 : ImGuiWindowFlags_UnsavedDocument;
+			if (ImGui::Begin(timeline.getWindowName(), &closing, timelineFlags | extraFlags))
+			{
+				if (ImGui::IsWindowFocused())
+					currTimelineId = id;
+
+				timeline.update(edit, pasteData);
+			}
+			else
+			{
+				timeline.updateInBackground();
+			}
+			ImGui::End();
+
+			if (closing)
+				state.pendingCloseTimelines.push_back(id);
+		}
 
 		constexpr auto propWindowFlags =
 		    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing;
@@ -369,22 +392,12 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::create()
 	{
-		//timeline.setPlaying(context, false);
-
-		//context.score = {};
-		//context.selectedLayer = 0;
-		//context.workingData = {};
-		//context.history.clear();
-		//context.scoreStats.reset();
-		//context.audio.disposeMusic();
-		//context.waveformL.clear();
-		//context.waveformR.clear();
-		//context.clearSelection();
-
-		//// New score; nothing to save
-		//context.upToDate = true;
-
-		//UI::setWindowTitle(windowUntitled);
+		currTimelineId = nextTimelineId++;
+		auto&& timelineIt = timelines.emplace_hint(timelines.end(), currTimelineId,
+		                                           ScoreEditorTimeline(currTimelineId, audio));
+		const auto& config = getConfig();
+		timelineIt->second.setQuarterDivision(config.division);
+		timelineIt->second.setZoomY(config.zoom);
 	}
 
 	void ScoreEditor::loadScore(std::string filename)
@@ -398,24 +411,11 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::loadMusic(std::string filename)
 	{
-		//Result result = context.audio.loadMusic(filename);
-		//if (result.isOk() || filename.empty())
-		//{
-		//	context.workingData.musicFilename = filename;
-		//}
-		//else
-		//{
-		//	std::string errorMessage = IO::formatString(
-		//	    "%s\n%s: %s\n%s: %s", getString("error_load_music_file"), getString("music_file"),
-		//	    filename.c_str(), getString("error"), result.getMessage().c_str());
-
-		//	IO::messageBox(APP_NAME, errorMessage, IO::MessageBoxButtons::Ok,
-		//	               IO::MessageBoxIcon::Error);
-		//}
-
-		//context.waveformL.generateMipChainsFromSampleBuffer(context.audio.musicBuffer, 0);
-		//context.waveformR.generateMipChainsFromSampleBuffer(context.audio.musicBuffer, 1);
-		//timeline.setPlaying(context, false);
+		if (currContext)
+		{
+			currContext->isPendingLoadMusic = true;
+			currContext->pendingLoadMusicFilename = std::move(filename);
+		}
 	}
 
 	void ScoreEditor::open()
@@ -436,19 +436,13 @@ namespace MikuMikuWorld
 			loadScore(fileDialog.outputFilename);
 	}
 
-	bool ScoreEditor::trySave(std::string filename)
-	{
-		if (filename.empty())
-			return saveAs();
-		else
-			return save(filename);
+	void ScoreEditor::close() { state.wantClosing = true; }
 
-		return false;
-	}
-
-	bool ScoreEditor::save(std::string filename)
+	bool ScoreEditor::save(ScoreContext& context)
 	{
-		//try
+		if (context.filename.empty())
+			return saveAs(context);
+		// try
 		//{
 		//	context.score.metadata = context.workingData.toScoreMetadata();
 		//	NativeScoreSerializer().serialize(context.score, filename);
@@ -468,15 +462,15 @@ namespace MikuMikuWorld
 		return true;
 	}
 
-	bool ScoreEditor::saveAs()
+	bool ScoreEditor::saveAs(ScoreContext& context)
 	{
-		//IO::FileDialog fileDialog{};
-		//fileDialog.title = "Save Chart";
-		//fileDialog.filters = { IO::mmwsFilter };
-		//fileDialog.defaultExtension = "ucmmws";
-		//fileDialog.parentWindowHandle = Application::getAppWindowHandle();
-		//fileDialog.inputFilename =
-		//    IO::File::getFilenameWithoutExtension(context.workingData.filename);
+		// IO::FileDialog fileDialog{};
+		// fileDialog.title = "Save Chart";
+		// fileDialog.filters = { IO::mmwsFilter };
+		// fileDialog.defaultExtension = "ucmmws";
+		// fileDialog.parentWindowHandle = Application::getAppWindowHandle();
+		// fileDialog.inputFilename =
+		//     IO::File::getFilenameWithoutExtension(context.workingData.filename);
 
 		//if (fileDialog.saveFile() == IO::FileDialogResult::OK)
 		//{
@@ -491,7 +485,7 @@ namespace MikuMikuWorld
 		return false;
 	}
 
-	void ScoreEditor::exportScore()
+	void ScoreEditor::exportScore(ScoreContext& context)
 	{
 		//SerializeFormat format = static_cast<SerializeFormat>(config.defaultExportFormat);
 		//if (ScoreSerializeController::isValidFormat(format))

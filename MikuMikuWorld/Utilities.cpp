@@ -19,9 +19,4 @@ namespace MikuMikuWorld
 
 		return buf;
 	}
-
-	std::string Utilities::getDivisionString(int div)
-	{
-		return IO::formatString(localize(Text::division), div);
-	}
 }

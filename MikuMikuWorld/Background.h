@@ -1,6 +1,7 @@
 #pragma once
 #include "Rendering/Texture.h"
 #include "Rendering/Framebuffer.h"
+#include "ImGui/imgui.h"
 #include <string>
 #include <memory>
 
@@ -15,39 +16,34 @@ namespace MikuMikuWorld
 	  private:
 		std::string filename;
 		std::unique_ptr<Texture> texture;
-		std::unique_ptr<Framebuffer> framebuffer;
+		//std::unique_ptr<Framebuffer> framebuffer;
 
-		float blur;
 		float brightness;
 
 		float width;
 		float height;
 
-		bool dirty;
-		bool useJacketBg;
-
-		void resizeByRatio(float& w, float& h, const Vector2& tgt, bool vertical);
+		//bool dirty;
 
 	  public:
 		Background();
 
 		void load(const std::string& filename);
-		void resize(Vector2 target);
-		void process(Renderer* renderer);
+		//void resize(Vector2 target);
+		//void process(Renderer* renderer);
+		void draw(Renderer* renderer, float scrWidth, float scrHeight);
+		void draw(ImDrawList* drawList, ImVec2 min, ImVec2 max) const;
 		void dispose();
 
 		std::string getFilename() const;
 
 		int getWidth() const;
 		int getHeight() const;
-		int getTextureID() const;
-
-		float getBlur() const;
-		void setBlur(float b);
+		//int getTextureID() const;
 
 		float getBrightness() const;
 		void setBrightness(float b);
 
-		bool isDirty() const;
+		//bool isDirty() const;
 	};
 }

@@ -1133,6 +1133,211 @@ namespace MikuMikuWorld
 			pushHistory("Paste notes");
 	}
 
+	bool ScoreContext::canMoveNoteSelection(tick_t& ticks, int quarterDivision, float& lanes,
+	                                        float laneDivision, SnapMode snapMode)
+	{
+		const float laneMin = minLane();
+		switch (snapMode)
+		{
+		default:
+		case SnapMode::Relative:
+			if (lanes == 0 && ticks == 0)
+				return false;
+			for (auto&& [_, pnote] : selectedNotes)
+			{
+				const Note& n = *pnote;
+				float lane = n.lane + lanes;
+				tick_t tick = n.tick + ticks;
+				if (!isWithinRange(lane, laneMin, maxLane(n.width)))
+				{
+					lanes = std::clamp(lanes, laneMin - n.lane, maxLane(n.width) - n.lane);
+					if (lanes == 0 && ticks == 0)
+						return false;
+				}
+				if (tick < 0)
+				{
+					ticks = std::max(ticks, -n.tick);
+					if (lanes == 0 && ticks == 0)
+						return false;
+				}
+			}
+			return true;
+		case SnapMode::Absolute:
+			if (lanes == 0 && ticks == 0)
+				return false;
+			for (auto&& [_, pnote] : selectedNotes)
+			{
+				const Note& n = *pnote;
+				float lane = n.lane + lanes;
+				tick_t tick = n.tick + ticks;
+				if (!isWithinRange(lane, laneMin, maxLane(n.width)))
+				{
+					lanes = std::clamp(lanes, laneMin - n.lane, maxLane(n.width) - n.lane);
+					if (lanes == 0 && ticks == 0)
+						return false;
+				}
+				if (tick < 0)
+				{
+					ticks = std::max(ticks, -n.tick);
+					if (lanes == 0 && ticks == 0)
+						return false;
+				}
+			}
+			return true;
+		case SnapMode::IndividualAbsolute:
+		{
+			if (lanes == 0 && ticks == 0)
+				return false;
+			constexpr auto noop = [](float x) { return x; };
+			float (*laneSnapFn)(float) = lanes > 0 ? ceilf : floorf;
+			float (*quatSnapFn)(float) = ticks > 0 ? ceilf : floorf;
+			if (ticks == 0 && lanes == 0)
+				return false;
+			else if (lanes == 0)
+				laneSnapFn = noop;
+			else if (ticks == 0)
+				quatSnapFn = noop;
+			float offsetLane = laneSnapFn(lanes * laneDivision) / laneDivision;
+			tick_t offsetTick = quartersToTicks(
+			    quatSnapFn(ticksToQuarters(ticks) * quarterDivision) / quarterDivision);
+			for (auto&& [_, pnote] : selectedNotes)
+			{
+				const Note& n = *pnote;
+				float lane = laneSnapFn(n.lane * laneDivision) / laneDivision;
+				tick_t tick = quartersToTicks(
+				    quatSnapFn(ticksToQuarters(n.tick) * quarterDivision) / quarterDivision);
+				if (n.lane == lane && lanes != 0)
+					lane += offsetLane;
+				if (n.tick == tick && ticks != 0)
+					tick += offsetTick;
+				if (!isWithinRange(lane, laneMin, maxLane(n.width)) || tick < 0)
+					return false;
+			}
+			return true;
+		}
+		}
+	}
+
+	void ScoreContext::moveNoteSelection(tick_t ticks, int quarterDivision, float lanes,
+	                                     float laneDivision, SnapMode snapMode, bool update)
+	{
+		std::vector<NoteOrderedCollection::node_type> updatingNodes;
+		updatingNodes.reserve(selectedNotes.size());
+		for (auto&& [ID, pnote] : selectedNotes)
+		{
+			auto&& [it, end] = notesOrderedView.equal_range(pnote->tick);
+			it = std::find_if(it, end, [=](const NoteOrderedCollection::value_type& v)
+			                  { return pnote == v.second; });
+			updatingNodes.emplace_back(notesOrderedView.extract(it));
+		}
+
+		switch (snapMode)
+		{
+		default:
+			for (auto&& [_, pnote] : selectedNotes)
+			{
+				pnote->lane += lanes;
+				pnote->tick += ticks;
+			}
+			break;
+		case SnapMode::Absolute:
+			for (auto&& [_, pnote] : selectedNotes)
+			{
+				pnote->lane += lanes;
+				pnote->tick += ticks;
+			}
+			break;
+		case SnapMode::IndividualAbsolute:
+		{
+			constexpr auto noop = [](float x) { return x; };
+			auto laneSnapFn = lanes == 0 ? noop : lanes > 0 ? ceilf : floorf;
+			auto quatSnapFn = ticks == 0 ? noop : ticks > 0 ? ceilf : floorf;
+			float offsetLane = laneSnapFn(lanes * laneDivision) / laneDivision;
+			tick_t offsetTick = quartersToTicks(
+			    quatSnapFn(ticksToQuarters(ticks) * quarterDivision) / quarterDivision);
+			for (auto&& [_, pnote] : selectedNotes)
+			{
+				Note& n = *pnote;
+				float lane = laneSnapFn(n.lane * laneDivision) / laneDivision;
+				tick_t tick = quartersToTicks(
+				    quatSnapFn(ticksToQuarters(n.tick) * quarterDivision) / quarterDivision);
+				if (n.lane == lane && lanes != 0)
+					n.lane += offsetLane;
+				else
+					n.lane = lane;
+				if (n.tick == tick && ticks != 0)
+					n.tick += offsetTick;
+				else
+					n.tick = tick;
+			}
+			break;
+		}
+		}
+
+		std::unordered_set<id_t> updatedHolds;
+		for (auto&& node : updatingNodes)
+		{
+			Note& n = *node.mapped();
+			node.key() = n.tick;
+			notesOrderedView.insert(std::move(node));
+
+			if (!n.isHold() && updatedHolds.count(n.holdID) == 0)
+				continue;
+			HoldNote& hold = score.holdNotes.at(n.holdID);
+			hold.sortSteps(score.notes, !metadata.isExtendedScore);
+			updatedHolds.emplace(hold.ID);
+		}
+
+		if (update)
+			pushHistory("Move note");
+	}
+
+	void ScoreContext::setPosNoteSelection(tick_t tick, float lane, bool update)
+	{
+		bool setTick = tick != MAX_TICK, setLane = isfinite(lane);
+		if (!setTick && !setLane)
+			return;
+		std::vector<NoteOrderedCollection::node_type> updatingNodes;
+		if (setTick)
+		{
+			updatingNodes.reserve(selectedNotes.size());
+			for (auto&& [ID, pnote] : selectedNotes)
+			{
+				auto&& [it, end] = notesOrderedView.equal_range(pnote->tick);
+				it = std::find_if(it, end, [=](const NoteOrderedCollection::value_type& v)
+				                  { return pnote == v.second; });
+				updatingNodes.emplace_back(notesOrderedView.extract(it));
+			}
+			tick = std::clamp(tick, 0, MAX_TICK);
+		}
+
+		std::unordered_set<id_t> updatingHolds;
+		for (auto&& [ID, pnote] : selectedNotes)
+		{
+			if (setTick)
+				pnote->tick = tick;
+			if (setLane)
+				pnote->lane = lane;
+			if (pnote->isHold())
+				updatingHolds.emplace(pnote->holdID);
+		}
+
+		for (auto&& node : updatingNodes)
+		{
+			Note& n = *node.mapped();
+			node.key() = n.tick;
+			notesOrderedView.insert(std::move(node));
+		}
+
+		for (auto&& holdID : updatingHolds)
+		{
+			HoldNote& hold = score.holdNotes.at(holdID);
+			hold.sortSteps(score.notes, !metadata.isExtendedScore);
+		}
+
+		if (update)
+			pushHistory("Set note postion");
+	}
 
 	void PasteData::cancelPaste()
 	{
@@ -1189,7 +1394,7 @@ namespace MikuMikuWorld
 		{
 			// treat the paste data object as a big note with lane and width
 			auto laneCmp =
-				[](const NoteCollection::value_type& n1, const NoteCollection::value_type& n2)
+			    [](const NoteCollection::value_type& n1, const NoteCollection::value_type& n2)
 			{ return n1.second.lane < n2.second.lane; };
 			auto minLaneIt = std::min_element(notes.begin(), notes.end(), laneCmp);
 			minLane = minLaneIt == notes.end() ? 0 : minLaneIt->second.lane;

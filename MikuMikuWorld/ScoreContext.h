@@ -12,6 +12,17 @@
 
 namespace MikuMikuWorld
 {
+	enum class SnapMode : uint8_t
+	{
+		// Snap notes to their own division
+		Relative,
+		// Snap the current notes to the nearest division
+		// move other notes with the offset
+		Absolute,
+		// Snap each notes to their nearest division
+		IndividualAbsolute,
+		SnapModeMax
+	};
 	enum class InsertMode : uint8_t
 	{
 		Select,
@@ -33,6 +44,7 @@ namespace MikuMikuWorld
 	struct EditArgs
 	{
 		float noteWidth{ 3 };
+		float noteAlign{ 0.5f };
 		FlickType flickType{ FlickType::Default };
 		EaseType easeType{ EaseType::Linear };
 		EditHoldJointType startType{ EditHoldJointType::Normal };
@@ -49,6 +61,8 @@ namespace MikuMikuWorld
 		float hiSpeedSkip{ 0.0f };
 		HiSpeedEaseType hiSpeedEase{ HiSpeedEaseType::None };
 		bool hiSpeedHideNotes{ false };
+
+		bool drawHoldStepOutlines{ true };
 
 		void changeInsertMode(InsertMode newMode);
 		bool isNoteInsertMode() const;
@@ -78,7 +92,8 @@ namespace MikuMikuWorld
 
 		ScoreMetadata toScoreMetadata() const
 		{
-			return { title, artist, designer, musicFilename, jacket.getFilename(), musicOffset, laneExtension };
+			return { title,       artist,       designer, musicFilename, jacket.getFilename(),
+				     musicOffset, laneExtension };
 		}
 	};
 
@@ -122,7 +137,7 @@ namespace MikuMikuWorld
 		static constexpr id_t LAYER_ALL = -1;
 
 		Score score;
-		EditorScoreData workingData;
+		// EditorScoreData workingData;
 		ScoreMetadata metadata;
 		std::string filename;
 		ScoreStats scoreStats;
@@ -196,6 +211,11 @@ namespace MikuMikuWorld
 		void paste(PasteData& pasteData, float offsetLane, tick_t offsetTick, id_t holdID = -1);
 		void shrinkSelection(tick_t spacing);
 		void compressSelection();
+		bool canMoveNoteSelection(tick_t& ticks, int quarterDivision, float& lanes,
+		                          float laneDivision, SnapMode snapMode);
+		void moveNoteSelection(tick_t ticks, int quarterDivision, float lanes, float laneDivision,
+		                       SnapMode snapMode, bool update = true);
+		void setPosNoteSelection(tick_t tick, float lanes, bool update = true);
 
 		void connectHoldsInSelection();
 		void splitHoldInSelection();

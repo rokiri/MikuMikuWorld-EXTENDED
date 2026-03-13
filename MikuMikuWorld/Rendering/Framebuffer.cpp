@@ -5,9 +5,13 @@
 
 namespace MikuMikuWorld
 {
-	Framebuffer::Framebuffer(unsigned int w, unsigned int h) : width{ w }, height{ h } { setup(); }
+	Framebuffer::Framebuffer(unsigned int w, unsigned int h)
+	    : fbo(), rbo(), buffer(), width{ w }, height{ h }
+	{
+		setup();
+	}
 
-	Framebuffer::Framebuffer() {}
+	Framebuffer::~Framebuffer() { dispose(); }
 
 	unsigned int Framebuffer::getWidth() const { return width; }
 
@@ -15,10 +19,10 @@ namespace MikuMikuWorld
 
 	unsigned int Framebuffer::getTexture() const { return buffer; }
 
-	void Framebuffer::clear()
+	void Framebuffer::clear(float r, float g, float b, float a)
 	{
 		GLbitfield clearBits = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
-		glClearColor(0.2, 0.2, 0.2, 0.0);
+		glClearColor(r, g, b, a);
 		glClear(clearBits);
 	}
 
@@ -28,12 +32,22 @@ namespace MikuMikuWorld
 		glViewport(0, 0, width, height);
 	}
 
+	void Framebuffer::unbind() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
+
 	void Framebuffer::dispose()
 	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT,
-		                  GL_NEAREST);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		glDeleteFramebuffers(1, &fbo);
+		fbo = 0;
+
+		glDeleteTextures(1, &buffer);
+		buffer = 0;
+
+		glDeleteRenderbuffers(1, &rbo);
+		rbo = 0;
 	}
 
 	void Framebuffer::resize(unsigned int w, unsigned int h)
@@ -58,15 +72,15 @@ namespace MikuMikuWorld
 	void Framebuffer::setup()
 	{
 		glGenFramebuffers(1, &fbo);
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glGenTextures(1, &buffer);
 		createTexture(buffer);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
 
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, buffer, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 		glGenRenderbuffers(1, &rbo);
 		glBindRenderbuffer(GL_RENDERBUFFER, rbo);
@@ -75,7 +89,7 @@ namespace MikuMikuWorld
 		                          rbo);
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-			printf("RenderTarget::setup() ERROR: Incomplete framebuffer");
+			fprintf(stderr, "Framebuffer::setup() ERROR: Incomplete framebuffer");
 
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
