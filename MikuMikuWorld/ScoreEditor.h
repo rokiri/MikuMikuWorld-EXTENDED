@@ -20,40 +20,39 @@ namespace MikuMikuWorld
 	{
 	  private:
 		ScoreEditorState state;
-		ScoreContext context{};
+		ScoreContext* currContext;
 		Audio::AudioManager audio;
 		PresetManager presetManager;
 		std::unique_ptr<Renderer> renderer;
 		EditorToolbar toolbar;
-		// ScoreEditorTimeline timeline{};
-		// ScorePropertiesWindow propertiesWindow{};
-		// ScoreNotePropertiesWindow notePropertiesWindow{};
+		ScorePropertiesWindow propertiesWindow{};
+		ScoreOptionsWindow optionsWindow;
+		ScoreNotePropertiesWindow notePropertiesWindow{};
 		EditArgs edit{};
 		PasteData pasteData;
 		PresetsWindow presetsWindow{};
-		//+ ScoreOptionsWindow optionsWindow{};
-		//+ PresetsWindow presetsWindow{};
-		// DebugWindow debugWindow{};
-		// LayersWindow layersWindow{};
-		// WaypointsWindow waypointsWindow{};
-		// SettingsWindow settingsWindow{};
-		// RecentFileNotFoundDialog recentFileNotFoundDialog{};
-		// AboutDialog aboutDialog{};
-		// UpdateAvailableDialog updateAvailableDialog{};
+
+		LayersWindow layersWindow{};
+
+		SettingsWindow settingsWindow{};
+		GenericDialog dialog;
+
 		// ScoreSerializeWindow serializeWindow{};
 
 		// Stopwatch autoSaveTimer;
 		FilePath autoSavePath;
 		bool showImGuiDemoWindow{ false };
+		DebugWindow debugWindow{};
+		WaypointsWindow waypointsWindow{};
 
-		bool save(std::string filename);
-
-		void fetchUpdate();
+		static void openHelp();
+		static void openReleasePage();
 
 	  public:
 		ScoreEditor();
 
 		void update();
+		void handleEvents();
 
 		void create();
 		void open();
@@ -68,7 +67,7 @@ namespace MikuMikuWorld
 		void appendOpenFile(const FilePath& filepath);
 
 		void drawMenubar();
-		void help();
+		void fetchUpdate();
 
 		void loadPresets(const FilePath& path);
 		void savePresets(const FilePath& path);

@@ -85,6 +85,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(themeDark, "theme_dark");
 	MMW_TEXT(customColor, "custom_color");
 	MMW_TEXT(timeline);
+	MMW_TEXT(matchTimelineSizeToWindow, "match_timeline_size_to_window");
 	MMW_TEXT(matchNotesSizeToTimeline, "match_notes_size_to_timeline");
 	MMW_TEXT(laneWidth, "lane_width");
 	MMW_TEXT(notesHeight, "notes_height");
@@ -99,10 +100,12 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(background);
 	MMW_TEXT(backgroundImage, "background_image");
 	MMW_TEXT(drawBackground, "draw_background");
-	MMW_TEXT(backgroundBrightnes, "background_brightnes");
+	MMW_TEXT(backgroundBrightness, "background_brightness");
 	MMW_TEXT(lanesOpacity, "lanes_opacity");
 	MMW_TEXT(video);
-	MMW_TEXT(notesSe, "notes_se");
+	MMW_TEXT(visuals);
+	MMW_TEXT(notesSkin, "notes_skin");
+	MMW_TEXT(notesSE, "notes_se");
 	MMW_TEXT(showTickInProperties, "show_tick_in_properties");
 
 	// score editor
@@ -118,6 +121,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(critical);
 	MMW_TEXT(dummy);
 	MMW_TEXT(holdDummy, "hold_dummy");
+	MMW_TEXT(holdCritical, "hold_critical");
 	MMW_TEXT(trace);
 	MMW_TEXT(guide);
 	MMW_TEXT(damage);
@@ -147,6 +151,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(flipDuplicate, "flip_duplicate");
 	MMW_TEXT(flip);
 	MMW_TEXT(noteWidth, "note_width");
+	MMW_TEXT(noteAlign, "note_align");
 	MMW_TEXT(shrinkDown, "shrink_down");
 	MMW_TEXT(shrinkUp, "shrink_up");
 	MMW_TEXT(compressSelection, "compress_selection");
@@ -159,8 +164,10 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(convertGuideHold, "convert_guide_hold");
 	MMW_TEXT(convertGuideToHold, "convert_guide_to_hold");
 	MMW_TEXT(convertHoldToGuide, "convert_hold_to_guide");
+	MMW_TEXT(convertHoldToNone, "convert_hold_to_none");
 	MMW_TEXT(lerpHispeeds, "lerp_hispeeds");
 	MMW_TEXT(stepType, "step_type");
+	MMW_TEXT(stepAlpha, "step_alpha");
 	MMW_TEXT(easeType, "ease_type");
 	MMW_TEXT(flickType, "flick_type");
 	MMW_TEXT(holdType, "hold_type");
@@ -179,6 +186,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(volumeMaster, "volume_master");
 	MMW_TEXT(volumeBgm, "volume_bgm");
 	MMW_TEXT(volumeSe, "volume_se");
+	MMW_TEXT(playbackSpeed, "playback_speed");
 	MMW_TEXT(statistics);
 	MMW_TEXT(hispeeds);
 	MMW_TEXT(taps);
@@ -193,7 +201,6 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(division);
 	MMW_TEXT(divisionAffix, "division_affix");
 	MMW_TEXT(custom);
-	MMW_TEXT(customDivision, "custom_division");
 	MMW_TEXT(snapMode, "snap_mode");
 	MMW_TEXT(snapModeRelative, "snap_mode_relative");
 	MMW_TEXT(snapModeAbsolute, "snap_mode_absolute");
@@ -220,6 +227,8 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(fadeNone, "fade_none");
 	MMW_TEXT(fadeIn, "fade_in");
 	MMW_TEXT(fadeOut, "fade_out");
+	MMW_TEXT(fadeCustom, "fade_custom");
+	MMW_TEXT(fadeClassic, "fade_classic");
 	MMW_TEXT(guideColor, "guide_color");
 	MMW_TEXT(guideNeutral, "guide_neutral");
 	MMW_TEXT(guideRed, "guide_red");
@@ -243,9 +252,12 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(notePropertiesHoldNote, "note_properties_hold_note");
 	MMW_TEXT(notePropertiesGuide, "note_properties_guide");
 	MMW_TEXT(notePropertiesNotSelected, "note_properties_not_selected");
-	MMW_TEXT(notePropertiesManyHoldNotes, "note_properties_many_hold_notes");
+	MMW_TEXT(notePropertiesMixedValue, "note_properties_mixed_value");
 	MMW_TEXT(translatedBy, "translated_by");
 	MMW_TEXT(zoomTooltip, "zoom_tooltip");
+	MMW_TEXT(timelineNoContextSelected, "timeline_context_not_selected");
+	MMW_TEXT(extendedScore, "extended_score");
+	MMW_TEXT(noteSelectTooltip, "note_select_tool_tip");
 
 	// preset manager
 	MMW_TEXT(presets);
@@ -268,12 +280,18 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(layerDelete, "layer_delete");
 	MMW_TEXT(layerHide, "layer_hide");
 	MMW_TEXT(layerShow, "layer_show");
+	MMW_TEXT(layerChangeOrder, "layer_change_order");
+	MMW_TEXT(layerOrderTooltip, "layer_order_tooltip");
+	MMW_TEXT(layerMergeWarning, "layer_merge_warning");
 
 	// waypoint manager
 	MMW_TEXT(waypoints);
 	MMW_TEXT(createWaypoint, "create_waypoint");
 	MMW_TEXT(editWaypoint, "edit_waypoint");
 	MMW_TEXT(waypointName, "waypoint_name");
+	MMW_TEXT(insertSkill, "insert_skill");
+	MMW_TEXT(setFeverStart, "set_fever_start");
+	MMW_TEXT(setFeverEnd, "set_fever_end");
 
 	// commands
 	MMW_TEXT(action);

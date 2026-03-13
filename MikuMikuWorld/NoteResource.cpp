@@ -24,6 +24,28 @@ namespace MikuMikuWorld
 		INS_SPR_MAX
 	};
 
+	const Sprite* TimelineTexture::getScoreStatsSprite(const InsertMode& mode)
+	{
+		if (!toolbarTex)
+			return nullptr;
+		int modeIdx = static_cast<int>(mode);
+		if (!isArrayIndexInBounds(modeIdx, insertModes))
+			return nullptr;
+		switch (mode)
+		{
+		case InsertMode::InsertLong:
+			return sprites[INS_LONG_SPR_];
+		case InsertMode::InsertFlick:
+			return sprites[INS_FLICK_SPR_ + int(FlickType::Default)];
+		case InsertMode::InsertLongMid:
+			return sprites[INS_LONG_MID_SPR_];
+		case InsertMode::InsertGuide:
+			return sprites[INS_GUIDE_SPR_ + int(GuideColor::Green)];
+		default:
+			return sprites[modeIdx];
+		}
+	}
+
 	const Sprite* TimelineTexture::getInsertModeSprite(const InsertMode& mode,
 	                                                   const EditArgs& edit) const
 	{

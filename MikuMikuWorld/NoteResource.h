@@ -11,6 +11,7 @@ namespace MikuMikuWorld
 	class TimelineTexture
 	{
 	  public:
+		const Sprite* getScoreStatsSprite(const InsertMode& mode);
 		const Sprite* getInsertModeSprite(const InsertMode& mode, const EditArgs& edit) const;
 
 		bool load();

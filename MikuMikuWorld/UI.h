@@ -11,21 +11,18 @@
 
 #define APP_NAME "MikuMikuWorld for UntitledCharts"
 
-#define IMGUI_TITLE(icon, title)                                                                   \
-	IO::formatString("%s %s###%s", icon, getString(title), title).c_str()
-#define MODAL_TITLE(title)                                                                         \
-	IO::formatString("%s - %s###%s", APP_NAME, getString(title), title).c_str()
-
 namespace MikuMikuWorld
 {
-	constexpr const char* windowUntitled = "Untitled";
-
 	constexpr float primaryLineThickness = 0.250f;
 	constexpr float secondaryLineThickness = 0.150f;
 	constexpr float tertiaryLineThickness = 0.100f;
 	constexpr float toolTipDelay = 0.5f;
 
-	constexpr ImGuiWindowFlags ImGuiWindowFlags_Static = ImGuiWindowFlags_NoCollapse;
+	constexpr ImGuiChildFlags ImGuiChildFlags_PaddedBorder =
+	    ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding;
+	constexpr ImGuiTableFlags ImGuiTableFlags_PropertyTable =
+	    ImGuiTableFlags_Resizable | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_SizingStretchSame |
+	    ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_NoClip | ImGuiTableFlags_PreciseWidths;
 
 	enum class ColorDisplay : uint8_t
 	{
@@ -43,12 +40,9 @@ namespace MikuMikuWorld
 
 	constexpr const char* colorDisplayStr[]{ "RGB", "HSV", "Hex" };
 
-	constexpr const char* baseThemes[]{ "theme_dark", "theme_light" };
-
 	class UI
 	{
 	  private:
-		static char idStr[256];
 		static const ImVec2 _btnNormal;
 		static const ImVec2 _btnSmall;
 		static const ImVec2 _toolbarBtnSize;
@@ -59,228 +53,271 @@ namespace MikuMikuWorld
 		static ImVec2 btnSmall;
 		static ImVec2 toolbarBtnSize;
 		static ImVec2 toolbarBtnImgSize;
-		static std::vector<ImVec4> accentColors;
+		static std::array<ImVec4, 9> accentColors;
 
 		static float scale(float value);
 		static ImVec2 scale(const ImVec2& size);
-		static bool transparentButton(const char* txt, ImVec2 size = btnNormal, bool repeat = false,
-		                              bool enabled = true);
-		static bool transparentButton2(const char* txt, ImVec2 pos, ImVec2 size);
-		static bool coloredButton(const char* txt, ImVec2 pos, ImVec2 size, ImU32 col,
+		inline static std::string itemLabel(std::string_view label)
+		{
+			std::string labelStr{ label };
+			return IO::formatString("%s###%s", localize(labelStr), labelStr);
+		}
+		inline static std::string modalTitle(std::string_view title)
+		{
+			std::string titleStr{ title };
+			return IO::formatString("%s - %s###%s", APP_NAME, localize(titleStr), titleStr);
+		}
+		inline static std::string iconTitle(std::string_view icon, std::string_view title)
+		{
+			std::string titleStr{ title };
+			return IO::formatString("%s %s###%s", icon.data(), localize(titleStr), titleStr);
+		}
+		static bool transparentButton(const char* label, ImVec2 size = btnNormal,
+		                              bool repeat = false, bool enabled = true);
+		static bool transparentButton2(const char* label, ImVec2 pos, ImVec2 size);
+		static bool togglableButton(const char* label, ImVec2 size, bool& selected);
+		static bool coloredButton(const char* label, ImVec2 pos, ImVec2 size, ImU32 col,
 		                          bool enabled = true);
 		static bool isAnyPopupOpen();
-		static void beginPropertyColumns();
-		static void endPropertyColumns();
-		static void propertyLabel(const char* label);
-		static bool addIntProperty(const char* label, int& val, int lowerBound = 0,
-		                           int higherBound = 0);
-		static bool addIntProperty(const char* label, int& val, const char* format,
+
+		static bool beginPropertyTable(const char* id = "prop_table", int columns = 2,
+		                               ImGuiTableFlags flags = ImGuiTableFlags_PropertyTable);
+		static void endPropertyTable();
+		static void labelPropertyColumn(const char* label);
+		static void labelPropertyRow(const char* label, std::string_view value);
+		static bool intPropertyRow(std::string_view text, int& val, const char* format = "%d",
 		                           int lowerBound = 0, int higherBound = 0);
-		static bool addFloatProperty(const char* label, float& val, const char* format,
+		static bool floatPropertyRow(std::string_view text, float& val, const char* format = "%.3f",
 		                             float lowerBound = 0.0f, float higherBound = 0.0f);
-		static bool addDoubleProperty(const char* label, double& val, const char* format,
-		                              double lowerBound = 0.0, double higherBound = 0.0);
-		static void addStringProperty(const char* label, std::string& val);
-		static void addSliderProperty(const char* label, int& val, int min, int max,
-		                              const char* format);
-		static void addSliderProperty(const char* label, float& val, float min, float max,
-		                              const char* format);
-		static void addDragFloatProperty(const char* label, float& val, const char* format);
-		static void addPercentSliderProperty(const char* label, float& val);
-		static bool addFractionProperty(const char* label, int& numerator, int& denominator);
-		static bool addCheckboxProperty(const char* label, bool& val);
-		static int addFileProperty(const char* label, std::string& val);
-		static void addMultilineString(const char* label, std::string& val);
+		static bool doublePropertyRow(std::string_view text, double& val,
+		                              const char* format = "%.6f", double lowerBound = 0.0,
+		                              double higherBound = 0.0);
+		static bool dragFloatPropertyRow(std::string_view text, float& val,
+		                                 const char* format = "%.3f");
+		static bool intSliderPropertyRow(std::string_view text, int& val, int min, int max,
+		                                 const char* format = "%d");
+		static bool floatSliderPropertyRow(std::string_view text, float& val, float min, float max,
+		                                   const char* format = "%.3f");
+		static void percentSliderPropertyRow(std::string_view text, float& val);
+		static bool stringPropertyRow(std::string_view text, std::string& val);
+		static bool fractionPropertyRow(std::string_view text, int& numerator, int& denominator);
+		static bool checkboxPropertyRow(std::string_view text, bool& val);
+		static int filePropertyRow(std::string_view text, std::string& val,
+		                           const char* hint = "n/a");
+		static void statPropertyColumn(std::string_view text, int mode, ImVec2 size);
+		// = 0: no change
+		// > 0: value set
+		// < 0: value increment/decrement
+		static int mixedIntPropertyRow(std::string_view text, bool mixed, int& val,
+		                               const char* format = "%d", int lowerBound = 0,
+		                               int higherBound = 0, int step = 1);
+		static int mixedFloatPropertyRow(std::string_view text, bool mixed, float& val,
+		                                 const char* format = "%.3f", float lowerBound = 0,
+		                                 float higherBound = 0, float step = 1);
 		static void tooltip(const char* label);
-		static const char* labelID(const char* label);
 		static bool divisionSelect(const char* label, int& value, const int* items, size_t count);
-		static bool inlineSelect(const char* label, int& value, const char* const* items,
-		                         size_t count);
-		static bool zoomControl(const char* label, float& value, float min, float max, float width);
+		static bool zoomControl(const char* label, float& value, float min, float max, float width,
+		                        float factor = 2);
 		static bool timeSignatureSelect(int& numerator, int& denominator);
 		static void centeredText(const std::string& str);
 		static void centeredText(const char* str);
 		void drawShadedText(ImDrawList* drawList, ImVec2 textPos, float fontSize, ImU32 fontColor,
 		                    const char* text);
-
-		// static void setWindowTitle(std::string title);
 		static void updateUIScaling(float scale);
-
-		template <typename T> static void addReadOnlyProperty(const char* label, T val)
-		{
-			propertyLabel(label);
-			ImGui::Text(std::to_string(val).c_str());
-			ImGui::NextColumn();
-		}
-
-		static void addReadOnlyProperty(const char* label, const char* val)
-		{
-			propertyLabel(label);
-			ImGui::Text(val);
-			ImGui::NextColumn();
-		}
-
-		inline static void addReadOnlyProperty(const char* label, const std::string& val)
-		{
-			addReadOnlyProperty(label, val.c_str());
-		}
 
 		/// <summary>
 		/// For use with sequential enums only
 		/// </summary>
-		template <typename T>
-		static bool addSelectProperty(const char* label, T& value, const char* const* items,
-		                              int count)
+		template <typename StrType, size_t N, typename TEnum,
+		          typename TUnder = std::underlying_type_t<TEnum>>
+		static bool selectPropertyRow(std::string_view text, TEnum& value,
+		                              const StrType (&texts)[N], TEnum max = TEnum(N),
+		                              TEnum start = TEnum(0))
 		{
-			// propertyLabel(label);
+			labelPropertyColumn(localize(text));
 
-			// std::string id("##");
-			// id.append(label);
+			bool edited = false;
+			const TUnder val = static_cast<TUnder>(value);
+			const TUnder begVal = static_cast<TUnder>(start);
+			const TUnder maxVal = static_cast<TUnder>(max);
 
-			// bool edited = false;
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+			ImGui::PushID(text.data(), text.data() + text.size());
+			if (ImGui::BeginCombo("", localize(texts[val])))
+			{
+				for (TUnder i = begVal; i < maxVal; ++i)
+				{
+					const bool selected = (val == i);
 
-			// std::string curr = getString(items[(int)value]);
-			// if (!curr.size())
-			// 	curr = items[(int)value];
-			// if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
-			// {
-			// 	for (int i = 0; i < count; ++i)
-			// 	{
-			// 		const bool selected = (int)value == i;
-			// 		std::string str = getString(items[i]);
-			// 		if (!str.size())
-			// 			str = items[i];
+					if (ImGui::Selectable(localize(texts[i]), selected))
+					{
+						value = static_cast<TEnum>(i);
+						edited = true;
+					}
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
 
-			// 		if (ImGui::Selectable(str.c_str(), selected))
-			// 		{
-			// 			value = (T)i;
-			// 			edited = true;
-			// 		}
-			// 	}
+				ImGui::EndCombo();
+			}
+			ImGui::PopID();
 
-			// 	ImGui::EndCombo();
-			// }
-
-			// ImGui::NextColumn();
-
-			// return edited;
+			return edited;
 		}
 
-		// we need to get proper translated names for the colors
-		template <>
-		static bool addSelectProperty<GuideColor>(const char* label, GuideColor& value,
-		                                          const char* const* items, int count)
+		template <typename T, typename TList, typename InputIt, typename F>
+		static auto selectPropertyRow(std::string_view text, T& value, TList values, size_t size,
+		                              InputIt first, F cstrCast) ->
+		    typename std::enable_if_t<std::is_same_v<decltype(values[0] == value), bool>, bool>
 		{
-			// propertyLabel(label);
+			labelPropertyColumn(localize(text));
 
-			// std::string id("##");
-			// id.append(label);
+			bool edited = false;
 
-			// bool edited = false;
+			const char* preview = "";
+			size_t iselected = 0;
+			while (iselected < size)
+			{
+				if (values[iselected] == value)
+				{
+					preview = cstrCast(*(first + iselected));
+					break;
+				}
+				iselected++;
+			}
 
-			// std::string curr = items[(int)value];
-			// if (!curr.size())
-			// 	curr = items[(int)value];
-			// const std::string translated_str = getString(curr.c_str());
-			// if (ImGui::BeginCombo(id.c_str(), translated_str.c_str()))
-			// {
-			// 	for (int i = (int)GuideColor::Neutral; i < count; ++i)
-			// 	{
-			// 		const bool selected = (int)value == i;
-			// 		std::string str = getString(items[i]);
-			// 		if (!str.size())
-			// 			str = items[i];
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+			ImGui::PushID(text.data(), text.data() + text.size());
+			if (ImGui::BeginCombo("", preview))
+			{
+				for (size_t i = 0; i < size; i++)
+				{
+					const bool selected = (iselected == i);
 
-			// 		if (ImGui::Selectable(str.c_str(), selected))
-			// 		{
-			// 			value = (GuideColor)i;
-			// 			edited = true;
-			// 		}
-			// 	}
+					if (ImGui::Selectable(cstrCast(*(first + i)), selected))
+					{
+						value = values[i];
+						edited = true;
+					}
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
 
-			// 	ImGui::EndCombo();
-			// }
+				ImGui::EndCombo();
+			}
+			ImGui::PopID();
 
-			// ImGui::NextColumn();
-
-			// return edited;
+			return edited;
 		}
 
-		// we don't want FlickType::None to appear in the selection
-		template <>
-		static bool addSelectProperty<FlickType>(const char* label, FlickType& value,
-		                                         const char* const* items, int count)
+		template <typename T, typename TList, typename InputIt>
+		static auto selectPropertyRow(std::string_view text, T& value, TList values, size_t size,
+		                              InputIt first) ->
+		    typename std::enable_if_t<std::is_same_v<decltype(values[0] == value), bool>, bool>
 		{
-			// propertyLabel(label);
-
-			// std::string id("##");
-			// id.append(label);
-
-			// bool edited = false;
-
-			// std::string curr = getString(items[(int)value]);
-			// if (!curr.size())
-			// 	curr = items[(int)value];
-			// if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
-			// {
-			// 	for (int i = (int)FlickType::Default; i < count; ++i)
-			// 	{
-			// 		const bool selected = (int)value == i;
-			// 		std::string str = getString(items[i]);
-			// 		if (!str.size())
-			// 			str = items[i];
-
-			// 		if (ImGui::Selectable(str.c_str(), selected))
-			// 		{
-
-			// 			value = (FlickType)i;
-			// 			edited = true;
-			// 		}
-			// 	}
-
-			// 	ImGui::EndCombo();
-			// }
-
-			// ImGui::NextColumn();
-
-			// return edited;
+			return selectPropertyRow(text, value, values, size, first,
+			                         [](const char* s) { return s; });
 		}
 
-		static bool addFlickSelectPropertyWithNone(const char* label, FlickType& value,
-		                                           const char* const* items, int count)
+		template <typename StrType, size_t N, typename TEnum,
+		          typename TUnder = std::underlying_type_t<TEnum>>
+		static bool selectMenuItems(std::string_view text, bool enabled, const StrType (&texts)[N],
+		                            TEnum& selected, TEnum max = TEnum(N), TEnum start = TEnum(0))
 		{
-			// propertyLabel(label);
+			bool activated = false;
+			const TUnder begVal = static_cast<TUnder>(start);
+			const TUnder maxVal = static_cast<TUnder>(max);
 
-			// std::string id("##");
-			// id.append(label);
+			if (ImGui::BeginMenu(localize(text), enabled))
+			{
+				for (TUnder i = begVal; i < maxVal; ++i)
+					if (ImGui::MenuItem(localize(texts[i])))
+					{
+						selected = static_cast<TEnum>(i);
+						activated = true;
+					}
+				ImGui::EndMenu();
+			}
+			return activated;
+		}
 
-			// bool edited = false;
+		template <typename StrType, size_t N, typename TEnum,
+		          typename TUnder = std::underlying_type_t<TEnum>>
+		static bool selectMixedPropertyRow(std::string_view text, bool mixed, TEnum& value,
+		                                   StrType mixedText, const StrType (&texts)[N],
+		                                   TEnum max = TEnum(N), TEnum start = TEnum(0))
+		{
+			labelPropertyColumn(localize(text));
 
-			// std::string curr = getString(items[(int)value]);
-			// if (!curr.size())
-			// 	curr = items[(int)value];
-			// if (ImGui::BeginCombo(id.c_str(), curr.c_str()))
-			// {
-			// 	for (int i = (int)FlickType::None; i < count; ++i)
-			// 	{
-			// 		const bool selected = (int)value == i;
-			// 		std::string str = getString(items[i]);
-			// 		if (!str.size())
-			// 			str = items[i];
+			bool edited = false;
+			const TUnder val = mixed ? static_cast<TUnder>(-1) : static_cast<TUnder>(value);
+			const TUnder begVal = static_cast<TUnder>(start);
+			const TUnder maxVal = std::min<TUnder>(static_cast<TUnder>(max), N);
 
-			// 		if (ImGui::Selectable(str.c_str(), selected))
-			// 		{
-			// 			value = (FlickType)i;
-			// 			edited = true;
-			// 		}
-			// 	}
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+			ImGui::PushID(text.data(), text.data() + text.size());
+			if (ImGui::BeginCombo("", localize(mixed ? mixedText : texts[val])))
+			{
+				for (TUnder i = begVal; i < maxVal; ++i)
+				{
+					const bool selected = (val == i);
 
-			// 	ImGui::EndCombo();
-			// }
+					if (ImGui::Selectable(localize(texts[i]), selected))
+					{
+						value = static_cast<TEnum>(i);
+						edited = true;
+					}
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
 
-			// ImGui::NextColumn();
+				ImGui::EndCombo();
+			}
+			ImGui::PopID();
 
-			// return edited;
+			return edited;
+		}
+
+		template <typename TEnum, typename TUnder = std::underlying_type_t<TEnum>>
+		static bool checkboxFlagPropertyRow(std::string_view text, TEnum& value, TEnum flag,
+		                                    bool mixed = false)
+		{
+			labelPropertyColumn(localize(text));
+
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+			ImGui::PushID(text.data(), text.data() + text.size());
+			ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, mixed);
+			bool val = hasFlag(value, flag);
+			bool edited = ImGui::Checkbox("", &val);
+			ImGui::PopItemFlag();
+			ImGui::PopID();
+			if (edited)
+				value = setFlag(value, flag, val);
+
+			return edited;
 		}
 	};
+}
+
+namespace ImGui
+{
+	void AddQuadMultiColor(ImDrawList* drawList, const ImVec2& p1, const ImVec2& p2,
+	                       const ImVec2& p3, const ImVec2& p4, ImU32 col1, ImU32 col2, ImU32 col3,
+	                       ImU32 col4);
+
+	void AddImageMultiColor(ImDrawList* drawList, ImTextureRef texture_ref, const ImVec2& p_min,
+	                        const ImVec2& p_max, const ImVec2& uv_min = ImVec2(0, 0),
+	                        const ImVec2& uv_max = ImVec2(1, 1),
+	                        ImU32 col_upr_left = IM_COL32_WHITE,
+	                        ImU32 col_upr_right = IM_COL32_WHITE,
+	                        ImU32 col_bot_right = IM_COL32_WHITE,
+	                        ImU32 col_bot_left = IM_COL32_WHITE);
+	void AddImageQuadMultiColor(ImDrawList* drawList, ImTextureRef tex_ref, const ImVec2& p1,
+	                            const ImVec2& p2, const ImVec2& p3, const ImVec2& p4,
+	                            const ImVec2& uv1, const ImVec2& uv2, const ImVec2& uv3,
+	                            const ImVec2& uv4, ImU32 col1, ImU32 col2, ImU32 col3, ImU32 col4);
 }

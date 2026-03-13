@@ -77,5 +77,15 @@ namespace MikuMikuWorld
 		                                Text::guideBlue,    Text::guideYellow, Text::guidePurple,
 		                                Text::guideCyan,    Text::guideBlack };
 
-	MMW_TEXT_TYPE fadeTypeTexts[]{ Text::fadeOut, Text::fadeNone, Text::fadeIn };
+	MMW_TEXT_TYPE fadeTypeTexts[]{ Text::fadeOut, Text::fadeNone, Text::fadeIn, Text::fadeCustom,
+		                           Text::fadeClassic };
+
+	MMW_TEXT_TYPE snapModeTexts[]{ Text::snapModeRelative, Text::snapModeAbsolute,
+		                           Text::snapModeIndividualAbsolute };
+
+	MMW_TEXT_TYPE holdJointTypeTexts[]{ Text::normal, Text::trace, Text::hidden };
+
+	MMW_TEXT_TYPE baseThemeTexts[]{ Text::themeDark, Text::themeLight };
+
+	MMW_TEXT_TYPE hispeedEaseTypeTexts[]{ Text::hiSpeedEaseNone, Text::hiSpeedEaseLinear };
 }

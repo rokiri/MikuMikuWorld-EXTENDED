@@ -1,5 +1,4 @@
 // Put httplib first otherwise the compiler will throw an error
-#include <corecrt_math.h>
 #define CPPHTTPLIB_OPENSSL_SUPPORT 1
 #include <cpp-httplib/httplib.h>
 
@@ -108,6 +107,7 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::loadPresets(const FilePath& path) { presetManager.loadPresets(path); }
 	void ScoreEditor::savePresets(const FilePath& path) { presetManager.savePresets(path); }
+
 	void ScoreEditor::writeSettings()
 	{
 		auto& config = getConfig();
@@ -127,91 +127,18 @@ namespace MikuMikuWorld
 	void ScoreEditor::update()
 	{
 		drawMenubar();
-		toolbar.update(state, context, edit);
-
-		auto& inputConf = getConfig().input;
-
-		if (!ImGui::GetIO().WantCaptureKeyboard)
+		auto& config = getConfig();
+		auto timelineIt = timelines.find(currTimelineId);
+		currTimeline = timelineIt != timelines.end() ? &timelineIt->second : nullptr;
+		currContext = currTimeline ? &currTimeline->context : nullptr;
+		if (currTimeline)
 		{
-			if (ImGui::IsAnyPressed(inputConf.create))
-				// Application::getInstance().getWindowState().resetting = true;
-				if (ImGui::IsAnyPressed(inputConf.open))
-				{
-					// Application::getInstance().getWindowState().resetting = true;
-					// Application::getInstance().getWindowState().shouldPickScore = true;
-				}
-
-			// if (ImGui::IsAnyPressed(inputConf.openSettings))
-			//	settingsWindow.open = true;
-			if (ImGui::IsAnyPressed(inputConf.openHelp))
-				help();
-			// if (ImGui::IsAnyPressed(inputConf.save))
-			//	trySave(context.workingData.filename);
-			if (ImGui::IsAnyPressed(inputConf.saveAs))
-				saveAs();
-			if (ImGui::IsAnyPressed(inputConf.exportScore))
-				exportScore();
-			//if (ImGui::IsAnyPressed(config.input.togglePlayback))
-			//	timeline.setPlaying(context, !timeline.isPlaying());
-			//if (ImGui::IsAnyPressed(config.input.stop))
-			//	timeline.stop(context);
-			//if (ImGui::IsAnyPressed(config.input.previousTick, true))
-			//	timeline.previousTick(context);
-			//if (ImGui::IsAnyPressed(config.input.nextTick, true))
-			//	timeline.nextTick(context);
-			//if (ImGui::IsAnyPressed(config.input.selectAll))
-			//	context.selectAll();
-			//if (ImGui::IsAnyPressed(config.input.deleteSelection))
-			//	context.deleteSelection();
-			//if (ImGui::IsAnyPressed(config.input.cutSelection))
-			//	context.cutSelection();
-			//if (ImGui::IsAnyPressed(config.input.copySelection))
-			//	context.copySelection();
-			//if (ImGui::IsAnyPressed(config.input.paste))
-			//	context.paste(false);
-			//if (ImGui::IsAnyPressed(config.input.flipPaste))
-			//	context.paste(true);
-			//if (ImGui::IsAnyPressed(config.input.cancelPaste))
-			//	context.cancelPaste();
-			//if (ImGui::IsAnyPressed(config.input.duplicate))
-			//	context.duplicateSelection(false);
-			//if (ImGui::IsAnyPressed(config.input.flipDuplicate))
-			//	context.duplicateSelection(true);
-			//if (ImGui::IsAnyPressed(config.input.flip))
-			//	context.flipSelection();
-			//if (ImGui::IsAnyPressed(config.input.undo))
-			//	context.undo();
-			//if (ImGui::IsAnyPressed(config.input.redo))
-			//	context.redo();
-			//if (ImGui::IsAnyPressed(config.input.zoomOut, true))
-			//	timeline.setZoom(timeline.getZoom() - 0.25f);
-			//if (ImGui::IsAnyPressed(config.input.zoomIn, true))
-			//	timeline.setZoom(timeline.getZoom() + 0.25f);
-			//if (ImGui::IsAnyPressed(config.input.decreaseNoteSize, true))
-			//	edit.noteWidth = std::clamp(edit.noteWidth - 1, MIN_NOTE_WIDTH, MAX_NOTE_WIDTH);
-			//if (ImGui::IsAnyPressed(config.input.increaseNoteSize, true))
-			//	edit.noteWidth = std::clamp(edit.noteWidth + 1, MIN_NOTE_WIDTH, MAX_NOTE_WIDTH);
-			//if (ImGui::IsAnyPressed(config.input.shrinkDown))
-			//	context.shrinkSelection(Direction::Down);
-			//if (ImGui::IsAnyPressed(config.input.shrinkUp))
-			//	context.shrinkSelection(Direction::Up);
-			//if (ImGui::IsAnyPressed(config.input.compressSelection))
-			//	context.compressSelection();
-			//if (ImGui::IsAnyPressed(config.input.connectHolds))
-			//	context.connectHoldsInSelection();
-			//if (ImGui::IsAnyPressed(config.input.splitHold))
-			//	context.splitHoldInSelection();
-			//if (ImGui::IsAnyPressed(config.input.lerpHiSpeeds))
-			//	context.lerpHiSpeeds(timeline.getDivision(), EaseType::Linear);
-
-			//for (int i = 0; i < (int)TimelineMode::TimelineModeMax; ++i)
-			//	if (ImGui::IsAnyPressed(*timelineModeBindings[i]))
-			//		timeline.changeMode((TimelineMode)i, edit);
+			config.division = currTimeline->getQuarterDivision();
+			config.zoom = currTimeline->getZoom().y;
 		}
+		toolbar.update(state, currContext, edit, pasteData);
 
-		//timeline.laneWidth = config.timelineWidth;
-		//timeline.notesHeight =
-		//    config.matchNotesSizeToTimeline ? config.timelineWidth : config.notesHeight;
+		handleEvents();
 
 		//if (config.backgroundBrightness != timeline.background.getBrightness())
 		//	timeline.background.setBrightness(config.backgroundBrightness);
@@ -223,99 +150,206 @@ namespace MikuMikuWorld
 		//	timeline.background.load(config.backgroundImage.empty() ? defaultBackgroundPath
 		//	                                                        : config.backgroundImage);
 		//	settingsWindow.isBackgroundChangePending = false;
-		//}
-
-		//if (config.seProfileIndex != context.audio.getSoundEffectsProfileIndex())
-		//{
-		//	context.audio.stopSoundEffects(false);
-		//	context.audio.setSoundEffectsProfileIndex(config.seProfileIndex);
-		//}
+		// }
 
 		if (config.seProfileIndex != audio.getSoundEffectsProfileIndex())
 		{
 			// audio.stopSoundEffects(false);
 			audio.setSoundEffectsProfileIndex(config.seProfileIndex);
 		}
-		//if (propertiesWindow.isPendingLoadMusic)
-		//{
-		//	loadMusic(propertiesWindow.pendingLoadMusicFilename);
-		//	propertiesWindow.pendingLoadMusicFilename.clear();
-		//	propertiesWindow.isPendingLoadMusic = false;
-		//}
 
-		//if (config.autoSaveEnabled && autoSaveTimer.elapsedMinutes() >= config.autoSaveInterval)
+		// if (config.autoSaveEnabled && autoSaveTimer.elapsedMinutes() >= config.autoSaveInterval)
 		//{
 		//	autoSave();
 		//	autoSaveTimer.reset();
 		//}
 
-		//if (recentFileNotFoundDialog.update() == DialogResult::Yes)
-		//{
-		//	if (isArrayIndexInBounds(recentFileNotFoundDialog.removeIndex, config.recentFiles))
-		//		config.recentFiles.erase(config.recentFiles.begin() +
-		//		                         recentFileNotFoundDialog.removeIndex);
-		//}
-
 		settingsWindow.update();
-		//aboutDialog.update();
-		//updateAvailableDialog.update();
+		dialog.update();
 		//serializeWindow.update(*this, context, timeline);
+		if (getConfig().debugEnabled)
+			debugWindow.update(audio);
 
-		//ImGui::Begin(IMGUI_TITLE(ICON_FA_MUSIC, "notes_timeline"), NULL,
-		//             ImGuiWindowFlags_Static | ImGuiWindowFlags_NoScrollbar |
-		//                 ImGuiWindowFlags_NoScrollWithMouse);
-		// timeline.update(context, edit, renderer.get());
-		// ImGui::End();
+		constexpr auto propWindowFlags =
+		    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoFocusOnAppearing;
+		auto updateWindowNoContext = []()
+		{ ImGui::TextDisabled(localize(Text::timelineNoContextSelected)); };
+		if (ImGui::Begin(ScorePropertiesWindow::getWindowName(), NULL, propWindowFlags))
+		{
+			if (currContext)
+				propertiesWindow.update(*currTimeline, *currContext, audio);
+			else
+				updateWindowNoContext();
+		}
+		ImGui::End();
 
-		//if (config.debugEnabled)
-		//{
-		//	debugWindow.update(context, timeline);
-		//}
+		if (ImGui::Begin(ScoreNotePropertiesWindow::getWindowName(), NULL, propWindowFlags))
+		{
+			if (currContext)
+				notePropertiesWindow.update(*currContext);
+			else
+				updateWindowNoContext();
+		}
+		ImGui::End();
 
-		//if (ImGui::Begin(IMGUI_TITLE(ICON_FA_ALIGN_LEFT, "chart_properties"), NULL,
-		//                 ImGuiWindowFlags_Static))
-		//{
-		//	propertiesWindow.update(context);
-		//}
-		//ImGui::End();
+		if (ImGui::Begin(ScoreOptionsWindow::getWindowName(), NULL, propWindowFlags))
+		{
+			if (currContext)
+				optionsWindow.update(*currContext, edit);
+			else
+				updateWindowNoContext();
+		}
+		ImGui::End();
 
-		//if (ImGui::Begin(IMGUI_TITLE(ICON_FA_WRENCH, "note_properties"), NULL,
-		//                 ImGuiWindowFlags_Static))
-		//{
-		//	notePropertiesWindow.update(context);
-		//}
-		//ImGui::End();
+		if (ImGui::Begin(PresetsWindow::getWindowName(), NULL, propWindowFlags))
+		{
+			if (currContext)
+				presetsWindow.update(presetManager, *currContext, pasteData);
+			else
+				updateWindowNoContext();
+		}
+		ImGui::End();
 
-		//if (ImGui::Begin(IMGUI_TITLE(ICON_FA_WRENCH, "options"), NULL, ImGuiWindowFlags_Static))
-		//{
-		//	optionsWindow.update(context, edit, timeline.getMode());
-		//}
-		//ImGui::End();
+		if (ImGui::Begin(LayersWindow::getWindowName(), NULL, propWindowFlags))
+		{
+			if (currContext)
+				layersWindow.update(*currContext, dialog);
+			else
+				updateWindowNoContext();
+		}
+		ImGui::End();
 
-		//if (ImGui::Begin(IMGUI_TITLE(ICON_FA_DRAFTING_COMPASS, "presets"), NULL,
-		//                 ImGuiWindowFlags_Static))
-		//{
-		//	presetsWindow.update(context, presetManager);
-		//}
-		//ImGui::End();
-
-		//if (ImGui::Begin(IMGUI_TITLE(ICON_FA_LAYER_GROUP, "layers"), NULL, ImGuiWindowFlags_Static))
-		//{
-		//	layersWindow.update(context);
-		//}
-		//ImGui::End();
-
-		//if (ImGui::Begin(IMGUI_TITLE(ICON_FA_LOCATION_ARROW, "waypoints"), NULL,
-		//                 ImGuiWindowFlags_Static))
-		//{
-		//	waypointsWindow.update(context);
-		//}
-		//ImGui::End();
+		if (ImGui::Begin(WaypointsWindow::getWindowName(), NULL, propWindowFlags))
+		{
+			if (currTimeline)
+				waypointsWindow.update(*currTimeline);
+			else
+				updateWindowNoContext();
+		}
+		ImGui::End();
 
 #ifdef DEBUG
 		if (showImGuiDemoWindow)
 			ImGui::ShowDemoWindow(&showImGuiDemoWindow);
 #endif
+	}
+
+	void ScoreEditor::handleEvents()
+	{
+		auto& input = getConfig().input;
+		ImGuiInputFlags defaultFlags = ImGuiInputFlags_RouteGlobal;
+		if (!ImGui::GetIO().WantCaptureKeyboard)
+		{
+			if (ImGui::AnyShortcut(input.create, defaultFlags))
+				state.wantCreateScore = true;
+			if (ImGui::AnyShortcut(input.open, defaultFlags))
+				state.wantOpenScore = true;
+			if (ImGui::AnyShortcut(input.save, defaultFlags))
+				state.wantSaveScore = true;
+			if (ImGui::AnyShortcut(input.saveAs, defaultFlags))
+				state.wantSaveAsScore = true;
+			if (ImGui::AnyShortcut(input.exportScore, defaultFlags))
+				state.wantExportScore = true;
+			if (ImGui::AnyShortcut(input.openSettings, defaultFlags))
+				settingsWindow.open();
+			if (ImGui::AnyShortcut(input.openHelp, defaultFlags))
+				openHelp();
+			for (auto&& mode : EnumRange(InsertMode::InsertModeMax))
+				if (ImGui::AnyShortcut(input.*insertModeBindings[int(mode)], defaultFlags))
+					edit.changeInsertMode(mode);
+
+			if (currTimeline && currContext)
+			{
+				float minNoteWidth = currContext->minNoteWidth(),
+				      maxNoteWidth = currContext->maxNoteWidth();
+				if (ImGui::AnyShortcut(input.togglePlayback, defaultFlags))
+					currTimeline->setPlaying(!currTimeline->isPlaying());
+				if (ImGui::AnyShortcut(input.stop, defaultFlags))
+					currTimeline->stop();
+				if (ImGui::AnyShortcut(input.previousTick, defaultFlags | ImGuiInputFlags_Repeat))
+					currTimeline->jumpToPrevDivision();
+				if (ImGui::AnyShortcut(input.nextTick, defaultFlags | ImGuiInputFlags_Repeat))
+					currTimeline->jumpToNextDivision();
+				if (ImGui::AnyShortcut(input.zoomOut, defaultFlags | ImGuiInputFlags_Repeat))
+					currTimeline->setZoomY(currTimeline->getZoom().y /
+					                       ScoreEditorTimeline::ZOOM_Y_FACTOR);
+				if (ImGui::AnyShortcut(input.zoomIn, defaultFlags | ImGuiInputFlags_Repeat))
+					currTimeline->setZoomY(currTimeline->getZoom().y *
+					                       ScoreEditorTimeline::ZOOM_Y_FACTOR);
+				if (ImGui::AnyShortcut(input.decreaseNoteSize,
+				                       defaultFlags | ImGuiInputFlags_Repeat))
+					edit.noteWidth = std::clamp(edit.noteWidth - 1, minNoteWidth, maxNoteWidth);
+				if (ImGui::AnyShortcut(input.increaseNoteSize,
+				                       defaultFlags | ImGuiInputFlags_Repeat))
+					edit.noteWidth = std::clamp(edit.noteWidth + 1, minNoteWidth, maxNoteWidth);
+				if (ImGui::AnyShortcut(input.undo, defaultFlags) && currContext->history.hasUndo())
+					currContext->undo();
+				if (ImGui::AnyShortcut(input.redo, defaultFlags) && currContext->history.hasRedo())
+					currContext->redo();
+				if (ImGui::AnyShortcut(input.selectAll, defaultFlags))
+					currContext->selectAll();
+				if (ImGui::AnyShortcut(input.deleteSelection, defaultFlags))
+					currContext->deleteSelection();
+				if (ImGui::AnyShortcut(input.cutSelection, defaultFlags))
+					currContext->cutSelection();
+				if (ImGui::AnyShortcut(input.copySelection, defaultFlags))
+					currContext->copySelection();
+				if (ImGui::AnyShortcut(input.paste, defaultFlags))
+					pasteData.startPaste();
+				if (ImGui::AnyShortcut(input.flipPaste, defaultFlags))
+				{
+					pasteData.startPaste();
+					pasteData.flip();
+				}
+				if (ImGui::AnyShortcut(input.cancelPaste, defaultFlags))
+					pasteData.cancelPaste();
+				if (currContext->hasAnySelected() &&
+				    ImGui::AnyShortcut(input.duplicate, defaultFlags))
+				{
+					currContext->copySelection();
+					pasteData.startPaste();
+				}
+				if (currContext->hasAnySelected() &&
+				    ImGui::AnyShortcut(input.flipDuplicate, defaultFlags))
+				{
+					currContext->copySelection();
+					pasteData.startPaste();
+					pasteData.flip();
+				}
+				if (ImGui::AnyShortcut(input.flip))
+					currContext->flipSelection();
+				if (ImGui::IsAnyPressed(input.shrinkDown))
+					currContext->shrinkSelection(1);
+				if (ImGui::IsAnyPressed(input.shrinkUp))
+					currContext->shrinkSelection(-1);
+				if (ImGui::IsAnyPressed(input.compressSelection))
+					currContext->compressSelection();
+				if (ImGui::IsAnyPressed(input.connectHolds))
+					currContext->connectHoldsInSelection();
+				if (ImGui::IsAnyPressed(input.splitHold))
+					currContext->splitHoldInSelection();
+				if (ImGui::IsAnyPressed(input.lerpHiSpeeds))
+					currContext->lerpHiSpeeds(currTimeline->getQuarterDivision(), EaseType::Linear);
+			}
+		}
+
+		if (state.wantCreateScore)
+		{
+			create();
+			state.wantCreateScore = false;
+		}
+		if (state.wantSaveScore)
+		{
+			if (currContext)
+				save(*currContext);
+			state.wantSaveScore = false;
+		}
+		if (state.wantSaveAsScore)
+		{
+			if (currContext)
+				saveAs(*currContext);
+			state.wantSaveAsScore = false;
+		}
 	}
 
 	size_t ScoreEditor::updateRecentFilesList(const std::string& entry)
@@ -481,115 +515,145 @@ namespace MikuMikuWorld
 	void ScoreEditor::drawMenubar()
 	{
 		ImGui::BeginMainMenuBar();
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, UI::scale({10, 2}));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, UI::scale({ 10, 2 }));
 
-		auto& inputConf = getConfig().input;
+		auto& config = getConfig();
+		auto& input = config.input;
 		if (ImGui::BeginMenu(localize(Text::file)))
 		{
-			//if (ImGui::MenuItem(getString("new"), ToShortcutString(config.input.create)))
-			//	Application::getInstance().getWindowState().resetting = true;
+			if (ImGui::MenuItem(localize(Text::newFile), ToShortcutString(input.create)))
+				state.wantCreateScore = true;
 
-			//if (ImGui::MenuItem(getString("open"), ToShortcutString(config.input.open)))
-			//{
-			//	Application::getInstance().getWindowState().resetting = true;
-			//	Application::getInstance().getWindowState().shouldPickScore = true;
-			//}
+			if (ImGui::MenuItem(localize(Text::openFile), ToShortcutString(input.open)))
+				state.wantOpenScore = true;
 
-			//if (ImGui::BeginMenu(getString("open_recent")))
-			//{
-			//	for (size_t index = 0; index < config.recentFiles.size(); index++)
-			//	{
-			//		const std::string& entry = config.recentFiles[index];
-			//		if (ImGui::MenuItem(entry.c_str()))
-			//		{
-			//			if (IO::File::exists(entry))
-			//			{
-			//				Application::getInstance().getWindowState().resetting = true;
-			//				Application::getInstance().appendOpenFile(entry);
-			//			}
-			//			else
-			//			{
-			//				recentFileNotFoundDialog.removeFilename = entry;
-			//				recentFileNotFoundDialog.removeIndex = index;
-			//				recentFileNotFoundDialog.open = true;
-			//			}
-			//		}
-			//	}
+			if (ImGui::BeginMenu(localize(Text::openRecent)))
+			{
+				for (size_t index = 0; index < config.recentFiles.size(); index++)
+				{
+					const std::string& entry = config.recentFiles[index];
+					// avoid ID collision
+					std::string label = IO::formatString("%s##recent_items_%zd", entry, index);
+					if (ImGui::MenuItem(label.c_str()))
+					{
+						FilePath path = IO::stringToPath(entry);
+						if (IO::File::exists(path))
+						{
+							appendOpenFile(path);
+						}
+						else
+						{
+							std::string title = UI::modalTitle(Text::fileNotFound);
+							std::string content = IO::formatString(
+							    "%s \"%s\" %s.\n%s", localize(Text::fileNotFoundMsg1), entry,
+							    localize(Text::fileNotFoundMsg2),
+							    localize(Text::removeRecentFileNotFound));
+							auto onYes = [index = index]()
+							{
+								auto& config = getConfig();
+								if (!isArrayIndexInBounds(index, config.recentFiles))
+									return;
+								config.recentFiles.erase(config.recentFiles.begin() + index);
+							};
+							DialogContent::Action yes = { localize(Text::yes).string, onYes };
+							DialogContent::Action no = { localize(Text::no).string, nullptr };
+							dialog.open(title, { content }, { yes, no });
+						}
+					}
+				}
 
-			//	ImGui::Separator();
-			//	if (ImGui::MenuItem(getString("clear"), nullptr, false,
-			//	                    !config.recentFiles.empty()))
-			//		config.recentFiles.clear();
+				ImGui::Separator();
+				bool hasRecentFiles = config.recentFiles.size();
+				if (ImGui::MenuItem(localize(Text::clear), nullptr, false, hasRecentFiles))
+					config.recentFiles.clear();
 
-			//	ImGui::EndMenu();
-			//}
+				ImGui::EndMenu();
+			}
 
-			//ImGui::Separator();
-			//if (ImGui::MenuItem(getString("save"), ToShortcutString(config.input.save)))
-			//	trySave(context.workingData.filename);
+			ImGui::Separator();
+			if (ImGui::MenuItem(localize(Text::save), ToShortcutString(input.save), false,
+			                    currContext))
+				save(*currContext);
 
-			//if (ImGui::MenuItem(getString("save_as"), ToShortcutString(config.input.saveAs)))
-			//	saveAs();
+			if (ImGui::MenuItem(localize(Text::saveAs), ToShortcutString(input.saveAs), false,
+			                    currContext))
+				saveAs(*currContext);
 
-			//if (ImGui::MenuItem(getString("export_score"),
-			//                    ToShortcutString(config.input.exportScore)))
-			//	exportScore();
+			if (ImGui::MenuItem(localize(Text::exportScore), ToShortcutString(input.exportScore),
+			                    false, currContext))
+				exportScore(*currContext);
 
-			//ImGui::Separator();
-			//if (ImGui::MenuItem(getString("exit"), ToShortcutString(ImGuiKey_F4, ImGuiMod_Alt)))
-			//	Application::getInstance().getWindowState().closing = true;
+			ImGui::Separator();
+			if (ImGui::MenuItem(localize(Text::exit), ToShortcutString(ImGuiKey_F4, ImGuiMod_Alt)))
+				Application::getInstance().getWindowState().closing = true;
 
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu(localize(Text::edit)))
 		{
-			//if (ImGui::MenuItem(getString("undo"), ToShortcutString(config.input.undo), false,
-			//                    context.history.hasUndo()))
-			//	context.undo();
+			if (ImGui::MenuItem(localize(Text::undo), ToShortcutString(input.undo), false,
+			                    currContext && currContext->history.hasUndo()))
+				currContext->undo();
 
-			//if (ImGui::MenuItem(getString("redo"), ToShortcutString(config.input.redo), false,
-			//                    context.history.hasRedo()))
-			//	context.redo();
+			if (ImGui::MenuItem(localize(Text::redo), ToShortcutString(input.redo), false,
+			                    currContext && currContext->history.hasRedo()))
+				currContext->redo();
 
-			//ImGui::Separator();
-			//if (ImGui::MenuItem(getString("delete"), ToShortcutString(config.input.deleteSelection),
-			//                    false, context.hasSelection()))
-			//	context.deleteSelection();
+			ImGui::Separator();
+			if (ImGui::MenuItem(localize(Text::del), ToShortcutString(input.deleteSelection), false,
+			                    currContext && currContext->hasAnySelected()))
+				currContext->deleteSelection();
 
-			//if (ImGui::MenuItem(getString("cut"), ToShortcutString(config.input.cutSelection),
-			//                    false, context.hasSelection()))
-			//	context.cutSelection();
+			if (ImGui::MenuItem(localize(Text::cut), ToShortcutString(input.cutSelection), false,
+			                    currContext && currContext->hasAnySelected()))
+				currContext->cutSelection();
 
-			//if (ImGui::MenuItem(getString("copy"), ToShortcutString(config.input.copySelection),
-			//                    false, context.hasSelection()))
-			//	context.copySelection();
+			if (ImGui::MenuItem(localize(Text::copy), ToShortcutString(input.copySelection), false,
+			                    currContext && currContext->hasAnySelected()))
+				currContext->copySelection();
 
-			//if (ImGui::MenuItem(getString("paste"), ToShortcutString(config.input.paste)))
-			//	context.paste(false);
+			if (ImGui::MenuItem(localize(Text::paste), ToShortcutString(input.paste)))
+				pasteData.startPaste();
 
-			//if (ImGui::MenuItem(getString("duplicate"), ToShortcutString(config.input.duplicate),
-			//                    false, context.hasSelection()))
-			//	context.duplicateSelection(false);
+			if (ImGui::MenuItem(localize(Text::duplicate), ToShortcutString(input.duplicate), false,
+			                    currContext && currContext->hasAnySelected()))
+			{
+				currContext->copySelection();
+				pasteData.startPaste();
+			}
 
-			//ImGui::Separator();
-			//if (ImGui::MenuItem(getString("select_all"), ToShortcutString(config.input.selectAll)))
-			//	context.selectAll();
+			if (ImGui::MenuItem(localize(Text::flipDuplicate),
+			                    ToShortcutString(input.flipDuplicate), false,
+			                    currContext && currContext->hasAnySelected()))
+			{
+				currContext->copySelection();
+				pasteData.startPaste();
+				pasteData.flip();
+			}
 
-			//ImGui::Separator();
-			// if (ImGui::MenuItem(localize(Text::settings),
-			// ToShortcutString(inputConf.openSettings))) 	settingsWindow.open = true;
+			if (ImGui::MenuItem(localize(Text::flip), ToShortcutString(input.flip), false,
+			                    currContext && currContext->hasAnySelected()))
+				currContext->flipSelection();
+
+			ImGui::Separator();
+			if (ImGui::MenuItem(localize(Text::selectAll), ToShortcutString(input.selectAll)))
+				currContext->selectAll();
+
+			ImGui::Separator();
+			if (ImGui::MenuItem(localize(Text::settings), ToShortcutString(input.openSettings)))
+				settingsWindow.open();
 
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu(localize(Text::view)))
 		{
-			//ImGui::MenuItem(getString("show_step_outlines"), NULL, &timeline.drawHoldStepOutlines);
-			ImGui::MenuItem(getString("cursor_auto_scroll"), NULL, &config.followCursorInPlayback);
-			ImGui::MenuItem(getString("return_to_last_tick"), NULL,
+			ImGui::MenuItem(localize(Text::showStepOutlines), NULL, &edit.drawHoldStepOutlines);
+			ImGui::MenuItem(localize(Text::cursorAutoScroll), NULL, &config.followCursorInPlayback);
+			ImGui::MenuItem(localize(Text::returnToLastTick), NULL,
 			                &config.returnToLastSelectedTickOnPause);
-			ImGui::MenuItem(getString("draw_waveform"), NULL, &config.drawWaveform);
+			ImGui::MenuItem(localize(Text::drawWaveform), NULL, &config.drawWaveform);
 
 			ImGui::EndMenu();
 		}
@@ -602,13 +666,13 @@ namespace MikuMikuWorld
 				ImGui::MenuItem("ImGui Demo Window", NULL, &showImGuiDemoWindow);
 #endif
 
-				//if (ImGui::MenuItem("Auto Save"))
+				// if (ImGui::MenuItem("Auto Save"))
 				//	autoSave();
 
-				//if (ImGui::MenuItem("Delete Old Auto Save (1)"))
+				// if (ImGui::MenuItem("Delete Old Auto Save (1)"))
 				//	deleteOldAutoSave(1);
 
-				//if (ImGui::MenuItem("Delete Old Auto Save (Max)"))
+				// if (ImGui::MenuItem("Delete Old Auto Save (Max)"))
 				//	deleteOldAutoSave(config.autoSaveMaxCount);
 
 				bool audioRunning = audio.isEngineStarted();
@@ -637,12 +701,23 @@ namespace MikuMikuWorld
 
 		if (ImGui::BeginMenu(localize(Text::help)))
 		{
-			if (ImGui::MenuItem(localize(Text::help), ToShortcutString(inputConf.openHelp)))
-				help();
+			if (ImGui::MenuItem(localize(Text::help), ToShortcutString(input.openHelp)))
+				openHelp();
 
-			//if (ImGui::MenuItem(getString("about")))
-			//	aboutDialog.open = true;
-
+			if (ImGui::MenuItem(localize(Text::about)))
+			{
+				std::string title = UI::modalTitle(Text::about);
+				const char* desc =
+				    APP_NAME "\nThis application is based on MikuMikuWorld for Chart Cyanvas\n"
+				             "Copyright (c) 2023 Nanashi. (@sevenc-nanashi)\n\n"
+				             "Which was based on MikuMikuWorld.\n"
+				             "Copyright (C) 2022 Crash5b\n\n";
+				std::string appVersion =
+				    IO::formatString("Version %s", Application::getInstance().getAppVersion());
+				std::string translator =
+				    IO::formatString(localize(Text::translatedBy), localize(Text::translator));
+				dialog.open(title, { desc, "", appVersion, translator }, { { "OK", nullptr } });
+			}
 			ImGui::EndMenu();
 		}
 
@@ -657,11 +732,6 @@ namespace MikuMikuWorld
 
 		ImGui::PopStyleVar();
 		ImGui::EndMainMenuBar();
-	}
-
-	void ScoreEditor::help()
-	{
-		ShellExecuteW(0, 0, L"https://github.com/crash5band/MikuMikuWorld/wiki", 0, 0, SW_SHOW);
 	}
 
 	void ScoreEditor::autoSave()
@@ -726,5 +796,17 @@ namespace MikuMikuWorld
 	void ScoreEditor::appendOpenFile(const FilePath& filepath)
 	{
 		state.pendingOpenFiles.push_back(filepath);
+	}
+
+	void ScoreEditor::openHelp()
+	{
+		ImGui::GetPlatformIO().Platform_OpenInShellFn(
+		    GImGui, "https://github.com/crash5band/MikuMikuWorld/wiki");
+	}
+
+	void ScoreEditor::openReleasePage()
+	{
+		ImGui::GetPlatformIO().Platform_OpenInShellFn(
+		    GImGui, "https://github.com/UntitledCharts/MikuMikuWorld4UC/releases");
 	}
 }

@@ -170,9 +170,13 @@ namespace MikuMikuWorld
 	// Size checks
 	// We don't put this in the header to avoid recursive include
 	static_assert(std::size(insertModeTexts) == size_t(InsertMode::InsertModeMax));
+	static_assert(std::size(snapModeTexts) == size_t(SnapMode::SnapModeMax));
 	static_assert(std::size(flickTypeTexts) == size_t(FlickType::FlickTypeCount));
 	static_assert(std::size(easeTypeTexts) == size_t(EaseType::EaseTypeCount));
+	static_assert(std::size(holdJointTypeTexts) == size_t(EditHoldJointType::JointTypeCount));
 	static_assert(std::size(stepTypeTexts) == size_t(EditHoldStepType::HoldStepTypeCount));
 	static_assert(std::size(guideColorAllTexts) == size_t(GuideColor::GuideColorCount));
 	static_assert(std::size(fadeTypeTexts) == size_t(FadeType::FadeTypeCount));
+	static_assert(std::size(baseThemeTexts) == size_t(BaseTheme::BASE_THEME_MAX));
+	static_assert(std::size(hispeedEaseTypeTexts) == size_t(HiSpeedEaseType::EaseTypeCount));
 }
