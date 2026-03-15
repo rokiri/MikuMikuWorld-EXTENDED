@@ -9,6 +9,9 @@
 #include "Utilities.h"
 #include "IconsFontAwesome5.h"
 #include "Colors.h"
+#include "IO.h"       // --- 追加 ---
+#include <filesystem> // --- 追加 ---
+#include <fstream>    // --- 追加 ---
 
 namespace MikuMikuWorld
 {
@@ -20,6 +23,139 @@ namespace MikuMikuWorld
 		ImGui::CreateContext();
 
 		configFilename = Application::getAppDir() + IMGUI_CONFIG_FILENAME;
+
+		// --- 修正ここから：パスをワイド文字列に変換してから処理する ---
+		std::wstring wConfigFilename = IO::mbToWideStr(configFilename);
+
+		if (!std::filesystem::exists(wConfigFilename)) {
+			std::ofstream file(wConfigFilename);
+			if (file.is_open()) {
+				file << R"([Window][###notes_timeline]
+Pos=251,55
+Size=808,954
+Collapsed=0
+DockId=0x00000001,0
+
+[Window][###chart_properties]
+Pos=1061,580
+Size=260,429
+Collapsed=0
+DockId=0x0000000C,0
+
+[Window][###note_properties]
+Pos=1323,580
+Size=264,429
+Collapsed=0
+DockId=0x0000000D,0
+
+[Window][###options]
+Pos=1589,580
+Size=331,429
+Collapsed=0
+DockId=0x00000004,0
+
+[Window][###presets]
+Pos=0,612
+Size=249,397
+Collapsed=0
+DockId=0x0000000A,1
+
+[Window][###layers]
+Pos=0,55
+Size=249,555
+Collapsed=0
+DockId=0x00000009,0
+
+[Window][###waypoints]
+Pos=0,612
+Size=249,397
+Collapsed=0
+DockId=0x0000000A,0
+
+[Window][InvisibleWindow]
+Pos=0,55
+Size=1920,954
+Collapsed=0
+
+[Window][Debug##Default]
+ViewportPos=210,160
+ViewportId=0x9F5F46A1
+Size=400,400
+Collapsed=0
+
+[Window][##app_toolbar]
+Pos=0,20
+Size=1920,35
+Collapsed=0
+
+[Window][###score_preview]
+Pos=1061,55
+Size=859,523
+Collapsed=0
+DockId=0x00000005,0
+
+[Window][###settings]
+Pos=585,214
+Size=750,600
+Collapsed=0
+
+[Window][###unsaved_changes]
+Pos=735,414
+Size=450,200
+Collapsed=0
+
+[Window][Add Folder]
+ViewportPos=826,473
+ViewportId=0x52ADEEC5
+Size=268,100
+Collapsed=0
+
+[Window][Delete Chart]
+ViewportPos=573,435
+ViewportId=0xA0915BA2
+Size=362,118
+Collapsed=0
+
+[Window][Delete File]
+ViewportPos=769,414
+ViewportId=0x94B2CB3D
+Size=381,226
+Collapsed=0
+
+[Window][GalleryScreen]
+Pos=0,0
+Size=1920,1009
+Collapsed=0
+
+[Table][0xD68DAD8B,2]
+RefScale=16
+Column 0  Weight=1.0000
+Column 1  Width=89
+
+[Table][0x519E09DE,2]
+RefScale=16
+Column 0  Width=192
+Column 1  Weight=1.0000
+
+[Docking][Data]
+DockSpace           ID=0xF442860A Window=0xD8117908 Pos=0,78 Size=1920,954 Split=X
+  DockNode          ID=0x00000007 Parent=0xF442860A SizeRef=249,954 Split=Y Selected=0xCB59F716
+    DockNode        ID=0x00000009 Parent=0x00000007 SizeRef=249,555 Selected=0xCB59F716
+    DockNode        ID=0x0000000A Parent=0x00000007 SizeRef=249,397 Selected=0xEC13F1BA
+  DockNode          ID=0x00000008 Parent=0xF442860A SizeRef=1669,954 Split=X
+    DockNode        ID=0x00000001 Parent=0x00000008 SizeRef=808,765 CentralNode=1 Selected=0x7832EA6E
+    DockNode        ID=0x00000002 Parent=0x00000008 SizeRef=859,765 Split=Y
+      DockNode      ID=0x00000005 Parent=0x00000002 SizeRef=250,523 Selected=0x3A83CA69
+      DockNode      ID=0x00000006 Parent=0x00000002 SizeRef=250,429 Split=X Selected=0x25F8FF00
+        DockNode    ID=0x00000003 Parent=0x00000006 SizeRef=526,829 Split=X Selected=0x25F8FF00
+          DockNode  ID=0x0000000C Parent=0x00000003 SizeRef=260,429 Selected=0xD503FE8A
+          DockNode  ID=0x0000000D Parent=0x00000003 SizeRef=264,429 Selected=0x25F8FF00
+        DockNode    ID=0x00000004 Parent=0x00000006 SizeRef=331,829 Selected=0x0FDBD4A5
+)";
+				file.close();
+			}
+		}
+		// --- 修正ここまで ---
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable |
