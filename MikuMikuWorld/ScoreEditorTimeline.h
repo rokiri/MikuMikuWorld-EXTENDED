@@ -8,7 +8,7 @@
 
 namespace MikuMikuWorld
 {
-	using EventArgs = std::variant<Tempo, HiSpeed, TimeSignature, Waypoint>;
+	using EventArgs = std::variant<Tempo, HiSpeed, TimeSignature, Waypoint, Fever, Skill>;
 
 	class ScoreEditorTimeline
 	{

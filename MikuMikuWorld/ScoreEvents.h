@@ -22,7 +22,13 @@ namespace MikuMikuWorld
 	};
 	using TempoCollection = std::map<tick_t, Tempo>;
 
-	using SkillTriggerCollection = std::set<tick_t>;
+	struct Skill
+	{
+		tick_t tick;
+		inline operator tick_t() const { return tick; }
+	};
+
+	using SkillTriggerCollection = std::set<Skill>;
 
 	struct Fever
 	{

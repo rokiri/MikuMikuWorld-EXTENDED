@@ -2681,13 +2681,15 @@ namespace MikuMikuWorld
 			// Update fever
 			ImGui::TableNextColumn();
 			ImGui::Dummy({ UI::scale(52), 1 }); // Padding
-			feverControl(drawList, context.score.fever, eventEnabled);
+			if (feverControl(drawList, context.score.fever, eventEnabled))
+				openEvent(context.score.fever);
 
 			// Update skill triggers
 			ImGui::TableNextColumn();
 			ImGui::Dummy({ UI::scale(28), 1 }); // Padding
 			for (auto&& skill : context.score.skills)
-				skillControl(drawList, skill, eventEnabled);
+				if (skillControl(drawList, skill, eventEnabled))
+					openEvent(skill);
 
 			ImGui::EndTable();
 		}
@@ -3253,6 +3255,29 @@ namespace MikuMikuWorld
 				{
 					ImGui::CloseCurrentPopup();
 					context.eraseWaypoint(waypoint->ID);
+				}
+			}
+			else if (Fever* fever = std::get_if<Fever>(&eventEditArgs))
+			{
+				ImGui::TextUnformatted(localize(Text::editFever));
+				ImGui::Separator();
+				if (ImGui::Button(localize(Text::remove), ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					context.score.fever.startTick = -1;
+					context.score.fever.endTick = -1;
+					context.pushHistory("Remove FEVER event");
+				}
+			}
+			else if (Skill* skill = std::get_if<Skill>(&eventEditArgs))
+			{
+				ImGui::TextUnformatted(localize(Text::editSkill));
+				ImGui::Separator();
+				if (ImGui::Button(localize(Text::remove), ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					context.score.skills.erase(*skill);
+					context.pushHistory("Remove skill trigger");
 				}
 			}
 			else
