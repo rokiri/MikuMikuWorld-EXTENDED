@@ -124,39 +124,6 @@ namespace MikuMikuWorld
 		editor->appendOpenFile(filepath);
 	}
 
-	// void Application::handlePendingOpenFiles()
-	//{
-	//	std::string scoreFile{};
-	//	std::string musicFile{};
-
-	//	for (auto it = pendingOpenFiles.rbegin(); it != pendingOpenFiles.rend(); ++it)
-	//	{
-	//		std::string extension = IO::File::getFileExtension(*it);
-	//		std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
-
-	//		if (ScoreSerializeController::isValidFormat(
-	//		        ScoreSerializeController::toSerializeFormat(*it)))
-	//			scoreFile = *it;
-	//		else if (Audio::isSupportedFileFormat(extension))
-	//			musicFile = *it;
-
-	//		if (!scoreFile.empty() && !musicFile.empty())
-	//			break;
-	//	}
-
-	//	if (!scoreFile.empty())
-	//	{
-	//		windowState.resetting = true;
-	//		// pendingLoadScoreFile = scoreFile;
-	//	}
-
-	//	if (!musicFile.empty())
-	//		editor->loadMusic(musicFile);
-
-	//	pendingOpenFiles.clear();
-	//	windowState.dragDropHandled = true;
-	//}
-
 	void Application::update()
 	{
 		if (config.language != language)
@@ -187,87 +154,10 @@ namespace MikuMikuWorld
 		imgui->begin();
 		imgui->initializeLayout();
 
-		// if ((windowState.closing || windowState.resetting) && !editor->isUpToDate() &&
-		//     !unsavedChangesDialog.open)
-		//{
-		//	unsavedChangesDialog.open = true;
-		//	ImGui::OpenPopup(MODAL_TITLE("unsaved_changes"));
-		// }
-
-		// auto unsavedChangesResult = unsavedChangesDialog.update();
-
-		if (windowState.closing)
+		if (windowState.closing && editor->close())
 		{
 			glfwSetWindowShouldClose(window, 1);
-			// if (!editor->isUpToDate())
-			//{
-			//	switch (unsavedChangesResult)
-			//	{
-			//	case DialogResult::Yes:
-			//		editor->trySave(editor->getWorkingFilename().data());
-			//		glfwSetWindowShouldClose(window, 1);
-			//		break;
-
-			//	case DialogResult::No:
-			//		glfwSetWindowShouldClose(window, 1);
-			//		break;
-
-			//	case DialogResult::Cancel:
-			//		windowState.closing = false;
-			//		break;
-
-			//	default:
-			//		break;
-			//	}
-			//}
-			// else
-			//{
-			//	glfwSetWindowShouldClose(window, 1);
-			//}
 		}
-
-		// if (windowState.resetting)
-		//{
-		//	if (!editor->isUpToDate())
-		//	{
-		//		switch (unsavedChangesResult)
-		//		{
-		//		case DialogResult::Yes:
-		//			editor->trySave(editor->getWorkingFilename().data());
-		//			break;
-
-		//		case DialogResult::Cancel:
-		//			windowState.resetting = shouldPickScore = false;
-		//			pendingLoadScoreFile.clear();
-		//			break;
-
-		//		default:
-		//			break;
-		//		}
-		//	}
-
-		//	// Already saved or clicked save changes or discard changes
-		//	if (editor->isUpToDate() || (unsavedChangesResult != DialogResult::Cancel &&
-		//	                             unsavedChangesResult != DialogResult::None))
-		//	{
-		//		if (windowState.shouldPickScore)
-		//		{
-		//			editor->open();
-		//			windowState.shouldPickScore = false;
-		//		}
-		//		else if (pendingLoadScoreFile.size())
-		//		{
-		//			editor->loadScore(pendingLoadScoreFile);
-		//			pendingLoadScoreFile.clear();
-		//		}
-		//		else
-		//		{
-		//			editor->create();
-		//		}
-
-		//		windowState.resetting = false;
-		//	}
-		//}
 
 		editor->update();
 

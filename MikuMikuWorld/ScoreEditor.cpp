@@ -169,14 +169,14 @@ namespace MikuMikuWorld
 		ImGuiWindow* dockSpace = ImGui::FindWindowByName("InvisibleWindow");
 		ImGuiID dockSpaceId = dockSpace ? dockSpace->GetID("InvisibleWindowDockSpace") : 0;
 		constexpr auto timelineFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
-										ImGuiWindowFlags_NoScrollWithMouse;
+		                               ImGuiWindowFlags_NoScrollWithMouse;
 		for (auto&& [id, timeline] : timelines)
 		{
-			bool closing = false;
+			bool open = true;
 			if (dockSpace)
 				ImGui::SetNextWindowDockID(dockSpaceId, ImGuiCond_Once);
 			auto extraFlags = timeline.context.upToDate ? 0 : ImGuiWindowFlags_UnsavedDocument;
-			if (ImGui::Begin(timeline.getWindowName(), &closing, timelineFlags | extraFlags))
+			if (ImGui::Begin(timeline.getWindowName(), &open, timelineFlags | extraFlags))
 			{
 				if (ImGui::IsWindowFocused())
 					currTimelineId = id;
@@ -189,8 +189,8 @@ namespace MikuMikuWorld
 			}
 			ImGui::End();
 
-			if (closing)
-				state.pendingCloseTimelines.push_back(id);
+			if (!open)
+				state.pendingCloseTimelines.push(id);
 		}
 
 		constexpr auto propWindowFlags =
@@ -361,17 +361,132 @@ namespace MikuMikuWorld
 			create();
 			state.wantCreateScore = false;
 		}
+		if (state.wantOpenScore)
+		{
+			open();
+			state.wantOpenScore = false;
+		}
+		if (state.wantExportScore)
+		{
+			if (currTimeline)
+			{
+				exportScore(*currTimeline);
+			}
+			state.wantExportScore = false;
+		}
 		if (state.wantSaveScore)
 		{
-			if (currContext)
-				save(*currContext);
+			if (currTimeline)
+			{
+				if (currTimeline->context.filename.empty())
+					saveAs(*currTimeline);
+				else
+					currTimeline->saveScore(currTimeline->context.filename);
+			}
 			state.wantSaveScore = false;
 		}
 		if (state.wantSaveAsScore)
 		{
-			if (currContext)
-				saveAs(*currContext);
+			if (currTimeline)
+				saveAs(*currTimeline);
 			state.wantSaveAsScore = false;
+		}
+		if (state.wantClosing)
+		{
+			if (state.closingTimelines == 0 && timelines.size())
+			{
+				for (auto&& [id, _] : timelines)
+					state.pendingCloseTimelines.push(id);
+				state.wantClosing = false;
+			}
+		}
+		if (!serializeWindow.isSerializing() && state.pendingOpenFiles.size())
+		{
+			const auto& filepath = state.pendingOpenFiles.front();
+			std::string filename = IO::toString(filepath);
+			std::string extension = IO::toString(IO::File::getFileExtension(filepath));
+			std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
+			if (currContext && Audio::isSupportedFileFormat(extension))
+			{
+				currContext->isPendingLoadMusic = true;
+				currContext->pendingLoadMusicFilename = filename;
+			}
+			else
+			{
+				id_t timelineID = currTimelineId;
+				if (!currContext || currContext->score.notes.size())
+				{
+					timelineID = nextTimelineId;
+					create();
+				}
+				serializeWindow.deserialize(timelines.at(timelineID), filename);
+			}
+			state.pendingOpenFiles.pop();
+		}
+		while (state.pendingCloseTimelines.size())
+		{
+			id_t id = state.pendingCloseTimelines.front();
+			auto timelineIt = timelines.find(id);
+			if (timelineIt == timelines.end())
+			{
+				state.pendingCloseTimelines.pop();
+				continue;
+			}
+			if (!timelineIt->second.context.upToDate)
+			{
+				std::string title = UI::modalTitle(Text::unsavedChanges);
+
+				auto onSave = [this, &timeline = timelineIt->second, ID = id]()
+				{
+					state.closingTimelines--;
+					if (timeline.context.filename.empty())
+						saveAs(timeline);
+					else
+						timeline.saveScore(timeline.context.filename);
+					timelines.erase(ID);
+					if (currTimelineId == ID)
+					{
+						currContext = nullptr;
+						currTimeline = nullptr;
+					}
+				};
+				auto onDiscard = [this, ID = id]()
+				{
+					state.closingTimelines--;
+					timelines.erase(ID);
+					if (currTimelineId == ID)
+					{
+						currContext = nullptr;
+						currTimeline = nullptr;
+					}
+				};
+				auto onCancel = [this]()
+				{
+					state.closingTimelines--;
+					state.wantClosing = false;
+					WindowState& appState = Application::getInstance().getWindowState();
+					if (appState.closing)
+						appState.closing = false;
+				};
+				DialogContent::Action save = { localize(Text::saveChanges).string, onSave };
+				DialogContent::Action discard = { localize(Text::discardChanges).string,
+					                              onDiscard };
+				DialogContent::Action cancel = { localize(Text::cancel).string, onCancel };
+				state.closingTimelines++;
+				dialog.open(title,
+				            { localize(Text::askSave).string, localize(Text::warnUnsaved).string },
+				            { save, discard, cancel });
+			}
+			else
+			{
+				timelines.erase(timelineIt);
+				if (currTimelineId == id)
+				{
+					currContext = nullptr;
+					currTimeline = nullptr;
+				}
+			}
+			state.pendingCloseTimelines.pop();
 		}
 	}
 
@@ -402,11 +517,12 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::loadScore(std::string filename)
 	{
-		//if (!IO::File::exists(filename))
-		//	return;
+		if (!IO::File::exists(IO::stringToPath(filename)))
+			return;
 
-		//timeline.setPlaying(context, false);
-		//serializeWindow.deserialize(filename);
+		for (auto& [_, timeline] : timelines)
+			timeline.setPlaying(false);
+		state.pendingOpenFiles.push(IO::stringToPath(filename));
 	}
 
 	void ScoreEditor::loadMusic(std::string filename)
@@ -436,74 +552,58 @@ namespace MikuMikuWorld
 			loadScore(fileDialog.outputFilename);
 	}
 
-	void ScoreEditor::close() { state.wantClosing = true; }
-
-	bool ScoreEditor::save(ScoreContext& context)
+	bool ScoreEditor::close()
 	{
-		if (context.filename.empty())
-			return saveAs(context);
-		// try
-		//{
-		//	context.score.metadata = context.workingData.toScoreMetadata();
-		//	NativeScoreSerializer().serialize(context.score, filename);
-
-		//	UI::setWindowTitle(IO::File::getFilename(filename));
-		//	context.upToDate = true;
-		//}
-		//catch (const std::exception& err)
-		//{
-		//	IO::messageBox(APP_NAME,
-		//	               IO::formatString("%s\n%s: %s", getString("error_save_score_file"),
-		//	                                getString("error"), err.what()),
-		//	               IO::MessageBoxButtons::Ok, IO::MessageBoxIcon::Error);
-		//	return false;
-		//}
-
-		return true;
+		if (state.wantClosing)
+			return state.closingTimelines == 0 && timelines.empty();
+		state.wantClosing = true;
+		return false;
 	}
 
-	bool ScoreEditor::saveAs(ScoreContext& context)
+	bool ScoreEditor::saveAs(ScoreEditorTimeline& timeline)
 	{
-		// IO::FileDialog fileDialog{};
-		// fileDialog.title = "Save Chart";
-		// fileDialog.filters = { IO::mmwsFilter };
-		// fileDialog.defaultExtension = "ucmmws";
-		// fileDialog.parentWindowHandle = Application::getAppWindowHandle();
-		// fileDialog.inputFilename =
-		//     IO::File::getFilenameWithoutExtension(context.workingData.filename);
+		IO::FileDialog fileDialog{};
+		fileDialog.title = "Save Chart";
+		fileDialog.filters = { IO::mmwsNativeFilter };
+		fileDialog.defaultExtension =
+		    ScoreSerializeController::getFormatDefaultExtension(SerializeFormat::NativeFormat)
+		        .c_str();
+		fileDialog.parentWindowHandle = Application::getAppWindowHandle();
+		fileDialog.inputFilename = IO::toString(
+		    IO::File::getFilenameWithoutExtension(IO::stringToPath(timeline.context.filename)));
 
-		//if (fileDialog.saveFile() == IO::FileDialogResult::OK)
-		//{
-		//	context.workingData.filename = fileDialog.outputFilename;
-		//	bool saved = save(context.workingData.filename);
-		//	if (saved)
-		//		updateRecentFilesList(fileDialog.outputFilename);
+		if (fileDialog.saveFile() == IO::FileDialogResult::OK)
+		{
+			timeline.context.filename = fileDialog.outputFilename;
+			bool saved = timeline.saveScore(currTimeline->context.filename);
+			if (saved)
+				updateRecentFilesList(fileDialog.outputFilename);
 
-		//	return saved;
-		//}
+			return saved;
+		}
 
 		return false;
 	}
 
-	void ScoreEditor::exportScore(ScoreContext& context)
+	void ScoreEditor::exportScore(ScoreEditorTimeline& timeline)
 	{
-		//SerializeFormat format = static_cast<SerializeFormat>(config.defaultExportFormat);
-		//if (ScoreSerializeController::isValidFormat(format))
-		//{
-		//	IO::FileDialog fileDialog{};
-		//	fileDialog.title = "Export Chart";
-		//	fileDialog.filters = { ScoreSerializeController::getFormatFilter(format) };
-		//	fileDialog.defaultExtension =
-		//	    ScoreSerializeController::getFormatDefaultExtension(format);
-		//	fileDialog.parentWindowHandle = Application::getAppWindowHandle();
+		SerializeFormat format = static_cast<SerializeFormat>(getConfig().defaultExportFormat);
+		if (ScoreSerializeController::isValidFormat(format))
+		{
+			IO::FileDialog fileDialog{};
+			fileDialog.title = "Export Chart";
+			fileDialog.filters = { ScoreSerializeController::getFormatFilter(format) };
+			fileDialog.defaultExtension =
+			    ScoreSerializeController::getFormatDefaultExtension(format);
+			fileDialog.parentWindowHandle = Application::getAppWindowHandle();
 
-		//	if (fileDialog.saveFile() == IO::FileDialogResult::OK)
-		//		serializeWindow.serialize(context, fileDialog.outputFilename);
-		//}
-		//else
-		//{
-		//	serializeWindow.serialize(context);
-		//}
+			if (fileDialog.saveFile() == IO::FileDialogResult::OK)
+				serializeWindow.serialize(timeline, fileDialog.outputFilename);
+		}
+		else
+		{
+			serializeWindow.serialize(timeline);
+		}
 	}
 
 	void ScoreEditor::drawMenubar()
@@ -567,15 +667,15 @@ namespace MikuMikuWorld
 			ImGui::Separator();
 			if (ImGui::MenuItem(localize(Text::save), ToShortcutString(input.save), false,
 			                    currContext))
-				save(*currContext);
+				state.wantSaveScore = true;
 
 			if (ImGui::MenuItem(localize(Text::saveAs), ToShortcutString(input.saveAs), false,
 			                    currContext))
-				saveAs(*currContext);
+				state.wantSaveAsScore = true;
 
 			if (ImGui::MenuItem(localize(Text::exportScore), ToShortcutString(input.exportScore),
 			                    false, currContext))
-				exportScore(*currContext);
+				state.wantExportScore = true;
 
 			ImGui::Separator();
 			if (ImGui::MenuItem(localize(Text::exit), ToShortcutString(ImGuiKey_F4, ImGuiMod_Alt)))

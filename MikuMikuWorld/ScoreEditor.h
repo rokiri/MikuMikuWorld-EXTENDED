@@ -16,8 +16,10 @@ namespace MikuMikuWorld
 		bool wantSaveScore{ false };
 		bool wantSaveAsScore{ false };
 		bool wantClosing{ false };
-		std::vector<FilePath> pendingOpenFiles;
-		std::vector<id_t> pendingCloseTimelines;
+		std::queue<FilePath> pendingOpenFiles;
+		std::queue<std::pair<id_t, FilePath>> pendingExportTimelines;
+		std::queue<id_t> pendingCloseTimelines;
+		int closingTimelines{ 0 };
 	};
 
 	class ScoreEditor
@@ -45,7 +47,7 @@ namespace MikuMikuWorld
 		SettingsWindow settingsWindow{};
 		GenericDialog dialog;
 
-		// ScoreSerializeWindow serializeWindow{};
+		ScoreSerializeWindow serializeWindow{};
 
 		// Stopwatch autoSaveTimer;
 		FilePath autoSavePath;
@@ -64,13 +66,13 @@ namespace MikuMikuWorld
 
 		void create();
 		void open();
-		void close();
+		// Notify the the editor should be closing, return whether the editor is ready to close
+		bool close();
 		void loadScore(std::string filename);
 		void loadMusic(std::string filename);
 		size_t updateRecentFilesList(const std::string& entry);
-		void exportScore(ScoreContext& context);
-		bool saveAs(ScoreContext& context);
-		bool save(ScoreContext& context);
+		void exportScore(ScoreEditorTimeline& timeline);
+		bool saveAs(ScoreEditorTimeline& timeline);
 		void autoSave();
 		int deleteOldAutoSave(int count);
 		void appendOpenFile(const FilePath& filepath);
@@ -83,8 +85,5 @@ namespace MikuMikuWorld
 
 		void writeSettings();
 		void uninitialize();
-		// inline std::string_view getWorkingFilename() const { return context.workingData.filename; }
-		
-		// bool isUpToDate() const { return context.upToDate; }
 	};
 }

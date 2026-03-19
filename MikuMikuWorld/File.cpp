@@ -9,7 +9,9 @@ namespace fs = std::filesystem;
 
 namespace IO
 {
-	FileDialogFilter mmwsFilter{ "MikuMikuWorld Score", "*.unchmmws;*.ccmmws;*.mmws" };
+	FileDialogFilter mmwsFilter{ "Any MikuMikuWorld Score", "*.unchmmws;*.ccmmws;*.mmws" };
+	FileDialogFilter mmwsNativeFilter{ "MikuMikuWorld 4 UntitledCharts Score", "*.unchmmws" };
+	FileDialogFilter mmwsLegacyFilter{ "MikuMikuWorld Score", "*.mmws" };
 	FileDialogFilter susFilter{ "Sliding Universal Score", "*.sus" };
 	FileDialogFilter uscFilter{ "Universal Sekai Chart", "*.usc" };
 	FileDialogFilter lvlDatFilter{ "Sonolus Level Data", "*.json.gz;*.json" };

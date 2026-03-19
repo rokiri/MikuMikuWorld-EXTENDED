@@ -103,6 +103,8 @@ namespace IO
 	                                const std::initializer_list<FileDialogFilter>& filters);
 
 	extern FileDialogFilter mmwsFilter;
+	extern FileDialogFilter mmwsNativeFilter;
+	extern FileDialogFilter mmwsLegacyFilter;
 	extern FileDialogFilter susFilter;
 	extern FileDialogFilter uscFilter;
 	extern FileDialogFilter lvlDatFilter;

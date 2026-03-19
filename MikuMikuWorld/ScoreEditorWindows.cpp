@@ -1345,58 +1345,6 @@ namespace MikuMikuWorld
 		return result;
 	}
 
-#ifdef COMPILE_ME
-	DialogResult UnsavedChangesDialog::update()
-	{
-		DialogResult result = DialogResult::None;
-		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetWorkCenter(), ImGuiCond_Always,
-		                        ImVec2(0.5f, 0.5f));
-		ImGui::SetNextWindowSize(ImVec2(450, 200), ImGuiCond_Always);
-		ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID);
-		if (ImGui::BeginPopupModal(MODAL_TITLE("unsaved_changes"), NULL, ImGuiWindowFlags_NoResize))
-		{
-			ImGui::Text("%s", getString("ask_save"));
-			ImGui::Text("%s", getString("warn_unsaved"));
-
-			ImVec2 padding = ImGui::GetStyle().WindowPadding;
-			ImVec2 spacing = ImGui::GetStyle().ItemSpacing;
-
-			float btnsHeight = ImGui::GetFrameHeight();
-			float xPos = padding.x;
-			float yPos = ImGui::GetWindowSize().y - btnsHeight - padding.y;
-			ImGui::SetCursorPos(ImVec2(xPos, yPos));
-
-			ImVec2 btnSz{ (ImGui::GetContentRegionAvail().x - spacing.x - (padding.x * 0.5f)) /
-				              3.0f,
-				          btnsHeight };
-
-			if (ImGui::Button(getString("save_changes"), btnSz))
-			{
-				close();
-				result = DialogResult::Yes;
-			}
-
-			ImGui::SameLine();
-			if (ImGui::Button(getString("discard_changes"), btnSz))
-			{
-				close();
-				result = DialogResult::No;
-			}
-
-			ImGui::SameLine();
-			if (ImGui::Button(localize(Text::cancel), btnSz))
-			{
-				close();
-				result = DialogResult::Cancel;
-			}
-
-			ImGui::EndPopup();
-		}
-
-		return result;
-	}
-
-#endif
 	const char* DebugWindow::getWindowName()
 	{
 		auto fetchName = []() { return UI::iconTitle(ICON_FA_BUG, Text::debug); };

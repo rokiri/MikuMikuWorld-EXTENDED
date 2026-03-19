@@ -104,7 +104,7 @@ namespace IO
 						if (::DragQueryFileW(dropHandle, i, wFilename.data(),
 						                     static_cast<UINT>(wFilename.size())) != 0)
 						{
-							// app.appendOpenFile(IO::wideToUtf8(wFilename.data()));
+							app.appendOpenFile(IO::stringToPath(wFilename.data()));
 						}
 					}
 				}
