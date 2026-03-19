@@ -78,6 +78,7 @@ namespace Audio
 	  public:
 		SoundBuffer musicBuffer;
 		AudioContext(AudioManager& manager);
+		~AudioContext();
 
 		void playMusic(float currentTime);
 		void stopMusic();

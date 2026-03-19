@@ -171,9 +171,8 @@ namespace Audio
 		const size_t soundEffectsCount = std::size(mmw::SE_NAMES);
 		sounds = std::make_shared<SoundEffectProfile>();
 		sounds->pool.reserve(soundEffectsCount);
-		constexpr float soundEffectsVolumes[] = {
-			0.75f, 0.75f, 0.90f, 0.80f, 0.70f, 0.75f, 0.80f, 0.92f, 0.82f, 0.70f, 0.25f
-		};
+		constexpr float soundEffectsVolumes[] = { 0.75f, 0.75f, 0.90f, 0.80f, 0.70f, 0.75f,
+			                                      0.80f, 0.92f, 0.82f, 0.70f, 0.25f };
 		static_assert(std::size(soundEffectsVolumes) == soundEffectsCount);
 
 		for (size_t i = 0; i < soundEffectsCount; ++i)
@@ -213,6 +212,15 @@ namespace Audio
 	{
 		soundEffectsProfileIndex = manager.getSoundEffectsProfileIndex();
 		soundEffects = manager.getCurrentSoundEffectsProfile();
+	}
+
+	AudioContext::~AudioContext()
+	{
+		stopMusic();
+		stopSoundEffects(true);
+		ma_sound_uninit(&music);
+		musicBuffer.dispose();
+		soundEffects.reset();
 	}
 
 	void AudioContext::playMusic(float currentTime)
