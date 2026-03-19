@@ -104,7 +104,7 @@ namespace Audio
 		for (int i = 0; i < pool.size(); i++)
 		{
 			ma_result result =
-			    ma_sound_init_copy(engine, source, maSoundFlagsDefault, group, &pool[i].source);
+			    ma_sound_init_copy(engine, source, maSoundFlagsDecodeAsync, group, &pool[i].source);
 			if (hasFlag(flags, SoundFlags::LOOP))
 				ma_sound_set_looping(&pool[i].source, true);
 		}
@@ -119,7 +119,7 @@ namespace Audio
 		for (int i = 0; i < pool.size(); i++)
 		{
 			ma_result result = ma_sound_init_from_data_source(
-			    engine, &sound.buffer, maSoundFlagsDefault, group, &pool[i].source);
+			    engine, &sound.buffer, maSoundFlagsDecodeAsync, group, &pool[i].source);
 			if (hasFlag(flags, SoundFlags::LOOP))
 				ma_sound_set_looping(&pool[i].source, true);
 		}
