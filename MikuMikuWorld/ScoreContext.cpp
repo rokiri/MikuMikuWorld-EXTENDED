@@ -652,22 +652,24 @@ namespace MikuMikuWorld
 		bool (*setFunc)(bool) = dummy < 0 ? flip : dummy > 0 ? set : unset;
 
 		bool edit = false;
-		std::unordered_set<id_t> holds;
+		std::unordered_map<HoldNoteStep*, HoldNote*> holdSteps;
 		for (auto&& [_, pnote] : selectedNotes)
 		{
 			Note& note = *pnote;
-			if (!note.isHold())
-				continue;
-			holds.emplace(note.holdID);
+			if (note.isHold())
+			{
+				HoldNote& hold = score.holdNotes.at(note.holdID);
+				HoldNoteStep& step = hold.holdStepAt(note, score.notes);
+				if (!step.isGuide())
+					holdSteps.emplace(&step, &hold);
+			}
 		}
-		for (auto&& holdID : holds)
+
+		for (auto& [pstep, phold] : holdSteps)
 		{
-			HoldNote& hold = score.holdNotes.at(holdID);
-			if (hold.isGuide())
-				continue;
-			bool oldState = hold.isDummy();
+			bool oldState = pstep->isDummy();
 			bool newState = setFunc(oldState);
-			hold.flag = setFlag(hold.flag, HoldNoteFlag::Dummy, newState);
+			pstep->flag = setFlag(pstep->flag, HoldNoteFlag::Dummy, newState);
 			edit |= oldState != newState;
 		}
 
@@ -1832,7 +1834,10 @@ namespace MikuMikuWorld
 		    insertedHispeed.begin(), insertedHispeed.end());
 
 		if (insertedHispeed.size())
+		{
+			updateSelectionFlag();
 			pushHistory("Lerp hispeeds");
+		}
 	}
 
 	void ScoreContext::convertHoldToGuide(GuideColor color)
@@ -1864,19 +1869,24 @@ namespace MikuMikuWorld
 			pstep->flag = setFlag(pstep->flag, HoldNoteFlag::Critical, false);
 			pstep->guideColor = color;
 
+			HoldNote& hold = score.holdNotes.at(holdID);
 			if (!metadata.isExtendedScore)
 			{
-				const HoldNote& hold = score.holdNotes.at(holdID);
 				for (auto stepID : hold.steps)
 				{
 					Note& note = score.notes.at(stepID);
 					note.flag = setFlag(note.flag, NoteFlag::Hidden);
 				}
 			}
+			hold.updateJoints(score.notes);
+			hold.updateFading(score.notes);
 		}
 
 		if (edit)
+		{
+			updateSelectionFlag();
 			pushHistory("Convert hold to guide");
+		}
 	}
 
 	void ScoreContext::convertGuideToHold(bool critical)
@@ -1916,7 +1926,10 @@ namespace MikuMikuWorld
 		}
 
 		if (edit)
+		{
+			updateSelectionFlag();
 			pushHistory("Convert guide to hold");
+		}
 	}
 
 	void ScoreContext::convertHoldToNone()
@@ -2472,7 +2485,7 @@ namespace MikuMikuWorld
 
 	void ScoreContext::insertSkill(tick_t tick)
 	{
-		auto&& [_, inserted] = score.skills.insert(tick);
+		auto&& [_, inserted] = score.skills.insert(Skill{ tick });
 		if (inserted)
 			pushHistory("Insert skill");
 	}
