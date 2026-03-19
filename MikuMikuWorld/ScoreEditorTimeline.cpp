@@ -541,8 +541,8 @@ namespace MikuMikuWorld
 		float primeLane = laneStep * 2;
 		while (primeLane < 1.f)
 			primeLane *= 2;
-		float minLaneEx = std::max<float>(context.minLane(), toLanePos(timelineScreenPos.x));
-		float maxLaneEx = std::min<float>(context.maxLane(), toLanePos(timelineScreenMax.x));
+		float minLaneEx = std::max<float>(context.minLane(), toLanePos(absScreenPos.x));
+		float maxLaneEx = std::min<float>(context.maxLane(), toLanePos(maxScreenPos.x));
 		float floorLaneEx = std::floor(minLaneEx * laneDivision) / laneDivision;
 		float ceilLaneEx = std::ceil(maxLaneEx * laneDivision) / laneDivision;
 		for (float l = floorLaneEx; l <= ceilLaneEx; l += laneStep)
@@ -756,6 +756,13 @@ namespace MikuMikuWorld
 		if (leftX > maxScreenPos.x || (rightX + sideWidth) < absScreenPos.x)
 			return;
 
+		// if (hasFlag(note.flag, NoteFlag::LongNote))
+		//{
+		//	Color fill = stepFills[note.isCrit() ? Step_HiddenCritical : Step_Hidden] * tint;
+		//	drawSplitter.SetCurrentChannel(drawList, baseChannel + Channel_Outline);
+		//	drawList->AddRectFilled({ (leftX + sideWidth), centerY - height },
+		//	                        { rightX, centerY + height }, fill.toImU32());
+		// }
 		drawSplitter.SetCurrentChannel(drawList, baseChannel + Channel_TapNote);
 		drawList->AddImage(texID, { leftX, top }, { leftX + sideWidth, bottom }, { l, t }, { c, b },
 		                   col);
@@ -856,6 +863,11 @@ namespace MikuMikuWorld
 		float centerX = toScreenPosX(noteLane) + toScreenWidth(noteWidth) / 2;
 		float centerY =
 		    toScreenPosY(accumulateDuration(note.tick + tickOffset, context.score.tempoChanges));
+
+		// Note is not visible horizontally
+		if ((centerX - size) > maxScreenPos.x || (centerX - size) < absScreenPos.x)
+			return;
+
 		auto&& [uv1, uv2] = texture->getCoords(*sprite);
 		drawSplitter.SetCurrentChannel(drawList, baseChannel + Channel_Friction);
 		drawList->AddImage(texture->getID(), { centerX - size, centerY - size },
@@ -889,6 +901,10 @@ namespace MikuMikuWorld
 		    toScreenPosY(accumulateDuration(note.tick + tickOffset, context.score.tempoChanges));
 		float height = noteHeight * 0.15f;
 		ImVec2 p1 = { left, centerY - height }, p2 = { left + width, centerY + height };
+
+		// Note is not visible horizontally
+		if (p1.x > maxScreenPos.x || p2.x < absScreenPos.x)
+			return;
 
 		drawSplitter.SetCurrentChannel(drawList, baseChannel + Channel_Outline);
 		drawList->AddRectFilled(p1, p2, fill.toImU32());
@@ -992,8 +1008,8 @@ namespace MikuMikuWorld
 		float endY = toScreenPosY(endTime);
 
 		// Curve is not visible horizontally
-		if ((startX2 > maxScreenPos.x && endX2 > maxScreenPos.x) ||
-		    (startX1 < absScreenPos.x && endX1 < absScreenPos.x))
+		if ((startX1 > maxScreenPos.x && endX1 > maxScreenPos.x) ||
+		    (startX2 < absScreenPos.x && endX2 < absScreenPos.x))
 			return;
 
 		ImU32 startCol = startTint.toImU32(), endCol = startCol;
