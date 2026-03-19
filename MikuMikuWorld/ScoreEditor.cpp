@@ -29,7 +29,7 @@ namespace MikuMikuWorld
 		audio.setSoundEffectsProfileIndex(config.seProfileIndex);
 
 		autoSavePath = Application::getInstance().getConfigPath("auto_save");
-		// autoSaveTimer.reset();
+		autoSaveTimer.reset();
 		create();
 	}
 
@@ -154,15 +154,15 @@ namespace MikuMikuWorld
 			audio.setSoundEffectsProfileIndex(config.seProfileIndex);
 		}
 
-		// if (config.autoSaveEnabled && autoSaveTimer.elapsedMinutes() >= config.autoSaveInterval)
-		//{
-		//	autoSave();
-		//	autoSaveTimer.reset();
-		//}
+		if (config.autoSaveEnabled && autoSaveTimer.elapsedMinutes() >= config.autoSaveInterval)
+		{
+			autoSave();
+			autoSaveTimer.reset();
+		}
 
 		settingsWindow.update();
 		dialog.update();
-		//serializeWindow.update(*this, context, timeline);
+		serializeWindow.update(*this);
 		if (getConfig().debugEnabled)
 			debugWindow.update(audio);
 
@@ -760,14 +760,14 @@ namespace MikuMikuWorld
 				ImGui::MenuItem("ImGui Demo Window", NULL, &showImGuiDemoWindow);
 #endif
 
-				// if (ImGui::MenuItem("Auto Save"))
-				//	autoSave();
+				if (ImGui::MenuItem("Auto Save"))
+					autoSave();
 
-				// if (ImGui::MenuItem("Delete Old Auto Save (1)"))
-				//	deleteOldAutoSave(1);
+				if (ImGui::MenuItem("Delete Old Auto Save (1)"))
+					deleteOldAutoSave(1);
 
-				// if (ImGui::MenuItem("Delete Old Auto Save (Max)"))
-				//	deleteOldAutoSave(config.autoSaveMaxCount);
+				if (ImGui::MenuItem("Delete Old Auto Save (Max)"))
+					deleteOldAutoSave(config.autoSaveMaxCount);
 
 				bool audioRunning = audio.isEngineStarted();
 				if (ImGui::MenuItem(audioRunning ? "Stop Audio" : "Start Audio",
@@ -830,55 +830,63 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::autoSave()
 	{
+		namespace fs = std::filesystem;
 		// create auto save directory if none exists
-		if (!std::filesystem::exists(autoSavePath))
-			std::filesystem::create_directory(autoSavePath);
+		if (!fs::exists(autoSavePath))
+			fs::create_directory(autoSavePath);
 
-		//context.score.metadata = context.workingData.toScoreMetadata();
-		//NativeScoreSerializer().serialize(context.score, autoSavePath + "\\mmw_auto_save_" +
-		//                                                     Utilities::getCurrentDateTime() +
-		//                                                     UC_MMWS_EXTENSION);
-
-		//// get mmws files
-		//int mmwsCount = 0;
-		//for (const auto& file : std::filesystem::directory_iterator(wAutoSaveDir))
-		//{
-		//	std::string extension = file.path().extension().string();
-		//	std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-		//	mmwsCount += extension == UC_MMWS_EXTENSION;
-		//}
-
-		//// delete older files
-		//if (mmwsCount > config.autoSaveMaxCount)
-		//	deleteOldAutoSave(mmwsCount - config.autoSaveMaxCount);
-	}
-
-	int ScoreEditor::deleteOldAutoSave(int count)
-	{
-		if (!std::filesystem::exists(autoSavePath))
-			return 0;
+		for (auto&& [_, timeline] : timelines)
+		{
+			std::string_view name = timeline.getTimelineName();
+			FilePath saveFile = IO::stringToPath(
+			    IO::formatString("mmw_auto_save_%s-%.*s%s", Utilities::getCurrentDateTime(),
+			                     name.size(), name.data(), UC_MMWS_EXTENSION));
+			saveFile = autoSavePath / saveFile;
+			NativeScoreSerializer().serialize({ timeline.context.score, timeline.context.metadata },
+			                                  IO::toString(saveFile));
+		}
 
 		// get mmws files
-		using entry = std::filesystem::directory_entry;
-		std::vector<entry> deleteFiles;
-		for (const auto& file : std::filesystem::directory_iterator(autoSavePath))
+		int mmwsCount = 0;
+		for (const auto& file : fs::directory_iterator(autoSavePath))
 		{
 			std::string extension = IO::toString(file.path().extension());
 			std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-			if (extension == MMWS_EXTENSION)
+			mmwsCount += extension == UC_MMWS_EXTENSION;
+		}
+
+		// delete older files
+		if (mmwsCount > getConfig().autoSaveMaxCount)
+			deleteOldAutoSave(mmwsCount - getConfig().autoSaveMaxCount);
+	}
+
+	int ScoreEditor::deleteOldAutoSave(int count) const
+	{
+		namespace fs = std::filesystem;
+		if (!fs::exists(autoSavePath))
+			return 0;
+
+		// get mmws files
+		using entry = fs::directory_entry;
+		std::vector<entry> deleteFiles;
+		for (const auto& file : fs::directory_iterator(autoSavePath))
+		{
+			std::string extension = IO::toString(file.path().extension());
+			std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+			if (extension == UC_MMWS_EXTENSION)
 				deleteFiles.push_back(file);
 		}
 
 		// sort files by modification date
 		std::sort(deleteFiles.begin(), deleteFiles.end(), [](const entry& f1, const entry& f2)
-		          { return f1.last_write_time() < f2.last_write_time(); });
+		          { return f1.last_write_time() > f2.last_write_time(); });
 
 		int deleteCount = 0;
 		int remainingCount = count;
 		while (remainingCount && deleteFiles.size())
 		{
-			std::filesystem::remove(deleteFiles.begin()->path());
-			deleteFiles.erase(deleteFiles.begin());
+			fs::remove(deleteFiles.back());
+			deleteFiles.pop_back();
 
 			--remainingCount;
 			++deleteCount;
@@ -889,7 +897,7 @@ namespace MikuMikuWorld
 
 	void ScoreEditor::appendOpenFile(const FilePath& filepath)
 	{
-		state.pendingOpenFiles.push_back(filepath);
+		state.pendingOpenFiles.push(filepath);
 	}
 
 	void ScoreEditor::openHelp()

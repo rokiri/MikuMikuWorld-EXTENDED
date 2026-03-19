@@ -21,8 +21,8 @@ namespace MikuMikuWorld
 		Dummy = 1 << 2,
 		Attached = 1 << 3,
 		Hidden = 1 << 4,
-		LongNote = 1 << 5, // Use for rendering, has no other effect
-		NonAttached = 1 << 6, // Override Attached flag, for case where it need to be preserved
+		LongNote = 1 << 6, // Use for rendering, has no other effect
+		NonAttached = 1 << 7, // Override Attached flag, for case where it need to be preserved
 	};
 	DECLARE_ENUM_FLAG_OPERATORS(NoteFlag)
 

@@ -65,6 +65,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(errorSaveScoreFile, "error_save_score_file");
 	MMW_TEXT(errorLoadMusicFile, "error_load_music_file");
 	MMW_TEXT(scorePartiallyMissing, "score_partially_missing");
+	MMW_TEXT(exportFormatNotAvailExtend, "export_format_not_avail_extended");
 	MMW_TEXT(cancel);
 	MMW_TEXT(general);
 	MMW_TEXT(keyConfig, "key_config");

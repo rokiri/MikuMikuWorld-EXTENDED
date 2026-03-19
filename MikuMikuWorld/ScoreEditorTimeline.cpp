@@ -7,6 +7,7 @@
 #include "Score.h"
 #include "UI.h"
 #include "Utilities.h"
+#include "NativeScoreSerializer.h"
 #include <algorithm>
 #include <string>
 
@@ -34,23 +35,29 @@ namespace MikuMikuWorld
 		context.audio = std::make_unique<Audio::AudioContext>(manager);
 	}
 
-	static std::string createTimelineName(const std::string& name)
+	static std::string createTitleName(const std::string& name)
 	{
 		return IO::formatString(ICON_FA_MUSIC " %s - %s", localize(Text::notesTimeline), name);
 	}
 
 	const char* ScoreEditorTimeline::getWindowName() const
 	{
-		return localizeOrInsert(windowNameKey, createTimelineName, windowName);
+		return localizeOrInsert(windowNameKey, createTitleName, windowName);
 	}
 
-	void ScoreEditorTimeline::setWindowName(std::string_view name)
+	std::string_view ScoreEditorTimeline::getTimelineName() const
+	{
+		std::string_view name = windowName;
+		return name.substr(0, name.find("###notes_timeline"));
+	}
+
+	void ScoreEditorTimeline::setTimelineName(std::string_view name)
 	{
 		windowName = name;
 		windowName.append("###notes_timeline");
 		if (windowID != 0)
 			windowName.append(std::to_string(windowID));
-		getLocalization().updateText(windowNameKey, { createTimelineName(windowName) });
+		getLocalization().updateText(windowNameKey, { createTitleName(windowName) });
 	}
 
 	void ScoreEditorTimeline::update(EditArgs& edit, PasteData& pasteData)
@@ -1697,7 +1704,7 @@ namespace MikuMikuWorld
 	{
 		// Update timeline offset like visualOffset, targetOffset, maxTime
 		const float minLaneOffset = context.minLane() - 1;
-		const float maxLaneOffset = context.maxLane() + 1;
+		const float maxLaneOffset = context.maxLane() - NUM_LANES + 1;
 		targetOffset.x = std::clamp(targetOffset.x, minLaneOffset, maxLaneOffset);
 		const float minOffsetY =
 		    UNIT_Y / zoomY / 2 - ORIGIN_Y - toTimeUnit(TIMELINE_SCREEN_Y_MIN_OFFSET);
@@ -3378,10 +3385,14 @@ namespace MikuMikuWorld
 			    filename, localize(Text::error), result.getMessage());
 
 			IO::messageBox(APP_NAME, errorMessage, IO::MessageBoxButtons::Ok,
-			               IO::MessageBoxIcon::Error);
+			               IO::MessageBoxIcon::Error,
+			               Application::getInstance().getAppWindowHandle());
 		}
 		else
+		{
 			context.metadata.musicFile = filename;
+			context.audio->setMusicOffset(curTime, context.metadata.musicOffset);
+		}
 
 		context.waveformL.generateMipChainsFromSampleBuffer(context.audio->musicBuffer, 0);
 		context.waveformR.generateMipChainsFromSampleBuffer(context.audio->musicBuffer, 1);
@@ -3400,19 +3411,25 @@ namespace MikuMikuWorld
 		context.upToDate = true;
 		context.updateViews();
 		context.scoreStats.calculateStats(context.score);
+		context.nextNoteID = std::accumulate(context.score.notes.begin(), context.score.notes.end(),
+		                                     0, [](id_t id, const std::pair<id_t, Note>& v)
+		                                     { return std::max(id, v.first + 1); });
+		context.nextHoldID = std::accumulate(
+		    context.score.holdNotes.begin(), context.score.holdNotes.end(), 0,
+		    [](id_t id, const std::pair<id_t, HoldNote>& v) { return std::max(id, v.first + 1); });
 		if (ScoreSerializeController::toSerializeFormat(filename) == SerializeFormat::NativeFormat)
 		{
 			context.filename = filename;
-			setWindowName(IO::toString(IO::File::getFilename(IO::stringToPath(filename))));
+			setTimelineName(IO::toString(IO::File::getFilenameWithoutExtension(IO::stringToPath(filename))));
 		}
 		else
 		{
 			context.filename.clear();
-			setWindowName(windowUntitled);
+			setTimelineName(windowUntitled);
 		}
 
-		loadMusic(context.metadata.musicFile);
-		context.audio->setMusicOffset(0, context.metadata.musicOffset);
+		context.isPendingLoadMusic = true;
+		context.pendingLoadMusicFilename = context.metadata.musicFile;
 
 		tick_t maxTick =
 		    context.notesOrderedView.size() ? context.notesOrderedView.rbegin()->second->tick : 0;
@@ -3423,4 +3440,26 @@ namespace MikuMikuWorld
 		// Current offset maybe greater than calculated offset from score
 		maxTime = std::max(maxTime, accumulateDuration(maxTick, context.score.tempoChanges));
 	}
+
+	bool ScoreEditorTimeline::saveScore(const std::string& filename)
+	{
+		try
+		{
+			NativeScoreSerializer().serialize({ context.score, context.metadata }, filename);
+
+			setTimelineName(IO::toString(IO::File::getFilenameWithoutExtension(IO::stringToPath(filename))));
+			context.recentHistoryUndo = context.history.undoCount();
+			context.upToDate = true;
+		}
+		catch (const std::exception& err)
+		{
+			IO::messageBox(APP_NAME,
+			               IO::formatString("%s\n%s: %s", localize(Text::errorSaveScoreFile),
+			                                localize(Text::error), err.what()),
+			               IO::MessageBoxButtons::Ok, IO::MessageBoxIcon::Error);
+			return false;
+		}
+		return true;
+	}
+
 } // namespace MikuMikuWorld

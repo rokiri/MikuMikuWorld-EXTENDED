@@ -37,10 +37,12 @@ namespace MikuMikuWorld
 
 		void loadMusic(const std::string& filename);
 		void loadScore(Score score, ScoreMetadata metadata, const std::string& filename);
+		bool saveScore(const std::string& filename);
 
 		ScoreEditorTimeline(id_t id, Audio::AudioManager& manager);
 		const char* getWindowName() const;
-		void setWindowName(std::string_view name);
+		void setTimelineName(std::string_view name);
+		std::string_view getTimelineName() const;
 
 		secs_t getCurrentTime() const;
 		tick_t getCurrentTick() const;
@@ -204,7 +206,7 @@ namespace MikuMikuWorld
 		constexpr static float ZOOM_Y_WHEEL_MAX = 192.f;
 		constexpr static float ZOOM_Y_FACTOR = 1.25f;
 		constexpr static float TIMELINE_SIZE_FACTOR = 0.55f;
-		constexpr static float PANEL_SIZE_MIN = 175; // px
+		constexpr static float PANEL_SIZE_MIN = 225; // px
 		constexpr static float WHEEL_FACTOR = 0.25f;
 		constexpr static float PAN_FACTOR = 0.05f;
 		constexpr static float TIMELINE_SCREEN_Y_MIN_OFFSET = 30; // px

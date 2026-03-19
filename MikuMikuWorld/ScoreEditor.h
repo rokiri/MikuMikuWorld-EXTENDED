@@ -49,7 +49,7 @@ namespace MikuMikuWorld
 
 		ScoreSerializeWindow serializeWindow{};
 
-		// Stopwatch autoSaveTimer;
+		Stopwatch autoSaveTimer;
 		FilePath autoSavePath;
 		bool showImGuiDemoWindow{ false };
 		DebugWindow debugWindow{};
@@ -74,7 +74,7 @@ namespace MikuMikuWorld
 		void exportScore(ScoreEditorTimeline& timeline);
 		bool saveAs(ScoreEditorTimeline& timeline);
 		void autoSave();
-		int deleteOldAutoSave(int count);
+		int deleteOldAutoSave(int count) const;
 		void appendOpenFile(const FilePath& filepath);
 
 		void drawMenubar();

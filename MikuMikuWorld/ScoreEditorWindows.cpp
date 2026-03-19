@@ -348,7 +348,7 @@ namespace MikuMikuWorld
 		if (pendingDialogs.size() && !ImGui::IsPopupOpen(windowName))
 		{
 			std::lock_guard<std::mutex> lock(contentMutex);
-			ImGui::OpenPopup(windowName, ImGuiPopupFlags_NoOpenOverExistingPopup);
+			ImGui::OpenPopup(windowName);
 			currentName = IO::formatString("%s%s", pendingDialogs.front().title, windowName);
 		}
 
@@ -358,18 +358,20 @@ namespace MikuMikuWorld
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
 
 		ImVec2 windowMaxSize = viewport->WorkSize / 2;
+		ImVec2 titleSize = ImGui::CalcTextSize(currentName.c_str(), 0, true);
+		titleSize.x += padding.x * 2;
 		ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::SetNextWindowPos(viewport->GetWorkCenter(), ImGuiCond_Always, { 0.5f, 0.5f });
-		ImGui::SetNextWindowSizeConstraints({ FLT_MIN, FLT_MIN }, windowMaxSize);
+		ImGui::SetNextWindowSizeConstraints({ titleSize.x, FLT_MIN }, windowMaxSize);
 		if (ImGui::BeginPopupModal(currentName.c_str(), NULL,
 		                           ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
 		                               ImGuiWindowFlags_NoSavedSettings))
 		{
 			std::lock_guard<std::mutex> lock(contentMutex);
 			const auto& currentDialog = pendingDialogs.front();
-			ImVec2 childSize = { 300, 250 };
+			ImVec2 childSize = { std::max(350.f, titleSize.x), 250 };
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-			ImGui::SetNextWindowSizeConstraints({ 300, 250 }, { FLT_MAX, FLT_MAX });
+			ImGui::SetNextWindowSizeConstraints(childSize, { FLT_MAX, FLT_MAX });
 			if (ImGui::BeginChild(ImGuiID(1), { 0, -ImGui::GetFrameHeightWithSpacing() },
 			                      ImGuiChildFlags_PaddedBorder | ImGuiChildFlags_AlwaysAutoResize |
 			                          ImGuiChildFlags_AutoResizeX))
@@ -2065,6 +2067,7 @@ namespace MikuMikuWorld
 		ImGui::PopStyleColor();
 		ImGui::Spacing();
 
+		ImGui::BeginDisabled(!context.metadata.isExtendedScore);
 		if (ImGui::Button(localize(Text::createLayer), { -1, ImGui::GetFrameHeightWithSpacing() }))
 		{
 			renameIndex = -1;
@@ -2072,6 +2075,7 @@ namespace MikuMikuWorld
 			popupModalName = UI::modalTitle(Text::createLayer);
 			openPopup = true;
 		}
+		ImGui::EndDisabled();
 
 		if (swapFromIndex >= 0 && swapToIndex >= 0)
 		{

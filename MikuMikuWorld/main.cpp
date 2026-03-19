@@ -23,7 +23,7 @@ int main()
 		mmw::Result result = app.initialize(args[0]);
 		if (!result.isOk())
 			throw std::runtime_error(result.getMessage());
-		 for (size_t i = 1; i < args.size(); ++i)
+		for (size_t i = 1; i < args.size(); ++i)
 			app.appendOpenFile(IO::stringToPath(args[i]));
 		app.run();
 #ifndef DEBUG
@@ -35,7 +35,7 @@ int main()
 		        "An unhandled exception has occurred and the application will now close.\n\n")
 		        .append(ex.what())
 		        .append("\n\nApplication Version: ")
-		        .append(mmw::Application::getAppVersion());
+		        .append(app.getAppVersion());
 
 		IO::messageBox(APP_NAME, msg, IO::MessageBoxButtons::Ok, IO::MessageBoxIcon::Error);
 	}

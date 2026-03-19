@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#ifdef COMPILE_ME
 
 namespace MikuMikuWorld
 {
@@ -72,3 +73,5 @@ namespace MikuMikuWorld
 		bool sideLane;
 	};
 }
+
+#endif

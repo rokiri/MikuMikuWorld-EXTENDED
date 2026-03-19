@@ -1,3 +1,4 @@
+#ifdef COMPILE_ME
 #include "SusParser.h"
 #include "File.h"
 #include "IO.h"
@@ -392,3 +393,5 @@ namespace MikuMikuWorld
 			        bpms,     barLengths, hiSpeedGroups, laneOffset, sideLane };
 	}
 }
+
+#endif

@@ -6,25 +6,25 @@ namespace MikuMikuWorld
 {
 	class DefaultScoreSerializeController : public ScoreSerializeController
 	{
-		static bool isSerializable(SerializeFormat format, const Score& score);
 		void createSerializer();
-		
+
 	  public:
-		DefaultScoreSerializeController(Score score);
-		DefaultScoreSerializeController(Score score, const std::string& filename);
+		DefaultScoreSerializeController(SerializingScore score);
+		DefaultScoreSerializeController(SerializingScore score, const std::string& filename);
 
 		SerializeResult update() override;
 
 	  private:
 		std::unique_ptr<ScoreSerializer> serializer;
-		std::vector<bool> serializable;
+		std::vector<Result> serializable;
 		SerializeFormat selectedFormat{ -1 };
 	};
 
 	class DefaultScoreDeserializeController : public ScoreSerializeController
 	{
 		void createDeserializer();
-	public:
+
+	  public:
 		DefaultScoreDeserializeController(const std::string& filename);
 
 		SerializeResult update() override;
@@ -35,16 +35,19 @@ namespace MikuMikuWorld
 	};
 
 	class ScoreEditor;
+	class ScoreEditorTimeline;
 	class ScoreSerializeWindow
 	{
 	  public:
 		ScoreSerializeWindow() = default;
-		void update(ScoreEditor& editor, ScoreContext& context, ScoreEditorTimeline& timeline);
-		void serialize(const ScoreContext& context);
-		void serialize(const ScoreContext& context, const std::string& filename);
-		void deserialize(const std::string& filename);
+		void update(ScoreEditor& editor);
+		void serialize(ScoreEditorTimeline& timeline);
+		void serialize(ScoreEditorTimeline& timeline, const std::string& filename);
+		void deserialize(ScoreEditorTimeline& timeline, const std::string& filename);
+		bool isSerializing() const;
 
 	  private:
 		std::unique_ptr<ScoreSerializeController> controller{};
+		ScoreEditorTimeline* timeline{};
 	};
 }

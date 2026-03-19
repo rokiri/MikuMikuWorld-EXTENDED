@@ -3,23 +3,25 @@
 #include "SusExporter.h"
 #include "SusParser.h"
 
+#ifdef COMPILE_ME
+
 namespace MikuMikuWorld
 {
-	void SusSerializer::serialize(const Score& score, std::string filename)
+	void SusSerializer::serialize(const SerializingScore& data, std::string filename)
 	{
-		SUS sus = scoreToSus(score);
+		SUS sus = scoreToSus(data);
 
 		SusExporter exporter{};
 		exporter.dump(sus, filename, exportComment);
 	}
 
-	Score SusSerializer::deserialize(std::string filename)
+	SerializingScore SusSerializer::deserialize(std::string filename)
 	{
 		SUS sus = SusParser().parse(filename);
 		return susToScore(sus);
 	}
 
-	bool SusSerializer::canSerialize(const Score& score)
+	Result SusSerializer::canSerialize(const SerializingScore& data)
 	{
 		if (score.metadata.laneExtension != 0)
 			return false;
@@ -82,7 +84,7 @@ namespace MikuMikuWorld
 		return std::pair<int, int>(4, 4);
 	}
 
-	Score SusSerializer::susToScore(const SUS& sus)
+	SerializingScore SusSerializer::susToScore(const SUS& sus)
 	{
 		ScoreMetadata metadata{
 			sus.metadata.data.at("title"),
@@ -450,15 +452,16 @@ namespace MikuMikuWorld
 		score.skills = skills;
 		score.fever = fever;
 
-		return score;
+		return { score, metadata };
 	}
 
-	SUS SusSerializer::scoreToSus(const Score& score)
+	SUS SusSerializer::scoreToSus(const SerializingScore& data)
 	{
+		const Score& score = data.score;
 		constexpr std::array<int, static_cast<int>(FlickType::FlickTypeCount)> flickToType{ 0, 1, 3,
 			                                                                                4 };
 
-		int offset = score.metadata.laneExtension == 0 ? 2 : score.metadata.laneExtension;
+		int offset = data.metadata.laneExtension == 0 ? 2 : data.metadata.laneExtension;
 
 		std::vector<SUSNote> taps, directionals;
 		std::vector<std::vector<SUSNote>> slides;
@@ -677,3 +680,5 @@ namespace MikuMikuWorld
 			        bpms,     barlengths, hiSpeedGroup, laneOffset };
 	}
 }
+
+#endif

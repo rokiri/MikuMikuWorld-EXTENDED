@@ -53,6 +53,7 @@ namespace MikuMikuWorld
 			return type == NoteType::Tap || type == NoteType::Tick;
 		}
 		constexpr inline bool canDummy() const { return !isHidden(); }
+		constexpr inline bool canSimLine() const { return type != NoteType::Tick && !isHidden(); }
 
 		constexpr inline bool isHold() const { return holdID != -1; }
 		constexpr inline bool isFlick() const { return canFlick() && flick != FlickType::None; }
@@ -71,7 +72,7 @@ namespace MikuMikuWorld
 		constexpr inline bool isHidden() const { return hasFlag(flag, NoteFlag::Hidden); }
 		constexpr inline bool isAttached() const
 		{
-			return isHold() && !isHidden() && !hasFlag(flag, NoteFlag::NonAttached) &&
+			return isHold() && !hasFlag(flag, NoteFlag::NonAttached) &&
 			       hasFlag(flag, NoteFlag::Attached);
 		}
 		constexpr inline bool hasEase() const { return isHold() && !isAttached(); }

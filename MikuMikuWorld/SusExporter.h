@@ -1,4 +1,6 @@
 #pragma once
+
+#ifdef COMPILE_ME
 #include <string>
 #include <map>
 #include <vector>
@@ -71,3 +73,5 @@ namespace MikuMikuWorld
 		void dump(const SUS& sus, const std::string& filename, std::string comment = "");
 	};
 }
+
+#endif

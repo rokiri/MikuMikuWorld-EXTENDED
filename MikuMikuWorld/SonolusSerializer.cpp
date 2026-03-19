@@ -27,9 +27,9 @@ namespace MikuMikuWorld
 {
 	constexpr int UNSUPPORTED_ENUM = 2;
 
-	void SonolusSerializer::serialize(const Score& score, std::string filename)
+	void SonolusSerializer::serialize(const SerializingScore& data, std::string filename)
 	{
-		LevelData levelData = engine->serialize(score);
+		LevelData levelData = engine->serialize(data);
 		std::string serializedData = json(levelData).dump(prettyDump ? 2 : -1);
 		std::vector<uint8_t> serializedBytes(serializedData.begin(), serializedData.end());
 		if (compressData)
@@ -41,7 +41,7 @@ namespace MikuMikuWorld
 		levelFile.close();
 	}
 
-	Score SonolusSerializer::deserialize(std::string filename)
+	SerializingScore SonolusSerializer::deserialize(std::string filename)
 	{
 		if (!IO::File::exists(filename.c_str()))
 			return {};
@@ -61,18 +61,6 @@ namespace MikuMikuWorld
 
 	class IdManager
 	{
-		inline int64_t getID(size_t idx)
-		{
-			auto it = indexToID.find(idx);
-			if (it == indexToID.end())
-				it = indexToID.emplace_hint(indexToID.end(), idx, nextID++);
-			return it->second;
-		}
-		inline bool hasIdx(size_t idx) const
-		{
-			auto it = indexToID.find(idx);
-			return it != indexToID.end();
-		}
 		inline static std::string toRef(int64_t index, int64_t base)
 		{
 			// Basically base 10 to base n
@@ -90,25 +78,12 @@ namespace MikuMikuWorld
 		}
 
 	  public:
-		IdManager(int64_t base = 36ll, int64_t nextID = 0) : nextID(nextID), base(base), indexToID()
-		{
-		}
+		IdManager(int64_t base = 36ll, int64_t nextID = 0) : nextID(nextID), base(base) {}
 
-		inline void clear() { indexToID.clear(); }
-		inline std::string getStartRef() { return toRef(getID(START_INDEX), base); }
-		inline std::string getEndRef() { return toRef(getID(END_INDEX), base); }
-		inline std::string getRef(size_t index) { return toRef(getID(index), base); }
-		inline std::string getExistingRef(size_t index) const
-		{
-			return hasIdx(index) ? toRef(indexToID.at(index), base) : "";
-		}
 		inline std::string getNextRef() { return toRef(nextID++, base); }
 
 	  private:
 		int64_t nextID, base;
-		std::map<size_t, int64_t> indexToID;
-		static constexpr size_t START_INDEX = size_t(-1);
-		static constexpr size_t END_INDEX = size_t(-2);
 	};
 
 	double SonolusEngine::toBgmOffset(float musicOffset)
@@ -118,7 +93,8 @@ namespace MikuMikuWorld
 
 	LevelDataEntity SonolusEngine::toBpmChangeEntity(const Tempo& tempo)
 	{
-		return { "#BPM_CHANGE", { { "#BEAT", ticksToBeats(tempo.tick) }, { "#BPM", tempo.bpm } } };
+		return { "#BPM_CHANGE",
+			     { { "#BEAT", ticksToBeats(tempo.tick) }, { "#BPM", tempo.quarterPerMinute } } };
 	}
 
 	SonolusEngine::RealType SonolusEngine::ticksToBeats(TickType ticks, TickType beatTicks)
@@ -151,7 +127,7 @@ namespace MikuMikuWorld
 			return false;
 		}
 		tempo.tick = beatsToTicks(beat);
-		if (!bpmChangeEntity.tryGetDataValue("#BPM", tempo.bpm))
+		if (!bpmChangeEntity.tryGetDataValue("#BPM", tempo.quarterPerMinute))
 		{
 			PRINT_DEBUG("Missing #BPM key on #BPM_CHANGE");
 			return false;
@@ -192,23 +168,29 @@ namespace MikuMikuWorld
 #pragma endregion
 
 #pragma region PysekaiEngine
-	LevelData PySekaiEngine::serialize(const Score& score)
+	LevelData PySekaiEngine::serialize(const SerializingScore& data)
 	{
+		const Score& score = data.score;
+		const ScoreMetadata& metadata = data.metadata;
 		IdManager idMgr(16);
 		LevelData levelData;
-		const auto getEnityName = [&](size_t idx)
+		const auto getEntityName = [&](size_t idx) -> const std::string&
 		{
 			auto& entity = levelData.entities[idx];
 			if (entity.name.empty())
 				entity.name = idMgr.getNextRef();
 			return entity.name;
 		};
-		levelData.bgmOffset = toBgmOffset(score.metadata.musicOffset);
-		levelData.entities.reserve(score.hiSpeedChanges.size() + score.layers.size() +
-		                           score.notes.size() * 2 + score.tempoChanges.size());
-		levelData.entities.emplace_back("Initialization");
+		levelData.bgmOffset = toBgmOffset(metadata.musicOffset);
+		size_t hispeedCount = std::accumulate(score.layers.begin(), score.layers.end(), size_t(0),
+		                                      [](size_t count, const Layer& l)
+		                                      { return count + l.hiSpeedChanges.size(); });
+		levelData.entities.reserve(score.layers.size() + hispeedCount + score.tempoChanges.size() +
+		                           score.notes.size() * 2);
+		auto& initEntity = levelData.entities.emplace_back("Initialization");
+		initEntity.data["initialLife"] = 1000;
 
-		for (const auto& tempo : score.tempoChanges)
+		for (const auto& [_, tempo] : score.tempoChanges)
 			levelData.entities.emplace_back(toBpmChangeEntity(tempo));
 
 		std::vector<size_t> groupEntIdx;
@@ -219,108 +201,199 @@ namespace MikuMikuWorld
 			levelData.entities.emplace_back(toGroupEntity(layer));
 		}
 
-		std::vector<size_t> lastSpeedIdx = groupEntIdx;
-		std::multimap<int, const HiSpeedChange*> orderedSpeedChange;
-		for (const auto& [_, speed] : score.hiSpeedChanges)
-			orderedSpeedChange.emplace(speed.tick, &speed);
-
-		for (const auto& [_, speedPtr] : orderedSpeedChange)
+		for (size_t i = 0; i < score.layers.size(); ++i)
 		{
-			const HiSpeedChange& speed = *speedPtr;
-			size_t newSpeedIdx = levelData.entities.size();
-			auto& newSpeedEnt = levelData.entities.emplace_back(
-			    toTimeScaleEntity(speed, getEnityName(groupEntIdx[speed.layer])));
-			newSpeedEnt.name = idMgr.getNextRef();
-			size_t& lastSpeedIndex = lastSpeedIdx[speed.layer];
-			if (lastSpeedIndex == groupEntIdx[speed.layer])
-				levelData.entities[lastSpeedIndex].data["first"] = newSpeedEnt.name;
-			else
-				levelData.entities[lastSpeedIndex].data["next"] = newSpeedEnt.name;
-			lastSpeedIndex = newSpeedIdx;
+			size_t groupIdx = groupEntIdx[i];
+			size_t lastSpeedIndex = groupIdx;
+			for (const auto& [_, speed] : score.layers[i].hiSpeedChanges)
+			{
+				size_t newSpeedIdx = levelData.entities.size();
+				auto& newSpeedEnt = levelData.entities.emplace_back(
+				    toTimeScaleEntity(speed, getEntityName(groupIdx)));
+
+				// Update reference
+				if (lastSpeedIndex == groupIdx)
+					levelData.entities[lastSpeedIndex].data["first"] = getEntityName(newSpeedIdx);
+				else
+					levelData.entities[lastSpeedIndex].data["next"] = getEntityName(newSpeedIdx);
+				lastSpeedIndex = newSpeedIdx;
+			}
 		}
+
+		for (auto&& skill : score.skills)
+		{
+			levelData.entities.emplace_back(toSkillEntity(skill));
+		}
+
+		if (score.fever.startTick >= 0 && score.fever.endTick >= score.fever.startTick)
+		{
+			auto&& [feverChance, feverStart] = toFeverEntities(score.fever);
+			levelData.entities.emplace_back(feverChance);
+			levelData.entities.emplace_back(feverStart);
+		}
+
+		std::map<id_t, const Note*> sortedNotes;
+		std::transform(score.notes.begin(), score.notes.end(),
+		               std::inserter(sortedNotes, sortedNotes.end()),
+		               [](const std::pair<const id_t, Note>& p)
+		               { return std::make_pair(p.first, &p.second); });
+		std::map<id_t, const HoldNote*> sortedHolds;
+		std::transform(score.holdNotes.begin(), score.holdNotes.end(),
+		               std::inserter(sortedHolds, sortedHolds.end()),
+		               [](const std::pair<const id_t, HoldNote>& p)
+		               { return std::make_pair(p.first, &p.second); });
 
 		std::multimap<TickType, size_t> simBuilder;
-		for (const auto& [id, note] : score.notes)
+		for (const auto& [id, pnote] : sortedNotes)
 		{
-			if (note.getType() != NoteType::Tap && note.getType() != NoteType::Damage)
+			const Note& note = *pnote;
+			if (note.isHold())
 				continue;
-			simBuilder.emplace(note.tick, levelData.entities.size());
-			levelData.entities.emplace_back(toNoteEntity(note, getTapNoteArchetype(note),
-			                                             getEnityName(groupEntIdx[note.layer])));
+			if (note.canSimLine())
+				simBuilder.emplace(note.tick, levelData.entities.size());
+			levelData.entities.emplace_back(toNoteEntity(note, getSingleNoteArchetype(note),
+			                                             getEntityName(groupEntIdx[note.layer])));
 		}
 
-		std::vector<size_t> entityJoints;
-		std::vector<std::pair<size_t, size_t>> attachEntities;
-		for (const auto& [id, hold] : score.holdNotes)
+		struct StepEntityInfo
 		{
-			entityJoints.clear();
-			attachEntities.clear();
+			size_t index, nearestJoint, nearestSeparator, nearestActiveHead;
+			bool isJoint, isSeparator, isActiveHead, isActiveTail, isActive, isActiveCombo;
+		};
+		std::vector<StepEntityInfo> stepEntities;
+		for (const auto& [id, phold] : sortedHolds)
+		{
+			const HoldNote& hold = *phold;
+			stepEntities.clear();
 
-			const Note &startNote = score.notes.at(hold.start.ID),
-			           &endNote = score.notes.at(hold.end);
-			const HoldStep endStep = { hold.end, HoldStepType::Normal, EaseType::Linear };
-			size_t lastEntityIndex = levelData.entities.size();
-			const RealType totalSteps = hold.steps.size() + 1;
-
-			entityJoints.push_back(lastEntityIndex);
-			if (hold.startType == HoldNoteType::Normal)
-				simBuilder.emplace(startNote.tick, lastEntityIndex);
-			levelData.entities.emplace_back(toNoteEntity(startNote,
-			                                             getHoldNoteArchetype(startNote, hold),
-			                                             getEnityName(groupEntIdx[startNote.layer]),
-			                                             &hold, hold.start.type, hold.start.ease));
-
-			for (size_t stepIdx = 0; stepIdx <= hold.steps.size(); ++stepIdx)
+			bool isActive = !hold.isGuide(), isActiveCombo = !hold.isGuide() && !hold.isDummy(),
+			     isActiveHead = isActive, isActiveTail = false, isSeparator = true;
+			const HoldNoteStep* holdStep = &hold;
+			auto nextSeparator = hold.separators.begin();
+			size_t lastEntityIndex = 0, lastJointIndex = 0, lastSeparator = 0, lastActiveHead = 0;
+			for (auto&& stepID : hold.steps)
 			{
-				const HoldStep& step = stepIdx < hold.steps.size() ? hold.steps[stepIdx] : endStep;
-				const Note& tickNote = score.notes.at(step.ID);
-				RefType entName = idMgr.getRef(tickNote.ID);
-				levelData.entities[lastEntityIndex].data.emplace("next", entName);
-				lastEntityIndex = levelData.entities.size();
-				levelData.entities
-				    .emplace_back(toNoteEntity(tickNote, getHoldNoteArchetype(tickNote, hold),
-				                               getEnityName(groupEntIdx[tickNote.layer]), &hold,
-				                               step.type, step.ease))
-				    .name = std::move(entName);
-				if (step.type != HoldStepType::Skip)
-					entityJoints.push_back(lastEntityIndex);
-				else
-					attachEntities.emplace_back(
-					    std::make_pair(lastEntityIndex, entityJoints.size() - 1));
+				const Note& stepNote = score.notes.at(stepID);
+				StepEntityInfo& info = stepEntities.emplace_back();
+				if (nextSeparator != hold.separators.end() && nextSeparator->ID == stepNote.ID)
+				{
+					const HoldNoteStep& nextHoldStep = *nextSeparator;
+					++nextSeparator;
+					if (holdStep->isGuide() && !nextHoldStep.isGuide())
+					{
+						isActiveHead = true;
+						isActive = true;
+					}
+					else if (!holdStep->isGuide() && nextHoldStep.isGuide())
+					{
+						isActiveTail = true;
+						isActive = false;
+					}
+					holdStep = &nextHoldStep;
+					isSeparator = true;
+					isActiveCombo = !nextHoldStep.isDummy() && !nextHoldStep.isGuide();
+				}
+				else if (stepNote.ID == hold.steps.back())
+				{
+					isActiveTail = isActive;
+					isSeparator = true;
+				}
+
+				info.index = levelData.entities.size();
+				if (stepNote.canSimLine())
+					simBuilder.emplace(stepNote.tick, info.index);
+
+				LevelDataEntity& entity = levelData.entities.emplace_back(toNoteEntity(
+				    stepNote, getHoldNoteArchetype(stepNote, isActiveHead, isActiveTail),
+				    getEntityName(groupEntIdx[stepNote.layer]), &hold, holdStep));
+				if (lastEntityIndex)
+					levelData.entities[lastEntityIndex].data.emplace("next",
+					                                                 getEntityName(info.index));
+
+				info.isActive = isActive;
+				info.isActiveHead = isActiveHead;
+				info.isActiveTail = isActiveTail;
+				info.isActiveCombo = isActiveCombo;
+				info.isSeparator = isSeparator;
+				info.isJoint = !stepNote.isAttached();
+				info.nearestJoint = lastJointIndex =
+				    !stepNote.isAttached() ? info.index : lastJointIndex;
+				info.nearestSeparator = lastSeparator = isSeparator ? info.index : lastSeparator;
+				info.nearestActiveHead = lastActiveHead =
+				    isActiveHead ? info.index : lastActiveHead;
+				isActiveHead = isActiveTail = isSeparator = false;
+				lastEntityIndex = info.index;
 			}
-			if (hold.endType == HoldNoteType::Normal)
-				simBuilder.emplace(endNote.tick, lastEntityIndex);
-			if (!hold.isGuide())
-				levelData.entities[lastEntityIndex].data.emplace("activeHead",
-				                                                 idMgr.getRef(startNote.ID));
 
-			RefType segStartRef = idMgr.getRef(startNote.ID), segEndRef = idMgr.getRef(endNote.ID);
-			RefType lastHeadRef = levelData.entities[entityJoints[0]].name = segStartRef;
-			for (size_t connHeadIdx = 0, connTailIdx = 1; connTailIdx < entityJoints.size();
-			     ++connHeadIdx, ++connTailIdx)
+			// Do backward scan, while using stored 'nearestJoint' to find the attachedHead
+			for (auto tailIt = stepEntities.rbegin(), stepIt = std::next(tailIt);
+			     stepIt != stepEntities.rend(); ++stepIt)
 			{
-				const auto& startEnt = levelData.entities[entityJoints[0]];
-				const auto& headEnt = levelData.entities[entityJoints[connHeadIdx]];
-				const auto& tailEnt = levelData.entities[entityJoints[connTailIdx]];
-				RefType tailRef = tailEnt.name;
-
-				if (!hold.isGuide() && !hold.dummy)
-					insertTransientTickNote(headEnt, tailEnt, startEnt, levelData.entities);
-
-				levelData.entities.emplace_back(
-				    toConnector(hold, lastHeadRef, tailRef, segStartRef, segEndRef));
-				lastHeadRef = std::move(tailRef);
+				if (stepIt->isJoint)
+				{
+					tailIt = stepIt;
+					continue;
+				}
+				auto& attachEntity = levelData.entities[stepIt->index];
+				size_t headEntityIdx = stepIt->nearestJoint;
+				size_t tailEntityIdx = tailIt->index;
+				attachEntity.data.emplace("attachHead", getEntityName(headEntityIdx));
+				attachEntity.data.emplace("attachTail", getEntityName(tailEntityIdx));
+				estimateAttachEntity(attachEntity, levelData.entities[headEntityIdx],
+				                     levelData.entities[tailEntityIdx]);
 			}
 
-			for (auto&& [entityIndex, jointIndex] : attachEntities)
+			auto isStepTail = [](const StepEntityInfo& i) { return i.isActiveTail; };
+			for (auto tailIt = std::find_if(stepEntities.rbegin(), stepEntities.rend(), isStepTail);
+			     tailIt != stepEntities.rend();
+			     tailIt = std::find_if(std::next(tailIt), stepEntities.rend(), isStepTail))
 			{
-				auto& attachEntity = levelData.entities[entityIndex];
-				auto& headEntity = levelData.entities[entityJoints[jointIndex]];
-				auto& tailEntity = levelData.entities[entityJoints[jointIndex + 1]];
-				attachEntity.data.emplace("attachHead", headEntity.name);
-				attachEntity.data.emplace("attachTail", tailEntity.name);
-				if (attachEntity.data.find("lane") != attachEntity.data.end())
-					estimateAttachEntity(attachEntity, headEntity, tailEntity);
+				auto& tailEntity = levelData.entities[tailIt->index];
+				tailEntity.data.emplace("activeHead", getEntityName(tailIt->nearestActiveHead));
+			}
+
+			size_t lastActiveTail;
+			bool jointInsertCombo = false;
+			for (auto tailIt = stepEntities.rbegin(), headIt = std::next(tailIt);
+			     headIt != stepEntities.rend(); ++headIt)
+			{
+				if (!headIt->isJoint && !headIt->isSeparator)
+					continue;
+				if (tailIt->isActiveTail)
+					lastActiveTail = tailIt->index;
+
+				if (headIt->isActiveCombo && !jointInsertCombo)
+				{
+					// Make sure these have proper name
+					getEntityName(headIt->nearestJoint);
+					getEntityName(lastJointIndex);
+					insertTransientTickNote(headIt->nearestJoint, lastJointIndex,
+					                        headIt->isActiveHead, levelData.entities);
+					jointInsertCombo = true;
+				}
+
+				levelData.entities.push_back({ "Connector" });
+				auto& data = levelData.entities.back().data;
+				data.emplace("head", getEntityName(headIt->index));
+				data.emplace("tail", getEntityName(tailIt->index));
+				if (headIt->isActive)
+				{
+					data.emplace("activeHead", getEntityName(headIt->nearestActiveHead));
+					data.emplace("activeTail", getEntityName(lastActiveTail));
+				}
+				data.emplace("segmentHead", getEntityName(headIt->nearestSeparator));
+				data.emplace("segmentTail", getEntityName(lastSeparator));
+
+				if (headIt->isJoint)
+				{
+					lastJointIndex = headIt->index;
+					jointInsertCombo = false;
+				}
+				if (headIt->isSeparator)
+					lastSeparator = headIt->index;
+				if (headIt->isActiveHead)
+					lastActiveHead = headIt->index;
+				tailIt = headIt;
 			}
 		}
 
@@ -342,8 +415,8 @@ namespace MikuMikuWorld
 			for (size_t i = 1; i < simEntities.size(); ++i)
 			{
 				levelData.entities.push_back({ "SimLine",
-				                               { { "left", getEnityName(simEntities[i - 1]) },
-				                                 { "right", getEnityName(simEntities[i]) } } });
+				                               { { "left", getEntityName(simEntities[i - 1]) },
+				                                 { "right", getEntityName(simEntities[i]) } } });
 			}
 			it = endEnt;
 		}
@@ -351,36 +424,32 @@ namespace MikuMikuWorld
 		return levelData;
 	}
 
-	Score PySekaiEngine::deserialize(const LevelData& levelData)
+	SerializingScore PySekaiEngine::deserialize(const LevelData& levelData)
 	{
 		size_t errorCount = 0, unsupportedCount = 0;
-		Score score;
-		score.metadata.musicOffset = fromBgmOffset(levelData.bgmOffset);
+		id_t nextNoteID = 0, nextHoldID = 0;
+		SerializingScore data;
+		Score& score = data.score;
+		ScoreMetadata& metadata = data.metadata;
+		metadata.musicOffset = fromBgmOffset(levelData.bgmOffset);
 		const auto isBpmChangeEntity = [](const LevelDataEntity& e)
 		{ return e.archetype == "#BPM_CHANGE"; };
 		const auto isTimescaleGroupEntity = [](const LevelDataEntity& e)
 		{ return e.archetype == "#TIMESCALE_GROUP"; };
 		const auto isNoteEntity = [](const Sonolus::LevelDataEntity& e)
-		{ return IO::endsWith(e.archetype, "Note") && e.archetype != "TransientHiddenTickNote"; };
+		{
+			return IO::endsWith(e.archetype, "Note") &&
+			       e.archetype.find("Transient") == std::string::npos;
+		};
+		const auto isSkillEntity = [](const Sonolus::LevelDataEntity& e)
+		{ return e.archetype == "Skill"; };
+		const auto isFeverEntity = [](const Sonolus::LevelDataEntity& e)
+		{ return e.archetype == "FeverChance" || e.archetype == "FeverStart"; };
 
 		std::unordered_map<RefType, size_t> entityNameMap;
-		entityNameMap.reserve(std::max<size_t>(levelData.entities.size() / 2, 32));
+		entityNameMap.reserve(levelData.entities.size());
 		std::vector<size_t> noteEntities;
 		std::unordered_map<RefType, size_t> notePrevMap;
-		const auto hasParentNote = [&](const LevelDataEntity& e)
-		{ return e.name.size() && notePrevMap.find(e.name) != notePrevMap.end(); };
-		const auto findPrevHold = [&](const LevelDataEntity& e) -> const LevelDataEntity*
-		{
-			const LevelDataEntity* p = &e;
-			if (!hasParentNote(*p))
-				return nullptr;
-			int isSeparator = 0;
-			do
-				p = &levelData.entities[notePrevMap[p->name]];
-			while (hasParentNote(*p) &&
-			       !(p->tryGetDataValue("isSeparator", isSeparator) && isSeparator));
-			return p;
-		};
 		for (size_t i = 0; i < levelData.entities.size(); ++i)
 		{
 			const auto& entity = levelData.entities[i];
@@ -389,7 +458,7 @@ namespace MikuMikuWorld
 			if (isNoteEntity(entity))
 			{
 				noteEntities.push_back(i);
-				std::string nextNoteEntity;
+				RefType nextNoteEntity;
 				if (entity.tryGetDataValue("next", nextNoteEntity))
 					notePrevMap.emplace(nextNoteEntity, i);
 			}
@@ -402,17 +471,14 @@ namespace MikuMikuWorld
 				continue;
 			Tempo tempo;
 			if (fromBpmChangeEntity(bpmChangeEntity, tempo))
-				score.tempoChanges.emplace_back(std::move(tempo));
+				score.tempoChanges.emplace(tempo.tick, tempo);
 			else
 				errorCount++;
 		}
 		if (score.tempoChanges.empty())
-			score.tempoChanges.push_back(Tempo{});
-		std::sort(score.tempoChanges.begin(), score.tempoChanges.end(),
-		          [](const Tempo& t1, const Tempo& t2) { return t1.tick < t2.tick; });
+			score.tempoChanges.emplace(0, Tempo{});
 
 		score.layers.clear();
-		score.hiSpeedChanges.clear();
 		std::unordered_map<RefType, size_t> groupNameMap;
 		for (const auto& groupEntity : levelData.entities)
 		{
@@ -420,7 +486,9 @@ namespace MikuMikuWorld
 				continue;
 
 			size_t layerIdx = score.layers.size();
-			Layer layer{ layerIdx ? "#" + std::to_string(layerIdx) : "default" };
+			Layer& layer = score.layers.emplace_back(
+			    layerIdx ? "#" + std::to_string(layerIdx) : "default", id_t(layerIdx));
+			layer.hiSpeedChanges.clear();
 			if (!fromGroupEntity(groupEntity, layer))
 			{
 				errorCount++;
@@ -430,7 +498,6 @@ namespace MikuMikuWorld
 			groupEntity.tryGetDataValue("first", nextSpeedChange);
 			if (groupEntity.name.size())
 				groupNameMap.emplace(groupEntity.name, layerIdx);
-			score.layers.emplace_back(layer);
 
 			while (!nextSpeedChange.empty())
 			{
@@ -441,84 +508,122 @@ namespace MikuMikuWorld
 					errorCount++;
 					break;
 				}
-				int status;
-				HiSpeedChange hispeed;
-				if (!(status = fromTimeScaleEntity(levelData.entities[it->second], groupEntity,
-				                                   hispeed, groupNameMap)))
+				HiSpeed hispeed;
+				if (!fromTimeScaleEntity(levelData.entities[it->second], groupEntity, hispeed,
+				                         groupNameMap))
 				{
 					errorCount++;
 					continue;
 				}
-				if (status == UNSUPPORTED_ENUM)
-					unsupportedCount++;
-				hispeed.ID = getNextHiSpeedID();
 				hispeed.layer = layerIdx;
-				score.hiSpeedChanges.emplace(hispeed.ID, hispeed);
+				layer.hiSpeedChanges.emplace(hispeed.tick, hispeed);
 
 				nextSpeedChange.clear();
 				levelData.entities[it->second].tryGetDataValue("next", nextSpeedChange);
 			}
 		}
 		if (score.layers.empty())
-			score.layers.emplace_back(Layer{ "default" });
+			score.layers.emplace_back(Layer{ "default", 0 });
 
+		for (const auto& entity : levelData.entities)
+		{
+			if (isSkillEntity(entity))
+			{
+				Skill skill;
+				if (fromSkillEntity(entity, skill))
+					score.skills.insert(skill);
+				else
+					errorCount++;
+			}
+			if (isFeverEntity(entity))
+			{
+				if (!fromFeverEntity(entity, score.fever))
+					errorCount++;
+			}
+		}
+
+		const auto hasParentNote = [&](const LevelDataEntity& e)
+		{ return e.name.size() && notePrevMap.find(e.name) != notePrevMap.end(); };
 		for (const auto& entIdx : noteEntities)
 		{
 			auto& tapNoteEntity = levelData.entities[entIdx];
 			if (tapNoteEntity.dataExists("next") || hasParentNote(tapNoteEntity))
 				continue;
-			Note note(NoteType::Tap);
-			int status;
-			if (!(status = fromTapNoteEntity(tapNoteEntity, note, groupNameMap)))
+			Note note;
+			int status = fromTapNoteEntity(tapNoteEntity, note, groupNameMap);
+			if (status == 0)
 			{
 				errorCount++;
 				continue;
 			}
-			if (status == UNSUPPORTED_ENUM)
-				++unsupportedCount;
-			note.ID = Note::getNextID();
+			else if (status == UNSUPPORTED_ENUM)
+				unsupportedCount++;
+			note.ID = nextNoteID++;
 			score.notes.emplace(note.ID, note);
 		}
 
 		std::vector<Note> holdNotes;
 		for (const auto& entIdx : noteEntities)
 		{
-			RefType next;
 			auto& holdStartEntity = levelData.entities[entIdx];
-			if (!holdStartEntity.tryGetDataValue("next", next))
+			if (!holdStartEntity.dataExists("next") || hasParentNote(holdStartEntity))
 				continue;
-			if (!holdStartEntity.getDataValue<IntegerType>("isSeparator") &&
-			    hasParentNote(holdStartEntity))
-				continue;
-			bool validHold = false;
+			size_t nextEntIndex = entIdx;
+			bool validHold = true;
 			holdNotes.clear();
 			HoldNote hold;
-			if (!fromStartHoldEntity(levelData.entities[entIdx],
-			                         holdNotes.emplace_back(NoteType::Hold), hold, groupNameMap,
-			                         findPrevHold(levelData.entities[entIdx])))
-				next.clear();
-			while (next.size())
+			HoldNoteStep* holdStep = nullptr;
+			while (true)
 			{
-				auto& noteEntity = levelData.entities[entityNameMap[next]];
-				next.clear();
-				bool isHoldEnd = noteEntity.getDataValue<IntegerType>("isSeparator") ||
-				                 !noteEntity.tryGetDataValue("next", next);
-				HoldStep holdStep{ -1, HoldStepType::Normal, EaseType::Linear };
-				auto toNote = isHoldEnd ? fromEndHoldEntity : fromHoldMidEntity;
-				Note& stepNote =
-				    holdNotes.emplace_back(isHoldEnd ? NoteType::HoldEnd : NoteType::HoldMid);
-				if (!toNote(noteEntity, stepNote, hold, holdStep, groupNameMap))
-					break;
-				if (isHoldEnd)
+				RefType next;
+				auto& noteEntity = levelData.entities[nextEntIndex];
+				bool isSeparator = !holdStep || noteEntity.getDataValue<IntegerType>("isSeparator");
+
+				Note& stepNote = holdNotes.emplace_back();
+				stepNote.type = NoteType::Tick;
+				int status = fromHoldMidEntity(noteEntity, stepNote, groupNameMap);
+				if (status == 0)
 				{
-					if (!hold.isGuide() && hold.endType == HoldNoteType::Hidden)
-						// Anchor type don't have critical info so we have to do this
-						// to ensure the hold is valid
-						stepNote.critical = holdNotes.front().critical;
-					validHold = true;
+					validHold = false;
+					break;
 				}
-				else
-					hold.steps.push_back(holdStep);
+				else if (status == UNSUPPORTED_ENUM)
+				{
+					unsupportedCount++;
+				}
+				if (isSeparator)
+				{
+					holdStep = holdStep ? &hold.separators.emplace_back() : &hold;
+					holdStep->ID = holdNotes.size() - 1; // using step index as temporary ids
+					int kind = 0;
+					if (noteEntity.tryGetDataValue("segmentKind", kind))
+					{
+						if (!fromKindNumeric(kind, *holdStep))
+						{
+							PRINT_DEBUG("Unsupported segmentKind %d", kind);
+							validHold = false;
+							break;
+						}
+						if (holdStep->isGuide())
+							holdStep->fadeType = FadeType::Custom;
+					}
+					else
+					{
+						PRINT_DEBUG("Hold note doesn't have a valid segmentKind!");
+						validHold = false;
+						break;
+					}
+				}
+				if (!noteEntity.tryGetDataValue("next", next))
+					break;
+				auto it = entityNameMap.find(next);
+				if (it == entityNameMap.end())
+				{
+					PRINT_DEBUG("Entity named '%s' not found!", next.c_str());
+					validHold = false;
+					break;
+				}
+				nextEntIndex = it->second;
 			}
 			if (!validHold || !isValidHoldNotes(holdNotes, hold))
 			{
@@ -526,37 +631,38 @@ namespace MikuMikuWorld
 				continue;
 			}
 
+			// Start and end note are implicitly tap note
+			if (holdNotes.front().isHidden())
+				holdNotes.front().type = NoteType::Tap;
+			if (holdNotes.back().isHidden())
+				holdNotes.back().type = NoteType::Tap;
 			// Assign valid ids
 			for (auto& note : holdNotes)
 			{
-				note.ID = Note::getNextID();
-				note.parentID = holdNotes.front().ID;
-			}
-			auto stepIt = ++holdNotes.begin();
-			for (auto& step : hold.steps)
-			{
-				stepIt->critical = holdNotes.front().critical;
-				step.ID = (stepIt++)->ID;
-			}
-			holdNotes.front().parentID = -1;
-			for (auto& note : holdNotes)
+				note.ID = nextNoteID++;
+				note.holdID = nextHoldID;
+				hold.steps.push_back(note.ID);
 				score.notes.emplace(note.ID, note);
-
-			hold.start.ID = holdNotes.front().ID;
-			hold.end = holdNotes.back().ID;
-			score.holdNotes.emplace(hold.start.ID, std::move(hold));
-			sortHoldSteps(score, hold);
+			}
+			for (auto& step : hold.separators)
+			{
+				step.ID = holdNotes[step.ID].ID;
+			}
+			hold.ID = nextHoldID;
+			HoldNote& insertedHold =
+			    score.holdNotes.emplace(nextHoldID++, std::move(hold)).first->second;
+			insertedHold.sortSteps(score.notes);
 		}
 
-		LaneType lanes = MAX_NOTE_WIDTH / 2.f;
-		for (const auto& [_, note] : score.notes)
-		{
-			LaneType noteMaxLane = std::max(std::abs(note.lane - MAX_NOTE_WIDTH / 2.f),
-			                                note.lane + note.width - MAX_NOTE_WIDTH / 2.f);
-			if (noteMaxLane > lanes)
-				lanes = noteMaxLane;
-		}
-		score.metadata.laneExtension = lanes - 6;
+		metadata.laneExtension =
+		    -6 + std::accumulate(score.notes.begin(), score.notes.end(), 6.f,
+		                         [](LaneType lane, const std::pair<id_t, Note>& noteP)
+		                         {
+			                         const Note& note = noteP.second;
+			                         LaneType left = std::abs(note.lane - 6);
+			                         LaneType right = std::abs(note.lane + note.width - 6);
+			                         return std::max({ left, right, lane });
+		                         });
 
 		std::string message;
 		if (unsupportedCount)
@@ -567,159 +673,136 @@ namespace MikuMikuWorld
 		if (errorCount)
 		{
 			PRINT_DEBUG("Total of %zd error(s) found", errorCount);
-			message += IO::formatString("%s\n%s", getString("error_load_score_file"),
-			                            getString("score_partially_missing"));
+			message += IO::formatString("%s\n%s", localize(Text::errorLoadScoreFile),
+			                            localize(Text::scorePartiallyMissing));
 		}
 		if (errorCount || unsupportedCount)
-			throw PartialScoreDeserializeError(score, message);
-		return score;
+			throw PartialScoreDeserializeError(data, message);
+		return data;
 	}
 
 	bool PySekaiEngine::canSerialize(const Score& score) { return true; }
 
 	LevelDataEntity PySekaiEngine::toGroupEntity(const Layer& layer)
 	{
-		return { "#TIMESCALE_GROUP",
-			     { { "editorName", layer.name }, { "editorHidden", layer.hidden ? 1 : 0 } } };
+		return { "#TIMESCALE_GROUP", { { "editorName", layer.name } } };
 	}
 
-	LevelDataEntity PySekaiEngine::toTimeScaleEntity(const HiSpeedChange& hispeed,
+	LevelDataEntity PySekaiEngine::toTimeScaleEntity(const HiSpeed& hispeed,
 	                                                 const RefType& groupName)
 	{
 		return { "#TIMESCALE_CHANGE",
 			     { { "#BEAT", ticksToBeats(hispeed.tick) },
 			       { "#TIMESCALE", roundOff(hispeed.speed) },
 			       { "#TIMESCALE_SKIP", hispeed.skips },
-			       { "#TIMESCALE_EASE", static_cast<int>(hispeed.ease) },
+			       { "#TIMESCALE_EASE", static_cast<IntegerType>(hispeed.ease) },
 			       { "#TIMESCALE_GROUP", groupName },
-			       { "hideNotes", static_cast<int>(hispeed.hideNotes) } } };
+			       { "hideNotes", static_cast<IntegerType>(hispeed.hideNotes) } } };
+	}
+
+	Sonolus::LevelDataEntity PySekaiEngine::toSkillEntity(const Skill& skill)
+	{
+		return { "Skill", { { "#BEAT", ticksToBeats(skill.tick) } } };
+	}
+
+	std::pair<Sonolus::LevelDataEntity, Sonolus::LevelDataEntity>
+	PySekaiEngine::toFeverEntities(const Fever& fever)
+	{
+		return { { "FeverChance", { { "#BEAT", ticksToBeats(fever.startTick) } } },
+			     { "FeverStart", { { "#BEAT", ticksToBeats(fever.endTick) } } } };
 	}
 
 	LevelDataEntity PySekaiEngine::toNoteEntity(const Note& note, const std::string& archetype,
 	                                            const RefType& groupName, const HoldNote* hold,
-	                                            HoldStepType step, EaseType easing)
+	                                            const HoldNoteStep* holdStep)
 	{
-		float alpha = 1.f;
-		if (hold)
-		{
-			switch (hold->fadeType)
-			{
-			default:
-			case FadeType::Out:
-				alpha = hold->end == note.ID ? 0.f : 1.f;
-				break;
-			case FadeType::In:
-				alpha = hold->start.ID == note.ID ? 0.f : 1.f;
-				break;
-			case FadeType::None:
-				break;
-			}
-		}
-
+		bool isSeparator = holdStep && ((hold != holdStep && holdStep->ID == note.ID) ||
+		                                holdStep->fadeType == FadeType::Classic);
 		return { archetype,
 			     { { "#TIMESCALE_GROUP", groupName },
 			       { "#BEAT", ticksToBeats(note.tick) },
 			       { "lane", toSonolusLane(note.lane, note.width) },
 			       { "size", widthToSize(note.width) },
 			       { "direction", toDirectionNumeric(note.flick) },
-			       { "isAttached", step == HoldStepType::Skip ? 1 : 0 },
-			       { "isSeparator", 0 },
-			       { "connectorEase", toEaseNumeric(easing) },
-			       { "segmentKind", toKindNumeric(note.critical, hold) },
-			       { "segmentAlpha", alpha },
+			       { "isAttached", note.isAttached() },
+			       { "isSeparator", static_cast<IntegerType>(isSeparator) },
+			       { "connectorEase", toEaseNumeric(note.ease) },
+			       { "segmentKind", toKindNumeric(holdStep) },
+			       { "segmentAlpha", note.guideAlpha },
 			       { "segmentLayer", 0 },
 			       { "effectKind", 0 } } };
 	}
 
-	LevelDataEntity PySekaiEngine::toConnector(const HoldNote& hold, const RefType& head,
-	                                           const RefType& tail, const RefType& segmentHead,
-	                                           const RefType& segmentTail)
+	std::string PySekaiEngine::getSingleNoteArchetype(const Note& note)
 	{
-		LevelDataEntity::MapDataType data = {
-			{ "head", head },
-			{ "tail", tail },
-		};
-		if (hold.isGuide())
-		{
-			data.emplace("segmentHead", segmentHead);
-			data.emplace("segmentTail", segmentTail);
-		}
+		std::string archetype = (note.isDummy() ? "Fake" : "");
+		if (note.isHidden())
+			archetype += "Anchor";
 		else
 		{
-			data.emplace("activeHead", segmentHead);
-			data.emplace("activeTail", segmentTail);
-			data.emplace("segmentHead", segmentHead);
-			data.emplace("segmentTail", segmentTail);
+			switch (note.type)
+			{
+			case NoteType::Tap:
+				archetype += (note.isCrit() ? "Critical" : "Normal");
+				if (note.isTrace())
+					archetype += "Trace";
+				if (note.isFlick())
+					archetype += "Flick";
+				if (!note.isTrace() && !note.isFlick())
+					archetype += "Tap";
+				break;
+			case NoteType::Tick:
+				archetype += (note.isCrit() ? "Critical" : "Normal");
+				archetype += "Tick";
+				break;
+			case NoteType::Damage:
+				archetype += "Damage";
+				break;
+			default:
+				PRINT_DEBUG("Unknown tap note");
+				archetype += "Anchor";
+				break;
+			}
 		}
-		return { "Connector", std::move(data) };
-	}
 
-	std::string PySekaiEngine::getTapNoteArchetype(const Note& note)
-	{
-		std::string archetype = (note.dummy ? "Fake" : "");
-		switch (note.getType())
-		{
-		case NoteType::Tap:
-			archetype += (note.critical ? "Critical" : "Normal");
-			if (note.friction)
-				archetype += "Trace";
-			if (note.isFlick())
-				archetype += "Flick";
-			if (!note.friction && !note.isFlick())
-				archetype += "Tap";
-			break;
-		case NoteType::Damage:
-			archetype += "Damage";
-			break;
-		default:
-			PRINT_DEBUG("Unknown tap note");
-			archetype += "Anchor";
-			break;
-		}
 		archetype += "Note";
 		return archetype;
 	}
 
-	std::string PySekaiEngine::getHoldNoteArchetype(const Note& note, const HoldNote& holdNote)
+	std::string PySekaiEngine::getHoldNoteArchetype(const Note& note, bool isHead, bool isTail)
 	{
-		std::string archetype = (note.dummy ? "Fake" : "");
-		// No need to handle Damage type yet, Hold can only have normal note
-		archetype += (note.critical ? "Critical" : "Normal");
-		if (note.ID == holdNote.start.ID)
-		{
-			if (holdNote.startType != HoldNoteType::Normal)
-				return "AnchorNote";
-			archetype += "Head";
-			if (note.friction)
-				archetype += "Trace";
-			else
-				archetype += "Tap";
-		}
-		else if (note.ID == holdNote.end)
-		{
-			if (holdNote.endType != HoldNoteType::Normal)
-				return "AnchorNote";
-			archetype += "Tail";
-			if (note.friction)
-				archetype += "Trace";
-			if (note.isFlick())
-				archetype += "Flick";
-			if (!note.friction && !note.isFlick())
-				archetype += "Release";
-		}
+		std::string archetype = (note.isDummy() ? "Fake" : "");
+		if (note.isHidden())
+			archetype += "Anchor";
 		else
 		{
-			int idx = findHoldStep(holdNote, note.ID);
-			switch (holdNote.steps[idx].type)
+			switch (note.type)
 			{
-			case HoldStepType::Normal:
-			case HoldStepType::Skip:
+			case NoteType::Tap:
+			{
+				archetype += (note.isCrit() ? "Critical" : "Normal");
+				if (isHead)
+					archetype += "Head";
+				if (isTail)
+					archetype += "Tail";
+				if (note.isTrace())
+					archetype += "Trace";
+				if (note.isFlick())
+					archetype += "Flick";
+				if (!note.isTrace() && !note.isFlick())
+					archetype += !isTail ? "Tap" : "Release";
+				break;
+			}
+			case NoteType::Tick:
+				archetype += (note.isCrit() ? "Critical" : "Normal");
 				archetype += "Tick";
 				break;
-			case HoldStepType::Hidden:
-				return "AnchorNote";
-			default: // Do something about this
-				archetype += "Tap";
+			case NoteType::Damage:
+				archetype += "Damage";
+				break;
+			default:
+				PRINT_DEBUG("Unknown tap note");
+				archetype += "Anchor";
 				break;
 			}
 		}
@@ -727,26 +810,22 @@ namespace MikuMikuWorld
 		return archetype;
 	}
 
-	void PySekaiEngine::insertTransientTickNote(const Sonolus::LevelDataEntity& head,
-	                                            const Sonolus::LevelDataEntity& tail,
-	                                            const Sonolus::LevelDataEntity& start,
+	void PySekaiEngine::insertTransientTickNote(size_t headIndex, size_t tailIndex,
+	                                            bool isActiveHead,
 	                                            std::vector<Sonolus::LevelDataEntity>& entities)
 	{
-		double startHalfBeat = start.getDataValue<RealType>("#BEAT") * 2;
 		double headHalfBeat;
 		double headFracHalfBeat =
-		    std::modf(head.getDataValue<RealType>("#BEAT") * 2, &headHalfBeat);
-		bool skips = (headHalfBeat <= startHalfBeat || headFracHalfBeat != 0) ? 1 : 0;
-		int endHalfBeat = std::ceil(tail.getDataValue<RealType>("#BEAT") * 2);
-		// Copying the name since they are apart of entities list. They may relocate when inserting.
-		std::string headName = head.name, tailName = tail.name;
+		    std::modf(entities[headIndex].getDataValue<RealType>("#BEAT") * 2, &headHalfBeat);
+		bool skips = (isActiveHead || headFracHalfBeat != 0) ? 1 : 0;
+		int endHalfBeat = std::ceil(entities[tailIndex].getDataValue<RealType>("#BEAT") * 2);
 		for (int halfBeat = headHalfBeat + skips; halfBeat < endHalfBeat; ++halfBeat)
 		{
-			entities.emplace_back(LevelDataEntity{ "TransientHiddenTickNote",
-			                                       { { "#BEAT", halfBeat / 2. },
-			                                         { "isAttached", 1 },
-			                                         { "attachHead", headName },
-			                                         { "attachTail", tailName } } });
+			entities.push_back({ "TransientHiddenTickNote",
+			                     { { "#BEAT", halfBeat / 2. },
+			                       { "isAttached", 1 },
+			                       { "attachHead", entities[headIndex].name },
+			                       { "attachTail", entities[tailIndex].name } } });
 		}
 	}
 
@@ -775,6 +854,12 @@ namespace MikuMikuWorld
 			break;
 		case 3:
 			easeFunc = easeOut;
+			break;
+		case 4:
+			easeFunc = easeInOut;
+			break;
+		case 5:
+			easeFunc = easeOutIn;
 			break;
 		}
 		attach.data["lane"] = easeFunc(headLane, tailLane, ratio);
@@ -824,20 +909,17 @@ namespace MikuMikuWorld
 		}
 	}
 
-	int PySekaiEngine::toKindNumeric(bool critical, const HoldNote* hold)
+	int PySekaiEngine::toKindNumeric(const HoldNoteStep* holdStep)
 	{
-		bool isGuideHold = hold && hold->isGuide();
-		if (!isGuideHold)
+		if (!holdStep)
+			return 1;
+		if (!holdStep->isGuide())
 		{
-			bool isDummyHold = hold && hold->dummy;
-			if (!isDummyHold)
-				return (critical ? 2 : 1);
-			else
-				return (critical ? 52 : 51);
+			return (!holdStep->isCrit() ? 1 : 2) + (!holdStep->isDummy() ? 0 : 50);
 		}
 		else
 		{
-			switch (hold->guideColor)
+			switch (holdStep->guideColor)
 			{
 			case GuideColor::Neutral:
 				return 101;
@@ -865,14 +947,12 @@ namespace MikuMikuWorld
 	bool PySekaiEngine::fromGroupEntity(const LevelDataEntity& groupEntity, Layer& layer)
 	{
 		groupEntity.tryGetDataValue("editorName", layer.name);
-		groupEntity.tryGetDataValue("editorHidden", layer.hidden);
 		return true;
 	}
 
-	int PySekaiEngine::fromTimeScaleEntity(const LevelDataEntity& timescaleEntity,
-	                                       const LevelDataEntity& groupEntity,
-	                                       HiSpeedChange& hispeed,
-	                                       std::unordered_map<RefType, size_t>& groupNameMap)
+	bool PySekaiEngine::fromTimeScaleEntity(const LevelDataEntity& timescaleEntity,
+	                                        const LevelDataEntity& groupEntity, HiSpeed& hispeed,
+	                                        std::unordered_map<RefType, size_t>& groupNameMap)
 	{
 		if (timescaleEntity.archetype != "#TIMESCALE_CHANGE")
 		{
@@ -916,6 +996,35 @@ namespace MikuMikuWorld
 			hispeed.ease = static_cast<HiSpeedEaseType>(easing);
 		}
 		timescaleEntity.tryGetDataValue("hideNotes", hispeed.hideNotes);
+		return true;
+	}
+
+	bool PySekaiEngine::fromSkillEntity(const LevelDataEntity& skillEntity, Skill& skill)
+	{
+		RealType beat;
+		if (!skillEntity.tryGetDataValue("#BEAT", beat))
+		{
+			PRINT_DEBUG("Missing '#BEAT' key on %s (%s)", skillEntity.archetype.c_str(),
+			            skillEntity.name.c_str());
+			return false;
+		}
+		skill.tick = beatsToTicks(beat);
+		return true;
+	}
+
+	bool PySekaiEngine::fromFeverEntity(const LevelDataEntity& feverEntity, Fever& fever)
+	{
+		RealType beat;
+		if (!feverEntity.tryGetDataValue("#BEAT", beat))
+		{
+			PRINT_DEBUG("Missing '#BEAT' key on %s (%s)", feverEntity.archetype.c_str(),
+			            feverEntity.name.c_str());
+			return false;
+		}
+		if (feverEntity.archetype == "FeverChance")
+			fever.startTick = beatsToTicks(beat);
+		else
+			fever.endTick = beatsToTicks(beat);
 		return true;
 	}
 
@@ -971,38 +1080,44 @@ namespace MikuMikuWorld
 	int PySekaiEngine::fromTapNoteEntity(const LevelDataEntity& tapNoteEntity, Note& note,
 	                                     const std::unordered_map<RefType, size_t>& groupNameMap)
 	{
-		int status;
-		if (!(status = fromNoteEntity(tapNoteEntity, note, groupNameMap)))
+		int status = fromNoteEntity(tapNoteEntity, note, groupNameMap);
+		if (status == 0)
 			return false;
 
 		size_t offset = 0;
 		if (stringMatching(tapNoteEntity.archetype, "Fake", offset))
+			note.flag = setFlag(note.flag, NoteFlag::Dummy);
+		if (stringMatchAll(tapNoteEntity.archetype, "AnchorNote", offset))
 		{
-			note.dummy = true;
+			note.flag = setFlag(note.flag, NoteFlag::Hidden);
+			return true;
 		}
 		if (stringMatchAll(tapNoteEntity.archetype, "DamageNote", offset))
 		{
-			Note damage(NoteType::Damage);
-			damage.dummy = note.dummy;
-			damage.tick = note.tick;
-			damage.lane = note.lane;
-			damage.width = note.width;
-			note = damage;
+			note.type = NoteType::Damage;
 			return true;
 		}
 		if (stringMatching(tapNoteEntity.archetype, "Critical", offset))
-			note.critical = true;
+			note.flag = setFlag(note.flag, NoteFlag::Critical);
 		else if (!stringMatching(tapNoteEntity.archetype, "Normal", offset))
 		{
 			PRINT_DEBUG("Invalid note archetype %s (%s)", tapNoteEntity.archetype.c_str(),
 			            tapNoteEntity.name.c_str());
 			return false;
 		}
+		if (stringMatchAll(tapNoteEntity.archetype, "TickNote", offset))
+		{
+			note.type = NoteType::Tick;
+			return true;
+		}
+		note.type = NoteType::Tap;
 		bool hasModifier = false;
+		stringMatching(tapNoteEntity.archetype, "Head", offset) ||
+		    stringMatching(tapNoteEntity.archetype, "Tail", offset);
 		if (stringMatching(tapNoteEntity.archetype, "Trace", offset))
 		{
 			hasModifier = true;
-			note.friction = true;
+			note.flag = setFlag(note.flag, NoteFlag::Trace);
 		}
 		if (stringMatching(tapNoteEntity.archetype, "Flick", offset))
 		{
@@ -1021,7 +1136,8 @@ namespace MikuMikuWorld
 				return false;
 			}
 		}
-		if ((!hasModifier && !stringMatching(tapNoteEntity.archetype, "Tap", offset)) ||
+		if ((!hasModifier && !stringMatching(tapNoteEntity.archetype, "Tap", offset) &&
+		     !stringMatching(tapNoteEntity.archetype, "Release", offset)) ||
 		    !stringMatchAll(tapNoteEntity.archetype, "Note", offset))
 		{
 			PRINT_DEBUG("Invalid note archetype %s (%s)", tapNoteEntity.archetype.c_str(),
@@ -1031,306 +1147,29 @@ namespace MikuMikuWorld
 		return status;
 	}
 
-	int PySekaiEngine::fromStartHoldEntity(const LevelDataEntity& noteEntity, Note& startNote,
-	                                       HoldNote& hold,
-	                                       const std::unordered_map<RefType, size_t>& groupNameMap,
-	                                       const Sonolus::LevelDataEntity* prevNoteEntity)
-	{
-		int status;
-		if (!(status = fromNoteEntity(noteEntity, startNote, groupNameMap)))
-			return false;
-
-		int kind = 0;
-		if (noteEntity.tryGetDataValue("segmentKind", kind))
-		{
-			if (!fromKindNumeric(kind, hold, startNote))
-			{
-				PRINT_DEBUG("Unsupported segmentKind %d", kind);
-				return false;
-			}
-		}
-		else
-		{
-			PRINT_DEBUG("Hold note doesn't have a valid segmentKind!");
-			return false;
-		}
-
-		// Handle separate holds
-		// hold -> guide: set anchor
-		// hold -> hold: set anchor
-		// guide -> hold: no force anchor
-		// guide -> guide: force anchor
-		bool forceAnchor = false;
-		int isSeperator = 0;
-		noteEntity.tryGetDataValue("isSeparator", isSeperator);
-		if (prevNoteEntity && isSeperator)
-		{
-			int prevKind;
-			if (!prevNoteEntity->tryGetDataValue("segmentKind", prevKind))
-				return false;
-			forceAnchor = !isGuideKind(prevKind);
-		}
-
-		float alpha;
-		if (hold.isGuide() && noteEntity.tryGetDataValue("segmentAlpha", alpha))
-		{
-			if (isClose(alpha, 1.f))
-				hold.fadeType = FadeType::Out;
-			else if (isClose(alpha, 0.f))
-				hold.fadeType = FadeType::In;
-			else
-			{
-				PRINT_DEBUG("Custom fading %.4f!", alpha);
-				return false;
-			}
-		}
-
-		int ease;
-		if (noteEntity.tryGetDataValue("connectorEase", ease))
-		{
-			hold.start.ease = fromEaseNumeric(ease);
-			if (hold.start.ease == EaseType::EaseTypeCount)
-			{
-				PRINT_DEBUG("Unknown connectorEase %d", ease);
-				return false;
-			}
-		}
-
-		if (forceAnchor)
-		{
-			if (!hold.isGuide())
-				hold.startType = HoldNoteType::Hidden;
-			hold.start.type = HoldStepType::Hidden;
-			return true;
-		}
-
-		size_t offset = 0;
-		if (stringMatching(noteEntity.archetype, "Fake", offset))
-			startNote.dummy = true;
-		if (stringMatchAll(noteEntity.archetype, "AnchorNote", offset))
-		{
-			if (!hold.isGuide())
-				hold.startType = HoldNoteType::Hidden;
-			hold.start.type = HoldStepType::Hidden;
-			return true;
-		}
-		else if (hold.isGuide())
-		{
-			PRINT_DEBUG("None anchor note inside of guide");
-			return false;
-		}
-		if (stringMatchAll(noteEntity.archetype, "DamageNote", offset))
-		{
-			PRINT_DEBUG("Damage note as hold start!");
-			return false;
-		}
-		if (stringMatching(noteEntity.archetype, "Critical", offset))
-		{
-			if (!startNote.critical)
-			{
-				PRINT_DEBUG("Crit hold start with a normal tap!");
-				return false;
-			}
-		}
-		else if (stringMatching(noteEntity.archetype, "Normal", offset))
-		{
-			if (startNote.critical)
-			{
-				PRINT_DEBUG("Normal hold start with a crit tap!");
-				return false;
-			}
-		}
-		else
-		{
-			PRINT_DEBUG("Invalid note archetype %s (%s)", noteEntity.archetype.c_str(),
-			            noteEntity.name.c_str());
-			return false;
-		}
-		if (!stringMatching(noteEntity.archetype, "Head", offset))
-		{
-			PRINT_DEBUG("Mising Head in archetype %s", noteEntity.archetype.c_str());
-			return false;
-		}
-		bool hasModifier = false;
-		if (stringMatching(noteEntity.archetype, "Trace", offset))
-		{
-			hasModifier = true;
-			startNote.friction = true;
-		}
-		if (stringMatching(noteEntity.archetype, "Flick", offset))
-		{
-			PRINT_DEBUG("Unsupported flick on head note");
-			return false;
-		}
-		if ((!hasModifier && !stringMatching(noteEntity.archetype, "Tap", offset)) ||
-		    !stringMatchAll(noteEntity.archetype, "Note", offset))
-		{
-			PRINT_DEBUG("Invalid note archetype %s (%s)", noteEntity.archetype.c_str(),
-			            noteEntity.name.c_str());
-			return false;
-		}
-		return status;
-	}
-
 	int PySekaiEngine::fromHoldMidEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
-	                                     HoldNote& hold, HoldStep& step,
 	                                     const std::unordered_map<RefType, size_t>& groupNameMap)
 	{
-		int status;
-		if (!(status = fromNoteEntity(noteEntity, note, groupNameMap)))
+		int status = fromTapNoteEntity(noteEntity, note, groupNameMap);
+		if (status == 0)
 			return false;
 
+		noteEntity.tryGetDataValue("segmentAlpha", note.guideAlpha);
 		int attached = 0;
 		if (noteEntity.tryGetDataValue("isAttached", attached) && attached)
-			step.type = HoldStepType::Skip;
+			note.flag = setFlag(note.flag, NoteFlag::Attached);
 
 		int ease;
 		if (noteEntity.tryGetDataValue("connectorEase", ease))
 		{
-			step.ease = fromEaseNumeric(ease);
-			if (step.ease == EaseType::EaseTypeCount)
+			note.ease = fromEaseNumeric(ease);
+			if (note.ease == EaseType::EaseTypeCount)
 			{
 				PRINT_DEBUG("Unknown connectorEase %d", ease);
 				return false;
 			}
 		}
 
-		size_t offset = 0;
-		if (stringMatching(noteEntity.archetype, "Fake", offset))
-			note.dummy = true;
-		if (stringMatchAll(noteEntity.archetype, "AnchorNote", offset))
-		{
-			step.type = HoldStepType::Hidden;
-			return true;
-		}
-		else if (hold.isGuide())
-		{
-			PRINT_DEBUG("None anchor note inside of guide");
-			return false;
-		}
-		if (stringMatchAll(noteEntity.archetype, "DamageNote", offset))
-		{
-			PRINT_DEBUG("Damage note in hold!");
-			return false;
-		}
-		if (stringMatching(noteEntity.archetype, "Critical", offset))
-			note.critical = true;
-		else if (!stringMatching(noteEntity.archetype, "Normal", offset))
-		{
-			PRINT_DEBUG("Invalid note archetype %s (%s)", noteEntity.archetype.c_str(),
-			            noteEntity.name.c_str());
-			return false;
-		}
-		if (!stringMatchAll(noteEntity.archetype, "TickNote", offset))
-		{
-			step.type = HoldStepType::Normal;
-			PRINT_DEBUG("Non tick note inside of hold");
-			return false;
-		}
-		return status;
-	}
-
-	int PySekaiEngine::fromEndHoldEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
-	                                     HoldNote& hold, HoldStep& step,
-	                                     const std::unordered_map<RefType, size_t>& groupNameMap)
-	{
-		int status;
-		if (!(status = fromNoteEntity(noteEntity, note, groupNameMap)))
-			return false;
-
-		// Handle separate holds
-		// hold -> guide: force release
-		// hold -> hold:
-		// guide -> hold:
-		// guide -> guide: force anchor
-		bool forceGuideAnchor = true, forceTail = true;
-		if (noteEntity.getDataValue<int>("isSeparator"))
-		{
-			int kind = 0;
-			if (noteEntity.tryGetDataValue("segmentKind", kind))
-			{
-				forceGuideAnchor = hold.isGuide() && isGuideKind(kind);
-				forceTail = !hold.isGuide() && isGuideKind(kind);
-			}
-		}
-
-		float alpha;
-		if (hold.isGuide() && noteEntity.tryGetDataValue("segmentAlpha", alpha))
-		{
-			if (!isClose(alpha, 1.f) && (!isClose(alpha, 0.f) || hold.fadeType != FadeType::Out))
-			{
-
-				PRINT_DEBUG("Custom fading %.4f!", alpha);
-				return false;
-			}
-			if (isClose(alpha, 1.f) && hold.fadeType == FadeType::Out)
-				hold.fadeType = FadeType::None;
-		}
-
-		size_t offset = 0;
-		if (stringMatching(noteEntity.archetype, "Fake", offset))
-			note.dummy = true;
-		if (stringMatchAll(noteEntity.archetype, "AnchorNote", offset))
-		{
-			if (!hold.isGuide())
-				hold.endType = HoldNoteType::Hidden;
-			return true;
-		}
-		else if (hold.isGuide())
-		{
-			if (!forceGuideAnchor)
-				return true;
-			PRINT_DEBUG("None anchor note inside of guide");
-			return false;
-		}
-		if (stringMatchAll(noteEntity.archetype, "DamageNote", offset))
-		{
-			PRINT_DEBUG("Damage note as hold end!");
-			return false;
-		}
-		if (stringMatching(noteEntity.archetype, "Critical", offset))
-			note.critical = true;
-		else if (!stringMatching(noteEntity.archetype, "Normal", offset))
-		{
-			PRINT_DEBUG("Invalid note archetype %s (%s)", noteEntity.archetype.c_str(),
-			            noteEntity.name.c_str());
-			return false;
-		}
-		if (forceTail && !stringMatching(noteEntity.archetype, "Tail", offset))
-		{
-			PRINT_DEBUG("Mising Tail in archetype %s", noteEntity.archetype.c_str());
-			return false;
-		}
-		bool hasModifier = false;
-		if (stringMatching(noteEntity.archetype, "Trace", offset))
-		{
-			hasModifier = true;
-			note.friction = true;
-		}
-		if (stringMatching(noteEntity.archetype, "Flick", offset))
-		{
-			hasModifier = true;
-			int direction;
-			if (!noteEntity.tryGetDataValue("direction", direction))
-			{
-				PRINT_DEBUG("Missing 'direction' key on %s (%s)", noteEntity.archetype.c_str(),
-				            noteEntity.name.c_str());
-				return false;
-			}
-			note.flick = fromDirectionNumeric(direction);
-			if (note.flick == FlickType::FlickTypeCount)
-			{
-				PRINT_DEBUG("Unknown direction value %d!", direction);
-				return false;
-			}
-		}
-		if ((!hasModifier && !stringMatching(noteEntity.archetype, "Release", offset)) ||
-		    !stringMatchAll(noteEntity.archetype, "Note", offset))
-		{
-			PRINT_DEBUG("Invalid note archetype %s (%s)", noteEntity.archetype.c_str(),
-			            noteEntity.name.c_str());
-			return false;
-		}
 		return status;
 	}
 
@@ -1345,28 +1184,6 @@ namespace MikuMikuWorld
 		{
 			PRINT_DEBUG("Hold notes missing start/end");
 			return false;
-		}
-		const Note& startNote = holdNotes.front();
-		const Note& endNote = holdNotes.back();
-		if (startNote.isFlick() || (startNote.critical && !endNote.critical) ||
-		    (!startNote.critical && endNote.critical && !endNote.friction && !endNote.isFlick()))
-		{
-			PRINT_DEBUG("Invalid start-end hold note configuration");
-			return false;
-		}
-		for (size_t i = 0; i < hold.steps.size(); i++)
-		{
-			if (holdNotes[i + 1].tick < startNote.tick || holdNotes[i + 1].tick > endNote.tick)
-			{
-				PRINT_DEBUG("Tick note outside hold note range!");
-				return false;
-			}
-			if (hold.steps[i].type != HoldStepType::Hidden &&
-			    holdNotes[i + 1].critical != startNote.critical)
-			{
-				PRINT_DEBUG("Tick note critical mismatch with the rest of the slide!");
-				return false;
-			}
 		}
 		return true;
 	}
@@ -1411,32 +1228,30 @@ namespace MikuMikuWorld
 		}
 	}
 
-	bool PySekaiEngine::fromKindNumeric(int kind, HoldNote& hold, Note& note)
+	static bool isGuideKind(int kind) { return 101 <= kind && kind <= 108; }
+	bool PySekaiEngine::fromKindNumeric(int kind, HoldNoteStep& holdStep)
 	{
 		if (isGuideKind(kind))
 		{
-			hold.startType = hold.endType = HoldNoteType::Guide;
-			hold.guideColor = static_cast<GuideColor>(kind - 101);
+			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Guide);
+			holdStep.guideColor = static_cast<GuideColor>(kind - 101);
 			return true;
 		}
 		if (50 < kind)
 		{
-			hold.dummy = true;
+			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Dummy);
 			kind -= 50;
 		}
 		switch (kind)
 		{
 		case 1:
-			return true;
 		case 2:
-			note.critical = true;
+			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Critical, kind == 2);
 			return true;
 		default:
 			return false;
 		}
 	}
-
-	bool PySekaiEngine::isGuideKind(int kind) { return 101 <= kind && kind <= 108; }
 #pragma endregion
 
 }
