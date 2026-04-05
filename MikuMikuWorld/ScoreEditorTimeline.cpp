@@ -99,8 +99,9 @@ namespace MikuMikuWorld
 		}
 		else
 		{
-			timelineScreenSize.x = config.timelineWidth * UNIT_X;
-			zoomX = 1.f;
+			timelineScreenSize.x =
+			    std::max(config.timelineWidth * UNIT_X, MIN_LANE_WIDTH * laneCount);
+			zoomX = (config.timelineWidth * UNIT_X) / timelineScreenSize.x;
 		}
 		noteHeight =
 		    getConfig().matchNotesSizeToTimeline ? toScreenWidth(1) : getConfig().notesHeight;
@@ -110,7 +111,6 @@ namespace MikuMikuWorld
 		timelineScreenSize.y = std::max(absScreenSize.y, 1.f);
 		timelineScreenPos.x = absScreenPos.x + (absScreenSize.x - timelineScreenSize.x) / 2;
 		timelineScreenPos.y = absScreenPos.y;
-		ImVec2 maxTimelineScreenPos = timelineScreenPos + timelineScreenSize;
 
 		float panelSize = std::max(PANEL_SIZE_MIN, timelineScreenPos.x - absScreenPos.x) -
 		                  style.ItemSpacing.x * 2;
@@ -175,7 +175,8 @@ namespace MikuMikuWorld
 			isDragSelecting = true;
 		}
 
-		ImGui::PushClipRect(timelineScreenPos, maxTimelineScreenPos, true);
+		ImGui::PushClipRect(leftPanelScreenPos + ImVec2{ panelScreenSize.x, 0 },
+		                    rightPanelScreenPos + ImVec2{ 0, panelScreenSize.y }, true);
 		drawTimeline(drawList);
 
 		// Fail safe
@@ -627,8 +628,8 @@ namespace MikuMikuWorld
 				std::string beatStr =
 				    std::to_string(tick_t(tickDiff / beat_t(tickPerBeat) + measureBeat));
 				ImVec2 txtSize = ImGui::CalcTextSize(beatStr.c_str());
-				float x = std::min(x2 + MEASURE_X_OFFSET - txtSize.x / 2,
-				                   timelineScreenMax.x - txtSize.x);
+				float x = std::min(xe2 + MEASURE_X_OFFSET - txtSize.x / 2,
+				                   rightPanelScreenPos.x - txtSize.x);
 				ImU32 col = ImAlphaBlendColors(0xff010101, measureTxtColor);
 				drawList->AddText({ x, y }, col, beatStr.c_str());
 			}
@@ -685,7 +686,9 @@ namespace MikuMikuWorld
 
 			std::string measureStr = std::to_string(measure);
 			ImVec2 txtSize = { ImGui::CalcTextSize(measureStr.c_str()).x / 2, 0 };
-			ImVec2 txtPos = { std::max(x1 - MEASURE_X_OFFSET, timelineScreenPos.x + txtSize.x), y };
+			ImVec2 txtPos = { std::max(xe1 - MEASURE_X_OFFSET,
+				                       leftPanelScreenPos.x + panelScreenSize.x + txtSize.x),
+				              y };
 			ImU32 col = ImAlphaBlendColors(0xff111111, measureTxtColor);
 			drawList->AddText(txtPos - txtSize, col, measureStr.c_str());
 		}
@@ -1579,7 +1582,7 @@ namespace MikuMikuWorld
 	}
 
 	bool ScoreEditorTimeline::eventControl(ImDrawList* drawList, const char* txt, ImU32 color,
-	                                       float xMin, float y, bool enabled)
+	                                       float x, float y, bool enabled)
 	{
 		ImGui::PushID(static_cast<int>(y));
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, 0 });
@@ -1592,28 +1595,26 @@ namespace MikuMikuWorld
 		ImGui::PopID();
 
 		float m = pos.x + ImGui::GetItemRectSize().x;
-		drawList->AddLine({ xMin, y }, { m, y }, color, UI::scale(primaryLineThickness));
+		drawList->AddLine({ x, y }, { m, y }, color, UI::scale(primaryLineThickness));
 		return activated;
 	}
 
 	bool ScoreEditorTimeline::bpmControl(ImDrawList* drawList, const Tempo& tempo, bool enable)
 	{
-		float xMin =
-		    std::min(toScreenPosX(context.maxLane()), timelineScreenPos.x + timelineScreenSize.x);
+		float x = std::min(toScreenPosX(context.maxLane()), rightPanelScreenPos.x);
 		float y = toScreenPosY(accumulateDuration(tempo.tick, context.score.tempoChanges));
 		std::string bpmStr = IO::formatString("%g BPM", tempo.quarterPerMinute);
-		return eventControl(drawList, bpmStr.c_str(), tempoColor, xMin, y, enable);
+		return eventControl(drawList, bpmStr.c_str(), tempoColor, x, y, enable);
 	}
 
 	bool ScoreEditorTimeline::timeSignatureControl(ImDrawList* drawList, const TimeSignature& ts,
 	                                               bool enabled)
 	{
-		float xMin =
-		    std::min(toScreenPosX(context.maxLane()), timelineScreenPos.x + timelineScreenSize.x);
+		float x = std::min(toScreenPosX(context.maxLane()), rightPanelScreenPos.x);
 		tick_t tick = accumulateTicks(ts.measure, context.score.timeSignatures);
 		float y = toScreenPosY(accumulateDuration(tick, context.score.tempoChanges));
 		std::string tsStr = IO::formatString("%d/%d", ts.numerator, ts.denominator);
-		return eventControl(drawList, tsStr.c_str(), timeColor, xMin, y, enabled);
+		return eventControl(drawList, tsStr.c_str(), timeColor, x, y, enabled);
 	}
 
 	bool ScoreEditorTimeline::hiSpeedControl(ImDrawList* drawList, const HiSpeed& hispeed,
@@ -1641,11 +1642,10 @@ namespace MikuMikuWorld
 			ImVec4 u4color = ImGui::ColorConvertU32ToFloat4(color);
 			color = ImGui::ColorConvertFloat4ToU32(generateHighlightColor(u4color));
 		}
-		float xMin =
-		    std::min(toScreenPosX(context.maxLane()), timelineScreenPos.x + timelineScreenSize.x);
+		float x = std::min(toScreenPosX(context.maxLane()), rightPanelScreenPos.x);
 		float y = toScreenPosY(accumulateDuration(hispeed.tick, context.score.tempoChanges));
 		ImGui::PushID(hispeed.tick);
-		bool activated = eventControl(drawList, speedStr.c_str(), color, xMin, y, enabled);
+		bool activated = eventControl(drawList, speedStr.c_str(), color, x, y, enabled);
 		ImGui::PopID();
 		if (selected)
 		{
@@ -1658,9 +1658,10 @@ namespace MikuMikuWorld
 
 	bool ScoreEditorTimeline::skillControl(ImDrawList* drawList, tick_t tick, bool enabled)
 	{
-		float xMax = std::max(toScreenPosX(context.minLane()), timelineScreenPos.x);
+		float x =
+		    std::max(toScreenPosX(context.minLane()), leftPanelScreenPos.x + panelScreenSize.x);
 		float y = toScreenPosY(accumulateDuration(tick, context.score.tempoChanges));
-		return eventControl(drawList, localize(Text::skill), skillColor, xMax, y, enabled);
+		return eventControl(drawList, localize(Text::skill), skillColor, x, y, enabled);
 	}
 
 	bool ScoreEditorTimeline::feverControl(ImDrawList* drawList, const Fever& fever, bool enabled)
@@ -1669,13 +1670,14 @@ namespace MikuMikuWorld
 			return false;
 		const char* startStr = "FEVER" ICON_FA_CARET_UP;
 		const char* endStr = "FEVER" ICON_FA_CARET_DOWN;
-		float xMax = std::max(toScreenPosX(context.minLane()), timelineScreenPos.x);
+		float x =
+		    std::max(toScreenPosX(context.minLane()), leftPanelScreenPos.x + panelScreenSize.x);
 		float begY = toScreenPosY(accumulateDuration(fever.startTick, context.score.tempoChanges));
 		float endY = toScreenPosY(accumulateDuration(fever.endTick, context.score.tempoChanges));
 		bool activated = false;
-		activated |= eventControl(drawList, startStr, feverColor, xMax, begY, enabled);
+		activated |= eventControl(drawList, startStr, feverColor, x, begY, enabled);
 		ImVec2 end = ImGui::GetItemRectMin();
-		activated |= eventControl(drawList, endStr, feverColor, xMax, endY, enabled);
+		activated |= eventControl(drawList, endStr, feverColor, x, endY, enabled);
 		ImVec2 start = ImGui::GetItemRectMax();
 		const float LINE_WIDTH = 2;
 		float centerX = start.x + (end.x - start.x) / 2;
@@ -1686,14 +1688,15 @@ namespace MikuMikuWorld
 	bool ScoreEditorTimeline::waypointControl(ImDrawList* drawList, const Waypoint& waypoint,
 	                                          bool enabled)
 	{
-		float xMax = std::max(toScreenPosX(context.minLane()), timelineScreenPos.x);
+		float x =
+		    std::max(toScreenPosX(context.minLane()), leftPanelScreenPos.x + panelScreenSize.x);
 		float y = toScreenPosY(accumulateDuration(waypoint.tick, context.score.tempoChanges));
 		ImGuiStyle& style = ImGui::GetStyle();
 		float size = std::max(ImGui::CalcTextSize(waypoint.name.c_str()).x + 6.0f, 31.0f);
 		float avail = ImGui::GetContentRegionAvail().x;
 		if (avail > size)
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - size));
-		return eventControl(drawList, waypoint.name.c_str(), waypointColor, xMax, y, enabled);
+		return eventControl(drawList, waypoint.name.c_str(), waypointColor, x, y, enabled);
 	}
 
 	Tempo ScoreEditorTimeline::getPreviewTempo(const EditArgs& edit) const
@@ -3479,5 +3482,4 @@ namespace MikuMikuWorld
 		}
 		return true;
 	}
-
 } // namespace MikuMikuWorld

@@ -106,7 +106,7 @@ namespace MikuMikuWorld
 		void noteSelector();
 		id_t findHoveringHoldNote();
 
-		static bool eventControl(ImDrawList* drawList, const char* txt, ImU32 color, float xMin,
+		static bool eventControl(ImDrawList* drawList, const char* txt, ImU32 color, float x,
 		                         float y, bool enabled);
 		bool bpmControl(ImDrawList* drawList, const Tempo& tempo, bool enable = true);
 		bool timeSignatureControl(ImDrawList* drawList, const TimeSignature& ts,
