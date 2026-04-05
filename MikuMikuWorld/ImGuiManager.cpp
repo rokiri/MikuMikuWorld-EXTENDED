@@ -292,6 +292,8 @@ namespace MikuMikuWorld
 			wantsReset = false;
 		}
 
+		dockNodeSetFlag(ImGui::DockBuilderGetNode(dockSpaceId), ImGuiDockNodeFlags_NoCloseButton);
+
 		ImGui::DockSpace(dockSpaceId, ImVec2(), ImGuiDockNodeFlags_PassthruCentralNode);
 		ImGui::End();
 	}
@@ -314,5 +316,14 @@ namespace MikuMikuWorld
 		colors[ImGuiCol_PlotHistogramHovered] = darkColor;
 
 		accentColor = colIndex;
+	}
+
+	void ImGuiManager::dockNodeSetFlag(ImGuiDockNode* node, ImGuiDockNodeFlags flag)
+	{
+		if (!node)
+			return;
+		node->SetLocalFlags(node->LocalFlags | flag);
+		dockNodeSetFlag(node->ChildNodes[0], flag);
+		dockNodeSetFlag(node->ChildNodes[1], flag);
 	}
 }

@@ -21,6 +21,8 @@ namespace MikuMikuWorld
 		float styleScale{ 1.0f };
 		std::unique_ptr<ImGuiStyle> baseStyle;
 
+		static void dockNodeSetFlag(ImGuiDockNode* node, ImGuiDockNodeFlags flag);
+
 	  public:
 		ImGuiManager();
 
