@@ -429,9 +429,9 @@ namespace MikuMikuWorld
 			}
 
 			if (version.supportFadeType())
-				hold.fadeType = static_cast<FadeType>(reader.readUInt32());
+				hold.setFadeType(static_cast<FadeType>(reader.readUInt32()));
 			else
-				hold.fadeType = metadata.isExtendedScore ? FadeType::Out : FadeType::Classic;
+				hold.setFadeType(metadata.isExtendedScore ? FadeType::Out : FadeType::Classic);
 
 			if (version.supportGuideColor())
 				hold.guideColor = static_cast<GuideColor>(reader.readUInt32());
@@ -490,7 +490,6 @@ namespace MikuMikuWorld
 						break;
 					step.ID = hold.steps.at(index);
 					step.flag = static_cast<HoldNoteFlag>(reader.readUInt32());
-					step.fadeType = static_cast<FadeType>(reader.readUInt32());
 					step.guideColor = static_cast<GuideColor>(reader.readUInt32());
 					hold.separators.push_back(step);
 				}
@@ -586,7 +585,7 @@ namespace MikuMikuWorld
 			// note data
 			const Note& start = score.notes.at(hold.steps.front());
 			writeNote(start, writer);
-			writer.writeInt32((int)hold.fadeType);
+			writer.writeInt32((int)hold.getFadeType());
 			writer.writeInt32((int)hold.guideColor);
 
 			// steps
@@ -615,7 +614,6 @@ namespace MikuMikuWorld
 					break;
 				writer.writeInt32((int)index);
 				writer.writeInt32((int)holdStep.flag);
-				writer.writeInt32((int)holdStep.fadeType);
 				writer.writeInt32((int)holdStep.guideColor);
 			}
 		}

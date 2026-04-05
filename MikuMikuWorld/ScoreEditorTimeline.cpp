@@ -2479,7 +2479,7 @@ namespace MikuMikuWorld
 		case InsertMode::InsertLong:
 			inputNoteID = !isInsertingHold ? 1 : 2;
 			previewHold.flag = HoldNoteFlag::Normal;
-			previewHold.fadeType = FadeType::Out;
+			previewHold.setFadeType(FadeType::Out);
 			previewHold.guideColor = GuideColor::Green;
 			noteStart.flag = noteEnd.flag = NoteFlag::LongNote;
 			noteStart.ease = edit.easeType, noteEnd.ease = EaseType::Linear;
@@ -2532,14 +2532,14 @@ namespace MikuMikuWorld
 		{
 			inputNoteID = !isInsertingHold ? 1 : 2;
 			previewHold.flag |= HoldNoteFlag::Guide;
-			previewHold.fadeType = edit.fadeType;
+			previewHold.setFadeType(edit.fadeType);
 			previewHold.guideColor =
 			    context.metadata.isExtendedScore || edit.colorType == GuideColor::Yellow
 			        ? edit.colorType
 			        : GuideColor::Green;
 			noteStart.flag = noteEnd.flag = NoteFlag::LongNote | NoteFlag::Hidden;
 			noteStart.ease = edit.easeType, noteEnd.ease = EaseType::Linear;
-			switch (previewHold.fadeType)
+			switch (previewHold.getFadeType())
 			{
 			case FadeType::Classic:
 				noteStart.guideAlpha = 1;
@@ -2998,7 +2998,7 @@ namespace MikuMikuWorld
 
 					ImGui::Text("-Guide Color: %s\n-Fade Type: %s\n-Alpha: %.2f",
 					            (const char*)localize(guideColorAllTexts[(int)hold.guideColor]),
-					            (const char*)localize(fadeTypeTexts[(int)hold.fadeType]),
+					            (const char*)localize(fadeTypeTexts[(int)hold.getFadeType()]),
 					            note.guideAlpha);
 
 					if (!note.isAttached())
@@ -3436,7 +3436,8 @@ namespace MikuMikuWorld
 		if (ScoreSerializeController::toSerializeFormat(filename) == SerializeFormat::NativeFormat)
 		{
 			context.filename = filename;
-			setTimelineName(IO::toString(IO::File::getFilenameWithoutExtension(IO::stringToPath(filename))));
+			setTimelineName(
+			    IO::toString(IO::File::getFilenameWithoutExtension(IO::stringToPath(filename))));
 		}
 		else
 		{
@@ -3463,7 +3464,8 @@ namespace MikuMikuWorld
 		{
 			NativeScoreSerializer().serialize({ context.score, context.metadata }, filename);
 
-			setTimelineName(IO::toString(IO::File::getFilenameWithoutExtension(IO::stringToPath(filename))));
+			setTimelineName(
+			    IO::toString(IO::File::getFilenameWithoutExtension(IO::stringToPath(filename))));
 			context.recentHistoryUndo = context.history.undoCount();
 			context.upToDate = true;
 		}

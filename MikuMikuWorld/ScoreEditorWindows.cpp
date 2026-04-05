@@ -674,6 +674,19 @@ namespace MikuMikuWorld
 				                                 .holdStepAt(*v.second, context.score.notes)
 				                                 .isGuide();
 			};
+			auto hasAnyGuideHold = [&](const value_type& v)
+			{
+				if (!v.second->isHold())
+					return false;
+				const HoldNote& hold = context.score.holdNotes.at(v.second->holdID);
+				return hold.isGuide() || std::any_of(hold.separators.begin(), hold.separators.end(),
+				                                     [&](auto&& s) { return s.isGuide(); });
+			};
+			auto canSetAlpha = [&](const value_type& v)
+			{
+				return v.second->isHold() && context.score.holdNotes.at(v.second->holdID)
+				                                 .canSetGuideAlpha(*v.second, context.score.notes);
+			};
 			auto getGuideCol = [&](const value_type& v)
 			{
 				return context.score.holdNotes.at(v.second->holdID)
@@ -681,11 +694,7 @@ namespace MikuMikuWorld
 				    .guideColor;
 			};
 			auto getFadeType = [&](const value_type& v)
-			{
-				return context.score.holdNotes.at(v.second->holdID)
-				    .holdStepAt(*v.second, context.score.notes)
-				    .fadeType;
-			};
+			{ return context.score.holdNotes.at(v.second->holdID).getFadeType(); };
 			auto getAlpha = [](const value_type& v) { return v.second->guideAlpha; };
 			auto getLayer = [](const value_type& v) { return v.second->layer; };
 			bool isCrit = false, isCritHold = false, isTrace = false;
@@ -716,10 +725,9 @@ namespace MikuMikuWorld
 			mixedGuideCol =
 			    hasFlag(context.selectedFlag, SelectionFlag::HasGuideNote) &&
 			    checkMixState(guideCol, context.selectedNotes, getGuideCol, isGuideHold);
-			mixedFade = hasFlag(context.selectedFlag, SelectionFlag::HasGuideNote) &&
-			            checkMixState(fadeType, context.selectedNotes, getFadeType, isGuideHold);
-			mixedAlpha = hasFlag(context.selectedFlag, SelectionFlag::HasGuideNote) &&
-			             checkMixState(alpha, context.selectedNotes, getAlpha, isGuideHold);
+			mixedFade =
+			    checkMixState(fadeType, context.selectedNotes, getFadeType, hasAnyGuideHold);
+			mixedAlpha = checkMixState(alpha, context.selectedNotes, getAlpha, canSetAlpha);
 			noteFlag = setFlag(noteFlag, NoteFlag::Critical, isCrit);
 			noteFlag = setFlag(noteFlag, NoteFlag::Trace, isTrace);
 			noteFlag = setFlag(noteFlag, NoteFlag::Dummy, isDummy);
@@ -942,8 +950,28 @@ namespace MikuMikuWorld
 
 			const char* guidePropsTitle = localizeOrInsert("__option_guide_props", UI::iconTitle,
 			                                               ICON_FA_COG, Text::notePropertiesGuide);
-			if (hasFlag(context.selectedFlag, SelectionFlag::HasGuideNote) &&
-			    ImGui::CollapsingHeader(guidePropsTitle, ImGuiTreeNodeFlags_DefaultOpen))
+			if (!hasFlag(context.selectedFlag, SelectionFlag::HasGuideNote))
+			{
+				if (hasFlag(context.selectedFlag, SelectionFlag::HasGuideAlphaNote) &&
+				    ImGui::CollapsingHeader(guidePropsTitle, ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					UI::beginPropertyTable();
+					ImGui::BeginDisabled(!context.metadata.isExtendedScore);
+					if (UI::selectMixedPropertyRow(Text::fadeType, mixedFade, fadeType,
+					                               Text::notePropertiesMixedValue, fadeTypeTexts))
+						context.setFadeType(fadeType);
+					ImGui::EndDisabled();
+					ImGui::BeginDisabled(mixedFade || fadeType != FadeType::Custom);
+					alpha = std::abs(alpha);
+					float inpAlpha = alpha * 100;
+					if (UI::mixedFloatPropertyRow(Text::stepAlpha, mixedAlpha, inpAlpha, "%g %%", 0,
+					                              100, 10))
+						context.setGuideAlpha(alpha = inpAlpha / 100);
+					ImGui::EndDisabled();
+					UI::endPropertyTable();
+				}
+			}
+			else if (ImGui::CollapsingHeader(guidePropsTitle, ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				UI::beginPropertyTable();
 				bool editCol = false;
@@ -969,8 +997,7 @@ namespace MikuMikuWorld
 				                               Text::notePropertiesMixedValue, fadeTypeTexts))
 					context.setFadeType(fadeType);
 				ImGui::EndDisabled();
-				ImGui::BeginDisabled(mixedFade || fadeType != FadeType::Custom ||
-				                     !hasFlag(context.selectedFlag, SelectionFlag::CanChangeAlpha));
+				ImGui::BeginDisabled(mixedFade || fadeType != FadeType::Custom);
 				alpha = std::abs(alpha);
 				float inpAlpha = alpha * 100;
 				if (UI::mixedFloatPropertyRow(Text::stepAlpha, mixedAlpha, inpAlpha, "%g %%", 0,

@@ -5,6 +5,20 @@
 
 namespace MikuMikuWorld
 {
+	bool HoldNote::canSetGuideAlpha(const Note& step, const NoteCollection& notes) const
+	{
+		auto it =
+		    std::upper_bound(separators.begin(), separators.end(), step, HoldStepComparer(notes));
+		if (it == separators.begin())
+			return this->isGuide();
+		else if (std::prev(it)->isGuide())
+			return true;
+		else if (std::prev(it)->ID == step.ID)
+			return std::prev(it) == separators.begin() ? this->isGuide()
+			                                           : std::prev(it, 2)->isGuide();
+		return false;
+	}
+
 	void HoldNote::insertStep(Note& note, NoteCollection& notes, bool swaps, bool update)
 	{
 		note.holdID = ID;
@@ -68,22 +82,13 @@ namespace MikuMikuWorld
 			if (prevEnd.ID != end.ID)
 				swapNoteProperties(prevEnd, end);
 		}
-		if (std::find_if(separators.begin(), separators.end(),
-		                 [ID = prevStart.ID](const HoldNoteStep& s)
-		                 { return s.ID == ID; }) != separators.end())
-			prevStart.flag = setFlag(prevStart.flag, NoteFlag::LongNote);
-		if (std::find_if(separators.begin(), separators.end(),
-		                 [ID = prevEnd.ID](const HoldNoteStep& s)
-		                 { return s.ID == ID; }) != separators.end())
-			prevEnd.flag = setFlag(prevEnd.flag, NoteFlag::LongNote);
-		start.flag = setFlag(start.flag, NoteFlag::LongNote);
-		end.flag = setFlag(end.flag, NoteFlag::LongNote);
 		if (hasFlag(start.flag, NoteFlag::Attached))
 			start.flag = setFlag(start.flag, NoteFlag::NonAttached);
 		if (hasFlag(end.flag, NoteFlag::Attached))
 			end.flag = setFlag(end.flag, NoteFlag::NonAttached);
 
 		std::sort(separators.begin(), separators.end(), HoldStepComparer(notes));
+		updateLongs(notes);
 		updateJoints(notes);
 		updateFading(notes);
 	}
@@ -96,47 +101,59 @@ namespace MikuMikuWorld
 				joints.push_back(steps[i]);
 	}
 
+	void HoldNote::updateLongs(NoteCollection& notes)
+	{
+		HoldNoteStep* prevStep = this;
+		for (auto&& holdStep : separators)
+		{
+			Note& step = notes.at(holdStep.ID);
+			step.flag =
+			    setFlag(step.flag, NoteFlag::LongNote, holdStep.isGuide() || prevStep->isGuide());
+			prevStep = &holdStep;
+		}
+		Note& start = notes.at(steps.front());
+		Note& end = notes.at(steps.back());
+		start.flag = setFlag(start.flag, NoteFlag::LongNote);
+		end.flag = setFlag(end.flag, NoteFlag::LongNote);
+	}
+
 	void HoldNote::updateFading(NoteCollection& notes)
 	{
+		Note& startStep = notes.at(steps.front());
+		Note& endStep = notes.at(steps.back());
+		size_t endIdx = steps.size() - 1;
 		auto nextSeparatorIt = separators.begin();
-		for (size_t frontIdx = 0, endIdx = 0; endIdx != steps.size() - 1; frontIdx = endIdx)
+		const HoldNoteStep* holdStep =
+		    nextSeparatorIt == separators.begin() ? this : &*prev(nextSeparatorIt);
+		for (size_t idx = 0; idx <= endIdx; idx++)
 		{
-			const HoldNoteStep& holdStep =
-			    nextSeparatorIt == separators.begin() ? *this : *prev(nextSeparatorIt);
-			if (nextSeparatorIt == separators.end())
-				endIdx = steps.size() - 1;
-			else
+			bool wasGuide = holdStep->isGuide();
+			if (nextSeparatorIt != separators.end() && nextSeparatorIt->ID == steps[idx])
 			{
-				auto endStepIt =
-				    std::find(steps.begin() + frontIdx, steps.end(), nextSeparatorIt->ID);
-				endIdx = std::distance(steps.begin(), endStepIt);
+				holdStep = &(*nextSeparatorIt);
 				++nextSeparatorIt;
 			}
-			if (!holdStep.isGuide())
+			if (!holdStep->isGuide() && !wasGuide)
 				continue;
-			Note& startStep = notes.at(steps[frontIdx]);
-			Note& endStep = notes.at(steps[endIdx]);
-			for (size_t idx = frontIdx; idx <= endIdx; idx++)
+
+			Note& step = notes.at(steps[idx]);
+			switch (fadeType)
 			{
-				Note& step = notes.at(steps[idx]);
-				switch (holdStep.fadeType)
-				{
-				case FadeType::Out:
-					step.guideAlpha = unlerp(endStep.tick, startStep.tick, step.tick);
-					break;
-				case FadeType::None:
-					step.guideAlpha = 1;
-					break;
-				case FadeType::In:
-					step.guideAlpha = unlerp(startStep.tick, endStep.tick, step.tick);
-					break;
-				case FadeType::Classic:
-					step.guideAlpha = lerp(1.0f, 0.2f, float(idx - frontIdx) / (endIdx - frontIdx));
-					break;
-				default:
-				case FadeType::Custom:
-					break;
-				}
+			case FadeType::Out:
+				step.guideAlpha = unlerp(endStep.tick, startStep.tick, step.tick);
+				break;
+			case FadeType::None:
+				step.guideAlpha = 1.f;
+				break;
+			case FadeType::In:
+				step.guideAlpha = unlerp(startStep.tick, endStep.tick, step.tick);
+				break;
+			case FadeType::Classic:
+				step.guideAlpha = lerp(1.0f, 0.2f, float(idx) / endIdx);
+				break;
+			default:
+			case FadeType::Custom:
+				break;
 			}
 		}
 	}

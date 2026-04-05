@@ -125,7 +125,7 @@ namespace MikuMikuWorld
 		HasAnyHoldMid = 1 << 6,
 		HasAnyHoldNoteStep = 1 << 7,
 		CanEase = 1 << 8, // Any hold start + hold mid not attached
-		CanChangeAlpha = 1 << 9,
+		HasGuideAlphaNote = 1 << 9,
 		CanConnectHold = 1 << 10,
 		// Flag for properties window
 		DirtyProperty = 1 << 15,

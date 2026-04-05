@@ -306,6 +306,8 @@ namespace MikuMikuWorld
 				LevelDataEntity& entity = levelData.entities.emplace_back(toNoteEntity(
 				    stepNote, getHoldNoteArchetype(stepNote, isActiveHead, isActiveTail),
 				    getEntityName(groupEntIdx[stepNote.layer]), &hold, holdStep));
+				isSeparator |= entity.getDataValue<IntegerType>("isSeparator");
+				
 				if (lastEntityIndex)
 					levelData.entities[lastEntityIndex].data.emplace("next",
 					                                                 getEntityName(info.index));
@@ -572,6 +574,7 @@ namespace MikuMikuWorld
 			bool validHold = true;
 			holdNotes.clear();
 			HoldNote hold;
+			hold.setFadeType(FadeType::Custom);
 			HoldNoteStep* holdStep = nullptr;
 			while (true)
 			{
@@ -604,8 +607,6 @@ namespace MikuMikuWorld
 							validHold = false;
 							break;
 						}
-						if (holdStep->isGuide())
-							holdStep->fadeType = FadeType::Custom;
 					}
 					else
 					{
@@ -716,8 +717,13 @@ namespace MikuMikuWorld
 	                                            const RefType& groupName, const HoldNote* hold,
 	                                            const HoldNoteStep* holdStep)
 	{
-		bool isSeparator = holdStep && ((hold != holdStep && holdStep->ID == note.ID) ||
-		                                holdStep->fadeType == FadeType::Classic);
+		bool isSeparator = false;
+		if (holdStep && hold)
+		{
+			isSeparator = (hold != holdStep && holdStep->ID == note.ID) ||
+			              (holdStep->isGuide() && hold->getFadeType() == FadeType::Classic &&
+			               hold->steps.back() != note.ID);
+		}
 		return { archetype,
 			     { { "#TIMESCALE_GROUP", groupName },
 			       { "#BEAT", ticksToBeats(note.tick) },
@@ -728,7 +734,7 @@ namespace MikuMikuWorld
 			       { "isSeparator", static_cast<IntegerType>(isSeparator) },
 			       { "connectorEase", toEaseNumeric(note.ease) },
 			       { "segmentKind", toKindNumeric(holdStep) },
-			       { "segmentAlpha", note.guideAlpha },
+			       { "segmentAlpha", roundOff(note.guideAlpha) },
 			       { "segmentLayer", 0 },
 			       { "effectKind", 0 } } };
 	}

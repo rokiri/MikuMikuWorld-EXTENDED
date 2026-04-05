@@ -88,16 +88,16 @@ namespace MikuMikuWorld
 		id_t ID{ -1 }; // note id of the step
 		HoldNoteFlag flag{ HoldNoteFlag::Normal };
 		GuideColor guideColor{ GuideColor::Green };
+
+	  protected:
+		// FadeType is apply to the entire hold
+		// This is protected to prevent setting it from a separator
 		FadeType fadeType{ FadeType::Out };
 
+	  public:
 		constexpr inline bool isCrit() const { return hasFlag(flag, HoldNoteFlag::Critical); }
 		constexpr inline bool isGuide() const { return hasFlag(flag, HoldNoteFlag::Guide); }
 		constexpr inline bool isDummy() const { return hasFlag(flag, HoldNoteFlag::Dummy); }
-
-		constexpr inline bool canSetAlpha() const
-		{
-			return isGuide() && fadeType == FadeType::Custom;
-		}
 	};
 
 	class HoldNote : public HoldNoteStep
@@ -174,9 +174,14 @@ namespace MikuMikuWorld
 			}
 		};
 
+		constexpr inline FadeType getFadeType() const { return fadeType; }
+		inline void setFadeType(FadeType type) { fadeType = type; }
+		bool canSetGuideAlpha(const Note& step, const NoteCollection& notes) const;
+
 		void insertStep(Note& note, NoteCollection& notes, bool swaps = false, bool update = true);
 		void sortSteps(NoteCollection& notes, bool swaps = false);
 		void updateJoints(NoteCollection& notes);
+		void updateLongs(NoteCollection& notes);
 		void updateFading(NoteCollection& notes);
 
 		// Find the first joint not less than the step

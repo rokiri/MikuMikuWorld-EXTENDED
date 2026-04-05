@@ -448,8 +448,7 @@ namespace MikuMikuWorld
 			data["dummy"] = note.isDummy();
 		}
 		data["ease"] = note.ease;
-		if (step.canSetAlpha())
-			data["alpha"] = note.guideAlpha;
+		data["alpha"] = note.guideAlpha;
 	}
 	static void step_note_from_json(const json& data, Note& note, const HoldNoteStep& step)
 	{
@@ -521,8 +520,7 @@ namespace MikuMikuWorld
 			data["dummy"] = note.isDummy();
 		}
 		data["ease"] = note.ease;
-		if (step.canSetAlpha())
-			data["alpha"] = note.guideAlpha;
+		data["alpha"] = note.guideAlpha;
 	}
 	static void terminal_step_note_from_json(const json& data, Note& note, const json& holdData,
 	                                         HoldNoteStep& step)
@@ -572,18 +570,16 @@ namespace MikuMikuWorld
 			data["critical"] = step.isCrit();
 			data["dummy"] = step.isDummy();
 		}
-		// Not making these properties exclusive allow compatibility with CC version
 		// else
 		{
+			// Not making the properties exclusive allow compatibility with CC version
 			data["guide"] = step.guideColor;
-			data["fade"] = step.fadeType;
 		}
 	}
 	static void hold_note_step_from_json(const json& data, HoldNoteStep& step,
 	                                     const json& startData)
 	{
 		step.guideColor = tryGetValue(data, "guide", GuideColor::Green);
-		step.fadeType = tryGetValue(data, "fade", FadeType::Out);
 		step.flag = setFlag(step.flag, HoldNoteFlag::Dummy, tryGetValue(data, "dummy", false));
 		bool critical;
 		if (keyExists(data, "critical", json::value_t::boolean))
@@ -685,6 +681,7 @@ namespace MikuMikuWorld
 
 			json* holdData = &holds.emplace_back();
 			hold_note_step_to_json(*holdData, *holdStep);
+			(*holdData)["fade"] = hold.getFadeType();
 
 			json* holdStart = &(*holdData)["start"];
 			const Note* start = *stepIt;
@@ -804,6 +801,7 @@ namespace MikuMikuWorld
 				HoldNoteStep* holdStep = &hold;
 				hold.ID = nextHoldID++;
 				hold_note_step_from_json(*holdStepData, *holdStep, *holdStart);
+				hold.setFadeType(tryGetValue(data, "fade", FadeType::Out));
 
 				Note* start = &pasteData.notes[nextNoteID];
 				start->ID = nextNoteID++;

@@ -312,19 +312,21 @@ namespace MikuMikuWorld
 			return;
 
 		bool edit = false;
-		std::unordered_set<HoldNoteStep*> updatedStep;
+		std::unordered_set<id_t> updatedHold;
 		for (auto&& [_, pnote] : selectedNotes)
 		{
 			Note& note = *pnote;
 			if (!note.isHold())
 				continue;
-			HoldNote& hold = score.holdNotes.at(note.holdID);
-			HoldNoteStep& step = hold.holdStepAt(note, score.notes);
-			if (updatedStep.emplace(&step).second && step.fadeType != fade)
+			if (updatedHold.emplace(note.holdID).second)
 			{
-				step.fadeType = fade;
-				hold.updateFading(score.notes);
-				edit = true;
+				HoldNote& hold = score.holdNotes.at(note.holdID);
+				if (hold.getFadeType() != fade)
+				{
+					hold.setFadeType(fade);
+					hold.updateFading(score.notes);
+					edit = true;
+				}
 			}
 		}
 
@@ -692,8 +694,8 @@ namespace MikuMikuWorld
 			Note& note = *pnote;
 			if (!note.isHold())
 				continue;
-			HoldNoteStep& step = score.holdNotes.at(note.holdID).holdStepAt(note, score.notes);
-			if (!step.canSetAlpha())
+			const HoldNote& hold = score.holdNotes.at(note.holdID);
+			if (hold.getFadeType() != FadeType::Custom || !hold.canSetGuideAlpha(note, score.notes))
 				continue;
 			edit = pnote->guideAlpha != alpha;
 			pnote->guideAlpha = alpha;
@@ -754,9 +756,8 @@ namespace MikuMikuWorld
 		};
 		auto hasCustomAlpha = [this](const NoteViewCollection::value_type& nv)
 		{
-			return nv.second->isHold() && score.holdNotes.at(nv.second->holdID)
-			                                  .holdStepAt(*nv.second, score.notes)
-			                                  .canSetAlpha();
+			return nv.second->isHold() &&
+			       score.holdNotes.at(nv.second->holdID).canSetGuideAlpha(*nv.second, score.notes);
 		};
 		auto canConnectHold = [this]()
 		{
@@ -798,9 +799,8 @@ namespace MikuMikuWorld
 		                       std::any_of(begin, end, isNormalHold));
 		selectedFlag = setFlag(selectedFlag, SelectionFlag::HasGuideNote,
 		                       std::any_of(begin, end, isGuideHold));
-		selectedFlag = setFlag(selectedFlag, SelectionFlag::CanChangeAlpha,
-		                       hasFlag(selectedFlag, SelectionFlag::HasGuideNote) &&
-		                           std::any_of(begin, end, hasCustomAlpha));
+		selectedFlag = setFlag(selectedFlag, SelectionFlag::HasGuideAlphaNote,
+		                       std::any_of(begin, end, hasCustomAlpha));
 		selectedFlag = setFlag(selectedFlag, SelectionFlag::CanConnectHold, canConnectHold());
 	}
 
@@ -2200,7 +2200,7 @@ namespace MikuMikuWorld
 		if (!metadata.isExtendedScore)
 		{
 			newHold.flag = setFlag(newHold.flag, HoldNoteFlag::Dummy, false);
-			newHold.fadeType = FadeType::Classic;
+			newHold.setFadeType(FadeType::Classic);
 			if (newHold.guideColor != GuideColor::Yellow)
 				newHold.guideColor = GuideColor::Green;
 		}
@@ -2249,7 +2249,7 @@ namespace MikuMikuWorld
 			    currStep.isCrit() == nextHold.isCrit() && currStep.isDummy() == nextHold.isDummy();
 		else if (currStep.isGuide() == true && nextHold.isGuide() == true)
 			mergeHold |= currStep.guideColor == nextHold.guideColor &&
-			             currStep.fadeType == nextHold.fadeType;
+			             currHold.getFadeType() == nextHold.getFadeType();
 
 		if (mergeNote)
 		{
@@ -2321,6 +2321,7 @@ namespace MikuMikuWorld
 		                           nextHold.separators.end());
 		score.holdNotes.erase(nextHoldID);
 		currHold.updateJoints(score.notes);
+		currHold.updateLongs(score.notes);
 		currHold.updateFading(score.notes);
 
 		if (update)
@@ -2351,7 +2352,7 @@ namespace MikuMikuWorld
 		if (!metadata.isExtendedScore)
 		{
 			newHold.flag = setFlag(newHold.flag, HoldNoteFlag::Dummy, false);
-			newHold.fadeType = FadeType::Classic;
+			newHold.setFadeType(FadeType::Classic);
 			if (newHold.guideColor != GuideColor::Yellow)
 				newHold.guideColor = GuideColor::Green;
 
