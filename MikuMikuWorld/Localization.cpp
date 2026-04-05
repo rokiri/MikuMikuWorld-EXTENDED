@@ -179,4 +179,5 @@ namespace MikuMikuWorld
 	static_assert(std::size(fadeTypeTexts) == size_t(FadeType::FadeTypeCount));
 	static_assert(std::size(baseThemeTexts) == size_t(BaseTheme::BASE_THEME_MAX));
 	static_assert(std::size(hispeedEaseTypeTexts) == size_t(HiSpeedEaseType::EaseTypeCount));
+	static_assert(std::size(skillEffectTexts) == size_t(SkillEffect::EffectCount));
 }

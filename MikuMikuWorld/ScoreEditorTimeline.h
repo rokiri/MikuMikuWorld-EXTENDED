@@ -113,7 +113,7 @@ namespace MikuMikuWorld
 		                          bool enabled = true);
 		bool hiSpeedControl(ImDrawList* drawList, const HiSpeed& hispeed, bool selected,
 		                    bool enabled = true);
-		bool skillControl(ImDrawList* drawList, tick_t tick, bool enabled = true);
+		bool skillControl(ImDrawList* drawList, const Skill& skill, bool enabled = true);
 		bool feverControl(ImDrawList* drawList, const Fever& fever, bool enabled = true);
 		bool waypointControl(ImDrawList* drawList, const Waypoint& waypoint, bool enabled = true);
 

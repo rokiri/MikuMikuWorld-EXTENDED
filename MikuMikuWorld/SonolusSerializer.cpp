@@ -306,8 +306,8 @@ namespace MikuMikuWorld
 				LevelDataEntity& entity = levelData.entities.emplace_back(toNoteEntity(
 				    stepNote, getHoldNoteArchetype(stepNote, isActiveHead, isActiveTail),
 				    getEntityName(groupEntIdx[stepNote.layer]), &hold, holdStep));
-				isSeparator |= entity.getDataValue<IntegerType>("isSeparator");
-				
+				isSeparator |= (bool)entity.getDataValue<IntegerType>("isSeparator");
+
 				if (lastEntityIndex)
 					levelData.entities[lastEntityIndex].data.emplace("next",
 					                                                 getEntityName(info.index));
@@ -703,7 +703,10 @@ namespace MikuMikuWorld
 
 	Sonolus::LevelDataEntity PySekaiEngine::toSkillEntity(const Skill& skill)
 	{
-		return { "Skill", { { "#BEAT", ticksToBeats(skill.tick) } } };
+		return { "Skill",
+			     { { "#BEAT", ticksToBeats(skill.tick) },
+			       { "effect", static_cast<IntegerType>(skill.effect) },
+			       { "level", static_cast<IntegerType>(skill.level) } } };
 	}
 
 	std::pair<Sonolus::LevelDataEntity, Sonolus::LevelDataEntity>
@@ -1008,13 +1011,18 @@ namespace MikuMikuWorld
 	bool PySekaiEngine::fromSkillEntity(const LevelDataEntity& skillEntity, Skill& skill)
 	{
 		RealType beat;
+		IntegerType effect = 0, level = 1;
 		if (!skillEntity.tryGetDataValue("#BEAT", beat))
 		{
 			PRINT_DEBUG("Missing '#BEAT' key on %s (%s)", skillEntity.archetype.c_str(),
 			            skillEntity.name.c_str());
 			return false;
 		}
+		skillEntity.tryGetDataValue("effect", effect);
+		skillEntity.tryGetDataValue("level", level);
 		skill.tick = beatsToTicks(beat);
+		skill.effect = static_cast<SkillEffect>(effect);
+		skill.level = level;
 		return true;
 	}
 

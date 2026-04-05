@@ -1656,12 +1656,21 @@ namespace MikuMikuWorld
 		return activated;
 	}
 
-	bool ScoreEditorTimeline::skillControl(ImDrawList* drawList, tick_t tick, bool enabled)
+	bool ScoreEditorTimeline::skillControl(ImDrawList* drawList, const Skill& skill, bool enabled)
 	{
 		float x =
 		    std::max(toScreenPosX(context.minLane()), leftPanelScreenPos.x + panelScreenSize.x);
-		float y = toScreenPosY(accumulateDuration(tick, context.score.tempoChanges));
-		return eventControl(drawList, localize(Text::skill), skillColor, x, y, enabled);
+		float y = toScreenPosY(accumulateDuration(skill.tick, context.score.tempoChanges));
+
+		if (context.metadata.isExtendedScore)
+		{
+			const char* shortEffect[] = { "S", "H", "AP" };
+			std::string text = IO::formatString("%s [%s.%d]", (const char*)localize(Text::skill),
+			                                    shortEffect[(int)skill.effect], (int)skill.level);
+			return eventControl(drawList, text.c_str(), skillColor, x, y, enabled);
+		}
+		else
+			return eventControl(drawList, localize(Text::skill), skillColor, x, y, enabled);
 	}
 
 	bool ScoreEditorTimeline::feverControl(ImDrawList* drawList, const Fever& fever, bool enabled)
@@ -2691,6 +2700,25 @@ namespace MikuMikuWorld
 		if (ImGui::BeginTable("left_events", 4, tableFlags, panelScreenSize))
 		{
 			ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthStretch);
+			// HACK: This prevent the skill/fever column from overflowing
+			// By precalculate the width of the other columns to reduce width of waypoint column
+			float availWidth = panelScreenSize.x - ImGui::GetStyle().CellPadding.x * 7 -
+			                   ImGui::GetCurrentTable()->OuterPaddingX * 2;
+			auto& tableColumns = ImGui::GetCurrentTable()->Columns;
+			float remWidth = std::accumulate(tableColumns.begin() + 1, tableColumns.end(),
+			                                 availWidth, [](float x, const ImGuiTableColumn& col)
+			                                 { return x - col.WidthRequest; });
+			if (remWidth < 0 && tableColumns[1].WidthRequest + remWidth > 0)
+				ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthFixed,
+				                        tableColumns[1].WidthRequest + remWidth);
+			else
+			{
+				float contentWidth = tableColumns[1].ContentMaxXUnfrozen - tableColumns[1].WorkMinX;
+				float expandableWidth = tableColumns[1].WidthGiven + std::max(tableColumns[0].WidthGiven - 5, 0.f);
+				float width = std::min(contentWidth, expandableWidth);
+				ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthFixed, width);
+			}
+
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 
@@ -2712,7 +2740,7 @@ namespace MikuMikuWorld
 
 			// Update skill triggers
 			ImGui::TableNextColumn();
-			ImGui::Dummy({ UI::scale(28), 1 }); // Padding
+			ImGui::Dummy({ UI::scale(30), 1 }); // Padding
 			for (auto&& skill : context.score.skills)
 				if (skillControl(drawList, skill, eventEnabled))
 					openEvent(skill);
@@ -3299,6 +3327,33 @@ namespace MikuMikuWorld
 			{
 				ImGui::TextUnformatted(localize(Text::editSkill));
 				ImGui::Separator();
+				if (context.metadata.isExtendedScore)
+				{
+					bool eventEdited = false;
+					UI::beginPropertyTable();
+					eventEdited |=
+					    UI::selectPropertyRow(Text::skillEffect, skill->effect, skillEffectTexts);
+					int level = skill->level;
+					if (UI::intPropertyRow(Text::skillLevel, level, "Lv.%d", 1, 4))
+					{
+						skill->level = level;
+						eventEdited |= true;
+					}
+					UI::endPropertyTable();
+					ImGui::Separator();
+					if (eventEdited)
+					{
+						auto node = context.score.skills.extract(*skill);
+						if (!node.empty())
+						{
+							Skill& sk = node.value();
+							sk.effect = skill->effect;
+							sk.level = skill->level;
+							context.score.skills.insert(std::move(node));
+							context.pushHistory("Edit skill trigger");
+						}
+					}
+				}
 				if (ImGui::Button(localize(Text::remove), ImVec2(-1, UI::btnSmall.y + 2)))
 				{
 					ImGui::CloseCurrentPopup();

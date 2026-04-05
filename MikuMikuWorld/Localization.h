@@ -88,4 +88,7 @@ namespace MikuMikuWorld
 	MMW_TEXT_TYPE baseThemeTexts[]{ Text::themeDark, Text::themeLight };
 
 	MMW_TEXT_TYPE hispeedEaseTypeTexts[]{ Text::hiSpeedEaseNone, Text::hiSpeedEaseLinear };
+
+	MMW_TEXT_TYPE skillEffectTexts[]{ Text::skillEffectScore, Text::skillEffectHeal,
+		                              Text::skillEffectPerfect };
 }

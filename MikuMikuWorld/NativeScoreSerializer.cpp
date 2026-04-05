@@ -20,7 +20,7 @@ namespace MikuMikuWorld
 	const char* CC_MMWS_SIGNATURE = "CCMMWS";
 	// Version 1: Revert version to int32, support dummy note, dummy hold
 	// Version 2: Support hispeed easing, skip, hides note; down flicks
-	// Version 3: Note data structure refactor
+	// Version 3: Note data structure refactor; skill effects
 	const int UC_MMWS_VERSION = 3;
 	const char* UC_MMWS_SIGNATURE = "UCMMWS";
 
@@ -78,6 +78,7 @@ namespace MikuMikuWorld
 		inline bool supportHispeedSkipEase() const { return untitledVersion >= 2; }
 		inline bool supportDownFlick() const { return untitledVersion >= 2; }
 		inline bool supportExtendedNote() const { return untitledVersion >= 3; }
+		inline bool supportExtendedSkill() const { return untitledVersion >= 3; }
 
 		inline bool isImplicitExtended() const { return cyanvasVersion > 0 || untitledVersion > 0; }
 		inline bool isSupportedVersion() const
@@ -261,7 +262,11 @@ namespace MikuMikuWorld
 			for (int i = 0; i < skillCount; ++i)
 			{
 				int tick = reader.readUInt32();
-				score.skills.insert(Skill{ tick });
+				SkillEffect effect = static_cast<SkillEffect>(
+				    version.supportExtendedSkill() ? reader.readUInt32() : 0);
+				uint8_t level =
+				    version.supportExtendedSkill() ? std::clamp(reader.readUInt32(), 1u, 4u) : 1u;
+				score.skills.insert(Skill{ tick, effect, level });
 			}
 
 			score.fever.startTick = reader.readUInt32();
@@ -304,9 +309,11 @@ namespace MikuMikuWorld
 		}
 
 		writer.writeInt32(score.skills.size());
-		for (const auto& tick : score.skills)
+		for (const auto& skill : score.skills)
 		{
-			writer.writeInt32(tick);
+			writer.writeInt32(skill.tick);
+			writer.writeInt32((int)skill.effect);
+			writer.writeInt32(skill.level);
 		}
 
 		writer.writeInt32(score.fever.startTick);

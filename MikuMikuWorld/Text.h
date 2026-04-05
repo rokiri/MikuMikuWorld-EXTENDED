@@ -215,6 +215,11 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(editTimeSignature, "edit_time_signature");
 	MMW_TEXT(measure);
 	MMW_TEXT(skill);
+	MMW_TEXT(skillEffect, "skill_effect");
+	MMW_TEXT(skillEffectScore, "skill_effect_score");
+	MMW_TEXT(skillEffectHeal, "skill_effect_heal");
+	MMW_TEXT(skillEffectPerfect, "skill_effect_perfect");
+	MMW_TEXT(skillLevel, "skill_level");
 	MMW_TEXT(increaseNoteSize, "increase_note_size");
 	MMW_TEXT(decreaseNoteSize, "decrease_note_size");
 	MMW_TEXT(hiSpeed, "hi_speed");

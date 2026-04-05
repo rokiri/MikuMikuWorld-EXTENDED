@@ -22,13 +22,30 @@ namespace MikuMikuWorld
 	};
 	using TempoCollection = std::map<tick_t, Tempo>;
 
+	enum class SkillEffect : uint8_t
+	{
+		Score,
+		Heal,
+		Perfect,
+		EffectCount
+	};
+
 	struct Skill
 	{
 		tick_t tick;
-		inline operator tick_t() const { return tick; }
+		SkillEffect effect = SkillEffect::Score;
+		uint8_t level = 1;
 	};
 
-	using SkillTriggerCollection = std::set<Skill>;
+	struct SkillCompare
+	{
+		inline constexpr bool operator()(const Skill& s1, const Skill& s2) const
+		{
+			return s1.tick < s2.tick;
+		}
+	};
+
+	using SkillTriggerCollection = std::set<Skill, SkillCompare>;
 
 	struct Fever
 	{

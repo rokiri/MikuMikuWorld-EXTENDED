@@ -2376,9 +2376,9 @@ namespace MikuMikuWorld
 					currName = waypoint.name.c_str();
 					decrementElement = 0;
 				}
-				if (skIt != skEnd && *skIt < currTick)
+				if (skIt != skEnd && skIt->tick < currTick)
 				{
-					currTick = *skIt;
+					currTick = skIt->tick;
 					currName = localize(Text::skill);
 					color = ImGui::ColorConvertU32ToFloat4(skillColor);
 					decrementElement = 1;
