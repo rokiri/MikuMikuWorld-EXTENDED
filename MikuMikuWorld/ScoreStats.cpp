@@ -110,6 +110,9 @@ namespace MikuMikuWorld
 			if (endTick % eighthTicks)
 				endTick += eighthTicks - (endTick % eighthTicks);
 
+			if (startTick >= endTick)
+				continue;
+
 			combo += (endTick - startTick) / eighthTicks;
 		}
 	}
