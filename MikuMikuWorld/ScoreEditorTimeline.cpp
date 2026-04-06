@@ -112,8 +112,9 @@ namespace MikuMikuWorld
 		timelineScreenPos.x = absScreenPos.x + (absScreenSize.x - timelineScreenSize.x) / 2;
 		timelineScreenPos.y = absScreenPos.y;
 
-		float panelSize = std::max(PANEL_SIZE_MIN, timelineScreenPos.x - absScreenPos.x) -
-		                  style.ItemSpacing.x * 2;
+		float panelSize =
+		    std::max(UI::scale(PANEL_SIZE_MIN), timelineScreenPos.x - absScreenPos.x) -
+		    style.ItemSpacing.x * 2;
 		leftPanelScreenPos = absScreenPos;
 		rightPanelScreenPos.x = maxScreenPos.x - panelSize;
 		rightPanelScreenPos.y = absScreenPos.y;
@@ -175,8 +176,8 @@ namespace MikuMikuWorld
 			isDragSelecting = true;
 		}
 
-		ImGui::PushClipRect(leftPanelScreenPos + ImVec2{ panelScreenSize.x, 0 },
-		                    rightPanelScreenPos + ImVec2{ 0, panelScreenSize.y }, true);
+		// ImGui::PushClipRect(leftPanelScreenPos + ImVec2{ panelScreenSize.x, 0 },
+		//                     rightPanelScreenPos + ImVec2{ 0, panelScreenSize.y }, true);
 		drawTimeline(drawList);
 
 		// Fail safe
@@ -252,7 +253,7 @@ namespace MikuMikuWorld
 			selectHoverTimer = 0.5f;
 		}
 		noteSelector();
-		ImGui::PopClipRect();
+		// ImGui::PopClipRect();
 
 		// Update event controls
 		updateScoreEvents(drawList, edit, pasteData);

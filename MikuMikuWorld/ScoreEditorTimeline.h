@@ -206,7 +206,7 @@ namespace MikuMikuWorld
 		constexpr static float ZOOM_Y_WHEEL_MAX = 192.f;
 		constexpr static float ZOOM_Y_FACTOR = 1.25f;
 		constexpr static float TIMELINE_SIZE_FACTOR = 0.55f;
-		constexpr static float PANEL_SIZE_MIN = 225; // px
+		constexpr static float PANEL_SIZE_MIN = 180; // px
 		constexpr static float WHEEL_FACTOR = 0.25f;
 		constexpr static float PAN_FACTOR = 0.05f;
 		constexpr static float TIMELINE_SCREEN_Y_MIN_OFFSET = 30; // px
