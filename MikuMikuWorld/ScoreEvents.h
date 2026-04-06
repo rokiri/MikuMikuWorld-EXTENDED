@@ -18,7 +18,7 @@ namespace MikuMikuWorld
 	struct Tempo
 	{
 		tick_t tick = 0;
-		float quarterPerMinute = 120;
+		float quarterPerMinute = 60;
 	};
 	using TempoCollection = std::map<tick_t, Tempo>;
 

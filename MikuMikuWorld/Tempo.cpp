@@ -178,7 +178,10 @@ namespace MikuMikuWorld
 		auto& currentHispeedChanges = score.layers[layer].hiSpeedChanges;
 		if (currentHispeedChanges.empty())
 			return nullptr;
-		return &std::prev(currentHispeedChanges.upper_bound(tick))->second;
+		auto it = currentHispeedChanges.upper_bound(tick);
+		if (it == currentHispeedChanges.begin())
+			return nullptr;
+		return &std::prev(it)->second;
 	}
 
 	bool insertTempoChange(TempoCollection& collection, const Tempo& tempo)
