@@ -1023,8 +1023,7 @@ namespace MikuMikuWorld
 
 		EaseFunction easeFunc = getEaseFunction(start.ease);
 		int steps = 1;
-		if ( // start.ease != EaseType::None &&
-		    start.ease != EaseType::Linear)
+		if (start.ease != EaseType::EaseNone && start.ease != EaseType::Linear)
 			steps = std::clamp(std::abs(endY - startY) / 12, 8.f, 25.f);
 
 		for (int step = 0; step < steps; step++)
@@ -2701,7 +2700,7 @@ namespace MikuMikuWorld
 		{
 			ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthStretch);
 			// HACK: This prevent the skill/fever column from overflowing
-			// By precalculate the width of the other columns to reduce width of waypoint column
+			// By reducing the width of the waypoint column
 			float availWidth = panelScreenSize.x - ImGui::GetStyle().CellPadding.x * 7 -
 			                   ImGui::GetCurrentTable()->OuterPaddingX * 2;
 			auto& tableColumns = ImGui::GetCurrentTable()->Columns;
@@ -2714,7 +2713,8 @@ namespace MikuMikuWorld
 			else
 			{
 				float contentWidth = tableColumns[1].ContentMaxXUnfrozen - tableColumns[1].WorkMinX;
-				float expandableWidth = tableColumns[1].WidthGiven + std::max(tableColumns[0].WidthGiven - 5, 0.f);
+				float expandableWidth =
+				    tableColumns[1].WidthGiven + std::max(tableColumns[0].WidthGiven - 5, 0.f);
 				float width = std::min(contentWidth, expandableWidth);
 				ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthFixed, width);
 			}

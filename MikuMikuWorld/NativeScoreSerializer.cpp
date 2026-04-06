@@ -111,11 +111,10 @@ namespace MikuMikuWorld
 
 		if (version.supportExtendedNote())
 		{
-			uint32_t data = reader.readUInt32();
-			note.ease = static_cast<EaseType>(data >> 24 & 0xFF);
-			note.flick = static_cast<FlickType>(data >> 16 & 0xFF);
-			note.type = static_cast<NoteType>(data >> 8 & 0xFF);
-			note.flag = static_cast<NoteFlag>(data & 0xFF);
+			note.type = static_cast<NoteType>(reader.readUInt32());
+			note.flag = static_cast<NoteFlag>(reader.readUInt32());
+			note.flick = static_cast<FlickType>(reader.readUInt32());
+			note.ease = static_cast<EaseType>(reader.readUInt32());
 
 			note.guideAlpha = reader.readSingle();
 		}
@@ -137,6 +136,7 @@ namespace MikuMikuWorld
 				break;
 			case LegacyNoteType::Damage:
 				note.type = NoteType::Damage;
+				break;
 			}
 		}
 		if (note.ease >= EaseType::EaseTypeCount)
@@ -158,16 +158,10 @@ namespace MikuMikuWorld
 
 		writer.writeInt32(note.layer);
 
-		uint32_t packedData = 0;
-		static_assert(sizeof(note.type) == 1);
-		static_assert(sizeof(note.flag) == 1);
-		static_assert(sizeof(note.flick) == 1);
-		static_assert(sizeof(note.ease) == 1);
-		packedData |= (static_cast<uint32_t>(note.flag) & 0xFF);
-		packedData |= (static_cast<uint32_t>(note.type) & 0xFF) << 8;
-		packedData |= (static_cast<uint32_t>(note.flick) & 0xFF) << 16;
-		packedData |= (static_cast<uint32_t>(note.ease) & 0xFF) << 24;
-		writer.writeInt32(packedData);
+		writer.writeInt32(static_cast<uint32_t>(note.type));
+		writer.writeInt32(static_cast<uint32_t>(note.flag));
+		writer.writeInt32(static_cast<uint32_t>(note.flick));
+		writer.writeInt32(static_cast<uint32_t>(note.ease));
 
 		writer.writeSingle(note.guideAlpha);
 	}
@@ -380,7 +374,7 @@ namespace MikuMikuWorld
 			for (int i = 0; i < layerCount; ++i)
 			{
 				std::string name = reader.readString();
-				score.layers.push_back(Layer{ name, i });
+				score.layers.push_back(Layer{ name });
 			}
 		}
 

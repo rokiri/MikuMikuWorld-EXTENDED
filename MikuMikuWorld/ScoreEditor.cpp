@@ -839,7 +839,7 @@ namespace MikuMikuWorld
 		{
 			std::string_view name = timeline.getTimelineName();
 			FilePath saveFile = IO::stringToPath(
-			    IO::formatString("mmw_auto_save_%s-%.*s%s", Utilities::getCurrentDateTime(),
+			    IO::formatString("auto_save_%s-%.*s%s", Utilities::getCurrentDateTime(),
 			                     name.size(), name.data(), UC_MMWS_EXTENSION));
 			saveFile = autoSavePath / saveFile;
 			NativeScoreSerializer().serialize({ timeline.context.score, timeline.context.metadata },
@@ -852,7 +852,10 @@ namespace MikuMikuWorld
 		{
 			std::string extension = IO::toString(file.path().extension());
 			std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-			mmwsCount += extension == UC_MMWS_EXTENSION;
+			std::string filename = IO::toString(file.path().filename());
+			mmwsCount +=
+			    extension == UC_MMWS_EXTENSION && (IO::startsWith(filename, "mmw_auto_save_") ||
+			                                       IO::startsWith(filename, "auto_save_"));
 		}
 
 		// delete older files
@@ -873,7 +876,9 @@ namespace MikuMikuWorld
 		{
 			std::string extension = IO::toString(file.path().extension());
 			std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-			if (extension == UC_MMWS_EXTENSION)
+			std::string filename = IO::toString(file.path().filename());
+			if (extension == UC_MMWS_EXTENSION &&
+			    (IO::startsWith(filename, "mmw_auto_save_") || IO::startsWith(filename, "auto_save_")))
 				deleteFiles.push_back(file);
 		}
 

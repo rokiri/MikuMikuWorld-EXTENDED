@@ -163,14 +163,12 @@ namespace MikuMikuWorld
 	float easeOut(float start, float end, float ratio);
 	float easeInOut(float start, float end, float ratio);
 	float easeOutIn(float start, float end, float ratio);
+	float easeNone(float start, float end, float ratio);
 	float midpoint(float x1, float x2);
 	bool isWithinRange(float x, float left, float right);
 
 	using EaseFunction = float (*)(float, float, float);
 	EaseFunction getEaseFunction(EaseType ease);
-
-	std::tuple<Vector2, Vector2, Vector2> convertToBezier(const Vector2& p1, const Vector2 p2,
-	                                                      EaseType ease);
 
 	uint32_t gcf(uint32_t a, uint32_t b);
 }

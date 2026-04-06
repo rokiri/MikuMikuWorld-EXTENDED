@@ -269,7 +269,7 @@ namespace MikuMikuWorld
 	}
 
 	constexpr static const char* easeNames[]{ "linear", "ease_in", "ease_out", "ease_in_out",
-		                                      "ease_out_in" };
+		                                      "ease_out_in", "ease_none" };
 	static_assert(std::size(easeNames) == size_t(EaseType::EaseTypeCount));
 	static void to_json(json& j, const EaseType& ease) { j = arrayGetItemSafe(easeNames, ease); }
 	static void from_json(const json& j, EaseType& ease)

@@ -143,6 +143,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(easeOut, "ease_out");
 	MMW_TEXT(easeInOut, "ease_in_out");
 	MMW_TEXT(easeOutIn, "ease_out_in");
+	MMW_TEXT(easeNone, "ease_none");
 	MMW_TEXT(del, "delete");
 	MMW_TEXT(copy);
 	MMW_TEXT(cut);

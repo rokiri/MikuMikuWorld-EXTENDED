@@ -49,10 +49,11 @@ namespace MikuMikuWorld
 		EaseOut,
 		EaseInOut,
 		EaseOutIn,
+		EaseNone,
 		EaseTypeCount
 	};
 
-	inline constexpr const char* easeTypes[]{ "linear", "in", "out", "inout", "outin" };
+	inline constexpr const char* easeTypes[]{ "linear", "in", "out", "inout", "outin", "none" };
 
 	enum class HoldNoteFlag : uint16_t
 	{

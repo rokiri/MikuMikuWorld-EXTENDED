@@ -16,6 +16,7 @@ namespace MikuMikuWorld
 		HiSpeedCollection hiSpeedChanges;
 		bool hidden = false;
 
+		Layer(std::string_view name) : name(name) {}
 		Layer(std::string_view name, int id) : name(name)
 		{
 			hiSpeedChanges.emplace(0, HiSpeed{ 0, id });

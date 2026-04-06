@@ -902,6 +902,8 @@ namespace MikuMikuWorld
 	{
 		switch (ease)
 		{
+		case EaseType::EaseNone:
+			return 0;
 		case EaseType::Linear:
 			return 1;
 		case EaseType::EaseIn:
@@ -1227,6 +1229,8 @@ namespace MikuMikuWorld
 	{
 		switch (ease)
 		{
+		case 0:
+			return EaseType::EaseNone;
 		case 1:
 			return EaseType::Linear;
 		case 2:

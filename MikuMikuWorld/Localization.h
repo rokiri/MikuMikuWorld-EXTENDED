@@ -67,7 +67,7 @@ namespace MikuMikuWorld
 		                            Text::down, Text::downLeft,     Text::downRight };
 
 	MMW_TEXT_TYPE easeTypeTexts[]{ Text::linear, Text::easeIn, Text::easeOut, Text::easeInOut,
-		                           Text::easeOutIn };
+		                           Text::easeOutIn, Text::easeNone };
 
 	MMW_TEXT_TYPE stepTypeTexts[]{ Text::normal, Text::hidden, Text::skip };
 
