@@ -194,6 +194,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(artist);
 	MMW_TEXT(jacket);
 	MMW_TEXT(laneExtension, "lane_extension");
+	MMW_TEXT(lifePoint, "life_point");
 	MMW_TEXT(audio);
 	MMW_TEXT(musicFile, "music_file");
 	MMW_TEXT(musicOffset, "music_offset");

@@ -449,6 +449,8 @@ namespace MikuMikuWorld
 			{
 				UI::intPropertyRow(Text::laneExtension, context.metadata.laneExtension, "%d", 0,
 				                   10000);
+				UI::intPropertyRow(Text::lifePoint, context.metadata.baseLifePoint, "%d", 10,
+				                   1000000);
 			}
 			UI::endPropertyTable();
 		}

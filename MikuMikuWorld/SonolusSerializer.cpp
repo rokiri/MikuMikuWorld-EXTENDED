@@ -188,7 +188,7 @@ namespace MikuMikuWorld
 		levelData.entities.reserve(score.layers.size() + hispeedCount + score.tempoChanges.size() +
 		                           score.notes.size() * 2);
 		auto& initEntity = levelData.entities.emplace_back("Initialization");
-		initEntity.data["initialLife"] = 1000;
+		initEntity.data["initialLife"] = metadata.baseLifePoint;
 
 		for (const auto& [_, tempo] : score.tempoChanges)
 			levelData.entities.emplace_back(toBpmChangeEntity(tempo));
@@ -434,6 +434,8 @@ namespace MikuMikuWorld
 		Score& score = data.score;
 		ScoreMetadata& metadata = data.metadata;
 		metadata.musicOffset = fromBgmOffset(levelData.bgmOffset);
+		const auto isInitEntity = [](const Sonolus::LevelDataEntity& e)
+		{ return e.archetype == "Initialization"; };
 		const auto isBpmChangeEntity = [](const LevelDataEntity& e)
 		{ return e.archetype == "#BPM_CHANGE"; };
 		const auto isTimescaleGroupEntity = [](const LevelDataEntity& e)
@@ -529,7 +531,11 @@ namespace MikuMikuWorld
 
 		for (const auto& entity : levelData.entities)
 		{
-			if (isSkillEntity(entity))
+			if (isInitEntity(entity))
+			{
+				entity.tryGetDataValue("initialLife", metadata.baseLifePoint);
+			}
+			else if (isSkillEntity(entity))
 			{
 				Skill skill;
 				if (fromSkillEntity(entity, skill))
@@ -537,7 +543,7 @@ namespace MikuMikuWorld
 				else
 					errorCount++;
 			}
-			if (isFeverEntity(entity))
+			else if (isFeverEntity(entity))
 			{
 				if (!fromFeverEntity(entity, score.fever))
 					errorCount++;

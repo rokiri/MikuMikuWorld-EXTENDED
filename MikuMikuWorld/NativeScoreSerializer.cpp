@@ -80,6 +80,7 @@ namespace MikuMikuWorld
 		inline bool supportExtendedNote() const { return untitledVersion >= 3; }
 		inline bool supportExtendedSkill() const { return untitledVersion >= 3; }
 		inline bool supportSoundEffect() const { return untitledVersion >= 3; }
+		inline bool supportLifePoint() const { return untitledVersion >= 3; }
 
 		inline bool isImplicitExtended() const { return cyanvasVersion > 0 || untitledVersion > 0; }
 		inline bool isSupportedVersion() const
@@ -192,6 +193,9 @@ namespace MikuMikuWorld
 		else
 			metadata.isExtendedScore = version.isImplicitExtended();
 
+		if (version.supportLifePoint())
+			metadata.baseLifePoint = reader.readUInt32();
+
 		return metadata;
 	}
 
@@ -206,6 +210,7 @@ namespace MikuMikuWorld
 		writer.writeString(metadata.jacketFile);
 		writer.writeInt32(metadata.laneExtension);
 		writer.writeInt32(metadata.isExtendedScore);
+		writer.writeInt32(metadata.baseLifePoint);
 	}
 
 	void NativeScoreSerializer::readScoreEvents(Score& score, IO::BinaryReader& reader,

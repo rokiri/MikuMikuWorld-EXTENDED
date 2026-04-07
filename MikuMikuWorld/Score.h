@@ -43,6 +43,7 @@ namespace MikuMikuWorld
 		float musicOffset = 0.0f;
 
 		int laneExtension = 0;
+		int baseLifePoint = 1000;
 		bool isExtendedScore = true;
 	};
 
