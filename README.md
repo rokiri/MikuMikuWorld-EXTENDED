@@ -28,19 +28,23 @@ In addition to the original features of MikuMikuWorld, the following features ar
 - Note Properties panel
 - Support for decimal note lane and width
 - More hispeed options
+- Customizable alpha for Guide
+- Customizable note sound effect
 - Add import/export to LevelData
+- And so much more!
 
 ## Translations
 
 If you want to contribute a translation, please see [the guide](./TRANSLATION.md).
 
-- 日本語 (Japanese) by @sevenc_nanashi
+- 日本語 (Japanese) by @sevenc_nanashi and @MI11435
 - Español (Spanish) by @mi.honesta.reaccion
 - Русский (Russian) by @\_notfallen\_
-- Tiếng Việt (Vietnamese) by @uwulovecrosshand
+- Tiếng Việt (Vietnamese) by @uwulovecrosshand and @SweetSea
 - 한글 (Korean) by @fjordic
 - Türkçe (Turkish) by @sctech-tr
 - Português do Brasil (Brazillian Portuguese) by @\_\_noradrenaline
+- 中文(简体) (Chinese Simplified) by Guanfei(@\_guanfei\_)
 
 ## Requirements
 
@@ -57,6 +61,4 @@ The latest version can be downloaded [here](https://github.com/UntitledCharts/Mi
 ## Screenshot
 
 ## Todo
-- Adding alpha property to Guide (enabled by changing Fade Type to Custom)
-- Changing `HoldNote` class so you can insert more than ticks note into holds
 - Translation
