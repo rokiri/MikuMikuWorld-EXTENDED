@@ -267,7 +267,7 @@ namespace MikuMikuWorld
 
 		// Selection rectangle
 		if (isDragSelecting && ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
-		    ImGui::IsMouseDragPastThreshold(0, 15.0f) && !pasteData.pasting)
+		    ImGui::IsMouseDragPastThreshold(ImGuiMouseButton_Left, 15.0f) && !pasteData.pasting)
 		{
 			// Clicked and dragging inside the timeline
 			ImVec2 start = toScreen({ dragStartLane, (float)dragStartTime });
@@ -338,6 +338,30 @@ namespace MikuMikuWorld
 							    { hscIt->second.layer, hscIt->second.tick });
 					}
 				}
+			}
+
+			// Panning timeline
+			if (absScreenSize.y > 50)
+			{
+				const float upPanThreshold = absScreenPos.y + absScreenSize.y * 0.1f;
+				const float downPanThreshold = absScreenPos.y + absScreenSize.y * 0.9f;
+				if (absMousePos.y < upPanThreshold)
+					targetOffset.y +=
+					    toTimeUnit(std::min(upPanThreshold - absMousePos.y, 200.f) / 10);
+				else if (absMousePos.y > downPanThreshold)
+					targetOffset.y -=
+					    toTimeUnit(std::min(absMousePos.y - downPanThreshold, 200.f) / 10);
+			}
+			if (absScreenSize.x > 50)
+			{
+				const float leftPanThreshold = absScreenPos.x + absScreenSize.x * 0.1f;
+				const float rightPanThreshold = absScreenPos.x + absScreenSize.x * 0.9f;
+				if (absMousePos.x < leftPanThreshold)
+					targetOffset.x -=
+					    toLaneUnit(std::min(leftPanThreshold - absMousePos.x, 200.f) / 10);
+				else if (absMousePos.x > rightPanThreshold)
+					targetOffset.x +=
+					    toLaneUnit(std::min(absMousePos.x - rightPanThreshold, 200.f) / 10);
 			}
 		}
 		if (isDragSelecting && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
