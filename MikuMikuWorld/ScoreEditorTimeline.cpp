@@ -1866,18 +1866,6 @@ namespace MikuMikuWorld
 			                        flickTypeTexts, flick, context.maxFlick()))
 				context.setFlick(flick);
 
-			// if (ImGui::BeginMenu(getString("hold_type"), context.selectionCanChangeHoldType()))
-			//{
-			//	/*
-			//	 * We we won't show the option to change holds to guides and vice versa
-			//	 * at least for now since it will complicate changing hold types
-			//	 */
-			//	for (int i = 0; i < arrayLength(holdTypes) - 1; i++)
-			//		if (ImGui::MenuItem(getString(holdTypes[i])))
-			//			context.setHoldType((HoldNoteType)i);
-			//	ImGui::EndMenu();
-			// }
-
 			FadeType fade;
 			if (context.metadata.isExtendedScore &&
 			    UI::selectMenuItems(Text::fadeType,
@@ -1941,22 +1929,6 @@ namespace MikuMikuWorld
 			                    hasFlag(context.selectedFlag, SelectionFlag::HasAnyHoldMid) &&
 			                        context.selectedNotes.size() == 1))
 				context.splitHoldInSelection();
-
-			// int selectedMidNum = 0;
-			// int selectedStartNum = 0;
-			// for (const auto& noteId : context.selectedNotes)
-			//{
-			//	auto noteType = context.score.notes.at(noteId).getType();
-			//	if (noteType == NoteType::HoldMid)
-			//		selectedMidNum += 1;
-			//	if (noteType == NoteType::Hold)
-			//		selectedStartNum += 1;
-			// }
-			// int selectedTickNum = selectedMidNum + selectedStartNum;
-
-			// if (ImGui::MenuItem(getString("repeat_hold_mids"), NULL, false,
-			//                     selectedTickNum >= 3 and selectedStartNum < 2))
-			//	context.repeatMidsInSelection();
 
 			if (ImGui::BeginMenu(localize(Text::holdToTraces),
 			                     hasFlag(context.selectedFlag, SelectionFlag::HasAnyHoldNoteStep)))
