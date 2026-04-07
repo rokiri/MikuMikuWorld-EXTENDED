@@ -52,6 +52,7 @@ error_load_score_file, Puan dosyasini okurken bir hata olustu
 #- error_save_score_file,
 error_load_music_file, Müzik dosyasi açilamiyor
 #- score_partially_missing,
+#- export_format_not_avail_extended,
 cancel, Iptal
 general, Genel
 key_config, Tus konfigurasyonu
@@ -72,6 +73,7 @@ theme_light, Açik
 theme_dark, Koyu
 custom_color, Özel renk
 timeline, Zaman çizelgesi
+#- match_timeline_size_to_window,
 match_notes_size_to_timeline, Not boyutunu zaman çizelgesinin genisligine göre eslestir
 lane_width, Yol genisligi
 notes_height, Not yüksekligi
@@ -86,9 +88,11 @@ cursor_auto_scroll_amount, Imleç Otomatik Kaydirma Yüzdesi
 background, Arka plan
 background_image, Arka plan resmi
 draw_background, Arka plan resmini çiz
-background_brightnes, Arka Plan Parlakligi
+background_brightness, Arka Plan Parlakligi
 lanes_opacity, Yol Opakligi
 video, Video
+#- visuals,
+#- notes_skin,
 notes_se, Not SE
 show_tick_in_properties, Not Özellikleri Penceresinde Tik Göster
 
@@ -105,6 +109,7 @@ flick, Firlat
 critical, Kritik
 #- dummy,
 #- hold_dummy,
+#- hold_critical,
 trace, Iz
 guide, Kilavuz
 damage, Hasar
@@ -125,6 +130,22 @@ ease_in, Yavasça Gir
 ease_out, Yavasça Çik
 ease_in_out, Yavasça Gir ve Çik
 ease_out_in, Yavasça Çik ve Gir
+#- ease_none,
+#- sound_effect,
+#- sfx_default,
+#- sfx_none,
+#- sfx_tap,
+#- sfx_flick,
+#- sfx_trace,
+#- sfx_tick,
+#- sfx_crit_tap,
+#- sfx_crit_flick,
+#- sfx_crit_trace,
+#- sfx_crit_tick,
+#- sfx_damage,
+#- hold_layer_top,
+#- hold_layer_bottom,
+#- hold_layer_tooltip,
 delete, Sil
 copy, Kopyala
 cut, Kes
@@ -134,6 +155,7 @@ duplicate, Kopyasini Olustur
 flip_duplicate, Çevir ve Kopyasini Olustur
 flip, Çevir
 note_width, Nota Genisligi
+#- note_align,
 shrink_down, Küçült
 shrink_up, Büyüt
 #- compress_selection,
@@ -146,8 +168,10 @@ repeat_hold_mids, Basili Tutma Ortalarini Tekrarla
 #- convert_guide_hold,
 #- convert_guide_to_hold,
 #- convert_hold_to_guide,
+#- convert_hold_to_none,
 lerp_hispeeds, Hi-Speed'leri Arastir
 step_type, Basili Tutma Türü
+#- step_alpha,
 ease_type, Yavaslama Türü
 flick_type, Firlatma Türü
 hold_type, Basili Tutma Türü
@@ -160,12 +184,14 @@ designer, Tasarimci
 artist, Sanatçi
 jacket, Kapak
 lane_extension, Yol Uzantisi
+#- life_point,
 audio, Ses
 music_file, Müzik Dosyasi
 music_offset, Müzik Kaydirma
 volume_master, Ana Ses
 volume_bgm, BGM Ses
 volume_se, SE Ses
+#- playback_speed,
 statistics, Istatistikler
 #- hispeeds,
 taps, Dokunuslar
@@ -180,7 +206,6 @@ goto_measure, Ölçüye Git
 division, %d Bölüm
 division_affix, %d Bölüm
 custom, Özellestir
-custom_division, Özellestirilmis Bölüm
 snap_mode, Snap
 snap_mode_relative, Göreceli Snap
 snap_mode_absolute, Mutlak Snap
@@ -194,6 +219,11 @@ remove, Kaldir
 edit_time_signature, Zaman Imzasini Düzenle
 measure, Ölçü
 skill, Beceri
+#- skill_effect,
+#- skill_effect_score,
+#- skill_effect_heal,
+#- skill_effect_perfect,
+#- skill_level,
 increase_note_size, Nota Boyutunu Artir
 decrease_note_size, Nota Boyutunu Azalt
 hi_speed, Hi-Speed
@@ -207,6 +237,8 @@ hi_speed_speed, Hiz
 fade_none, Solma Yok
 fade_in, Solmaya Basla
 fade_out, Solmayi Bitir
+#- fade_custom,
+#- fade_classic,
 guide_color, Kilavuz Rengi
 guide_neutral, Nötr
 guide_red, Kirmizi
@@ -230,9 +262,12 @@ note_properties_hi_speed, Hi-Speed Özellikleri
 note_properties_hold_note, Basili Tutma Nota Özellikleri
 note_properties_guide, Kilavuz Özellikleri
 note_properties_not_selected, Hi-Speed'ler veya notalar seçilmedi
-note_properties_many_hold_notes, Birden fazla basili tutma notasi seçildi
+#- note_properties_mixed_value,
 translated_by, Çeviren: %s
 zoom_tooltip, Ctrl-tiklayarak degeri düzenleyin
+#- timeline_context_not_selected,
+#- extended_score,
+#- note_select_tool_tip,
 
 # preset manager
 presets, Ön Ayarlar
@@ -255,12 +290,18 @@ layer_merge, Katmani Birlestir
 layer_delete, Katmani Sil
 layer_hide, Katmani Gizle
 layer_show, Katmani Göster
+#- layer_change_order,
+#- layer_order_tooltip,
+#- layer_merge_warning,
 
 # waypoint manager
 waypoints, Noktalar
 create_waypoint, Nokta Olustur
 edit_waypoint, Noktayi Düzenle
 waypoint_name, Isim
+#- insert_skill,
+#- set_fever_start,
+#- set_fever_end,
 
 # commands
 action, Eylem

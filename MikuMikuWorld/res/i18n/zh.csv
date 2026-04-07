@@ -16,8 +16,7 @@ open_recent,打开最近文件
 clear,清空
 save,保存
 save_as,另存为
-export_sus,导出.sus文件
-export_usc,导出.usc文件
+#- export_score,
 exit,退出
 edit,编辑
 undo,撤回
@@ -48,15 +47,21 @@ discard_changes,放弃更改
 update_available,有可用更新
 update_available_description,新版本%s已可用。是否立即下载？
 score_file,谱面文件
+#- export_successful,
+#- unknown_file_format,
+#- open_as_file_format,
+#- export_as_file_format,
 error,错误
 error_load_score_file,加载谱面文件时出错
+#- error_save_score_file,
 error_load_music_file,加载音频文件时出错
+#- score_partially_missing,
+#- export_format_not_avail_extended,
 cancel,取消
 general,常规
 key_config,按键配置
 language,语言
-minify_usc,最小化usc文件
-show_sus_export,显示sus导出选项
+#- minify,
 auto,自动
 auto_save,自动保存
 auto_save_enable,启用自动保存
@@ -72,6 +77,7 @@ theme_light,浅色主题
 theme_dark,深色主题
 custom_color,自定义颜色
 timeline,时间轴
+#- match_timeline_size_to_window,
 match_notes_size_to_timeline,音符大小匹配时间轴
 lane_width,轨道宽度
 notes_height,音符高度
@@ -86,12 +92,13 @@ cursor_auto_scroll_amount,光标自动滚动量
 background,背景
 background_image,背景图片
 draw_background,绘制背景
-background_brightnes,背景亮度
+background_brightness,背景亮度
 lanes_opacity,轨道不透明度
 video,视频
+#- visuals,
+#- notes_skin,
 notes_se,音符音效
 show_tick_in_properties,在属性中显示刻度
-translation_by,翻译
 
 # score editor
 options,选项
@@ -104,6 +111,9 @@ hold,长按
 hold_step,长按步骤
 flick,滑动
 critical,关键
+#- dummy,
+#- hold_dummy,
+#- hold_critical,
 trace,轨迹
 guide,引导
 damage,伤害
@@ -113,6 +123,9 @@ none,无
 default,默认
 left,左
 right,右
+#- down,
+#- down_left,
+#- down_right,
 normal,普通
 hidden,隐藏
 skip,跳过
@@ -121,6 +134,22 @@ ease_in,缓入
 ease_out,缓出
 ease_in_out,缓入缓出
 ease_out_in,缓出缓入
+#- ease_none,
+#- sound_effect,
+#- sfx_default,
+#- sfx_none,
+#- sfx_tap,
+#- sfx_flick,
+#- sfx_trace,
+#- sfx_tick,
+#- sfx_crit_tap,
+#- sfx_crit_flick,
+#- sfx_crit_trace,
+#- sfx_crit_tick,
+#- sfx_damage,
+#- hold_layer_top,
+#- hold_layer_bottom,
+#- hold_layer_tooltip,
 delete,删除
 copy,复制
 cut,剪切
@@ -130,6 +159,7 @@ duplicate,复制
 flip_duplicate,翻转复制
 flip,翻转
 note_width,音符宽度
+#- note_align,
 shrink_down,向下收缩
 shrink_up,向上收缩
 compress_selection,压缩选择
@@ -139,8 +169,13 @@ repeat_hold_mids,重复长按中间
 hold_to_traces,长按转轨迹
 add_traces_for_hold,为长按添加轨迹
 convert_hold_to_traces,转换长按为轨迹
+#- convert_guide_hold,
+#- convert_guide_to_hold,
+#- convert_hold_to_guide,
+#- convert_hold_to_none,
 lerp_hispeeds,插值高速
 step_type,步骤类型
+#- step_alpha,
 ease_type,缓动类型
 flick_type,滑动类型
 hold_type,长按类型
@@ -153,12 +188,14 @@ designer,设计者
 artist,艺术家
 jacket,封面
 lane_extension,轨道扩展
+#- life_point,
 audio,音频
 music_file,音乐文件
 music_offset,音乐偏移
 volume_master,主音量
 volume_bgm,BGM音量
 volume_se,音效音量
+#- playback_speed,
 statistics,统计
 hispeeds,高速
 taps,点击
@@ -173,7 +210,6 @@ goto_measure,跳转到小节
 division,%d分割
 division_affix,%d分割词缀
 custom,自定义
-custom_division,自定义分割
 snap_mode,吸附模式
 snap_mode_relative,相对吸附
 snap_mode_absolute,绝对吸附
@@ -187,14 +223,26 @@ remove,移除
 edit_time_signature,编辑拍号
 measure,小节
 skill,技能
+#- skill_effect,
+#- skill_effect_score,
+#- skill_effect_heal,
+#- skill_effect_perfect,
+#- skill_level,
 increase_note_size,增大音符尺寸
 decrease_note_size,减小音符尺寸
 hi_speed,高速
 edit_hi_speed,编辑高速
 hi_speed_speed,高速速度
+#- hi_speed_skip_beat,
+#- hi_speed_ease,
+#- hi_speed_ease_none,
+#- hi_speed_ease_linear,
+#- hi_speed_hide_notes,
 fade_none,无淡入淡出
 fade_in,淡入
 fade_out,淡出
+#- fade_custom,
+#- fade_classic,
 guide_color,引导颜色
 guide_neutral,中性引导
 guide_red,红色引导
@@ -218,14 +266,17 @@ note_properties_hi_speed,高速属性
 note_properties_hold_note,长按音符属性
 note_properties_guide,引导属性
 note_properties_not_selected,未选择属性
-note_properties_many_hold_notes,多个长按音符属性
+#- note_properties_mixed_value,
 translated_by,翻译者: %s
 zoom_tooltip,缩放提示
+#- timeline_context_not_selected,
+#- extended_score,
+#- note_select_tool_tip,
 
 # preset manager
 presets,预设
 no_presets,无预设
-name,名称
+#- preset_name,
 description,描述
 create_preset,创建预设
 search,搜索
@@ -233,7 +284,7 @@ confirm,确认
 
 # layer manager
 layers,图层
-name,名称
+#- layer_name,
 create_layer,创建图层
 show_all_layers,显示所有图层
 layer_rename,重命名图层
@@ -243,12 +294,18 @@ layer_merge,合并图层
 layer_delete,删除图层
 layer_hide,隐藏图层
 layer_show,显示图层
+#- layer_change_order,
+#- layer_order_tooltip,
+#- layer_merge_warning,
 
 # waypoint manager
 waypoints,路径点
 create_waypoint,创建路径点
 edit_waypoint,编辑路径点
 waypoint_name,路径点名称
+#- insert_skill,
+#- set_fever_start,
+#- set_fever_end,
 
 # commands
 action,操作
@@ -270,6 +327,7 @@ timeline_critical,时间轴关键
 timeline_trace,时间轴轨迹
 timeline_guide,时间轴引导
 timeline_damage,时间轴伤害
+#- timeline_dummy,
 timeline_bpm,时间轴BPM
 timeline_time_signature,时间轴拍号
 timeline_hi_speed,时间轴高速

@@ -54,6 +54,7 @@ error_load_score_file, Se produjo un error al cargar la partitura.
 #- error_save_score_file,
 error_load_music_file, No se pudo cargar el archivo de música.
 #- score_partially_missing,
+#- export_format_not_avail_extended,
 cancel, Cancelar
 general, General
 key_config, Configuración de teclas
@@ -74,6 +75,7 @@ theme_light, Claro
 theme_dark, Oscuro
 custom_color, Color personalizado
 timeline, Timeline
+#- match_timeline_size_to_window,
 match_notes_size_to_timeline, Ajustar la altura de las notas al ancho del editor
 lane_width, Ancho del editor
 notes_height, Altura de las notas
@@ -88,9 +90,11 @@ cursor_auto_scroll_amount, Cantidad de desplazamiento automático
 background, Fondo
 background_image, Imagen de fondo
 draw_background, Dibujar fondo
-background_brightnes, Brillo del fondo
+background_brightness, Brillo del fondo
 lanes_opacity, Opacidad del editor
 video, Video
+#- visuals,
+#- notes_skin,
 notes_se, Efecto de sonido de las notas
 show_tick_in_properties, Mostrar tick en las propiedades
 
@@ -107,6 +111,7 @@ flick, Flick
 critical, Critical
 dummy, Fake
 hold_dummy, Fake Hold
+#- hold_critical,
 trace, Trace
 guide, Guide
 damage, Damage
@@ -127,6 +132,22 @@ ease_in, Curva hacia adentro
 ease_out, Curva hacia afuera
 ease_in_out, Curva adentro-afuera
 ease_out_in, Curva afuera-adentro
+#- ease_none,
+#- sound_effect,
+#- sfx_default,
+#- sfx_none,
+#- sfx_tap,
+#- sfx_flick,
+#- sfx_trace,
+#- sfx_tick,
+#- sfx_crit_tap,
+#- sfx_crit_flick,
+#- sfx_crit_trace,
+#- sfx_crit_tick,
+#- sfx_damage,
+#- hold_layer_top,
+#- hold_layer_bottom,
+#- hold_layer_tooltip,
 delete, Eliminar
 copy, Copiar
 cut, Cortar
@@ -136,6 +157,7 @@ duplicate, Duplicar
 flip_duplicate, Duplicar volteado
 flip, Voltear
 note_width, Ancho de la nota
+#- note_align,
 shrink_down, Contraer abajo
 shrink_up, Contraer arriba
 compress_selection, Comprimir seleccionadas
@@ -148,8 +170,10 @@ repeat_hold_mids, Repetir hold-mids
 #- convert_guide_hold,
 #- convert_guide_to_hold,
 #- convert_hold_to_guide,
+#- convert_hold_to_none,
 lerp_hispeeds, Interpolar hispeeds
 step_type, Tipo de step
+#- step_alpha,
 ease_type, Tipo de curva
 flick_type, Tipo de flick
 hold_type, Tipo de hold
@@ -162,12 +186,14 @@ designer, Diseñador
 artist, Artista
 jacket, Portada
 lane_extension, Extensión del editor
+#- life_point,
 audio, Audio
 music_file, Archivo de audio
 music_offset, Compensación del audio
 volume_master, Volumen general
 volume_bgm, Volumen de la música
 volume_se, Volumen de SE
+#- playback_speed,
 statistics, Estadísticas
 #- hispeeds,
 taps, Taps
@@ -182,7 +208,6 @@ goto_measure, Ir al compás
 division, División en %d
 division_affix, %d División
 custom, personalizada
-custom_division, División personalizada
 #- snap_mode,
 #- snap_mode_relative,
 #- snap_mode_absolute,
@@ -196,6 +221,11 @@ remove, Remover
 edit_time_signature, Cambiar signatura de compás
 measure, Compás
 skill, Habilidad
+#- skill_effect,
+#- skill_effect_score,
+#- skill_effect_heal,
+#- skill_effect_perfect,
+#- skill_level,
 increase_note_size, Ampliar ancho de la nota
 decrease_note_size, Disminuir ancho de la nota
 hi_speed, Hi-speed
@@ -209,6 +239,8 @@ hi_speed_speed, Velocidad
 fade_none, Sin desvanecimiento
 fade_in, Aparecer (adentro)
 fade_out, Desvanecer (afuera)
+#- fade_custom,
+#- fade_classic,
 guide_color, Color de guía
 guide_neutral, Neutro
 guide_red, Rojo
@@ -232,11 +264,12 @@ note_properties_hi_speed, Propiedades de Hi-speed
 note_properties_hold_note, Propiedades de Hold
 note_properties_guide, Propiedades de Guide
 note_properties_not_selected, No hay notas o hi-speeds seleccionadas
-#- note_properties_many_hold_notes,
+#- note_properties_mixed_value,
 #- translated_by,
 #- zoom_tooltip,
-#- translated_by,
-#- zoom_tooltip,
+#- timeline_context_not_selected,
+#- extended_score,
+#- note_select_tool_tip,
 
 # preset manager / editor de presets
 presets, Presets
@@ -259,14 +292,18 @@ layer_merge, Mezclar capa
 layer_delete, Eliminar capa
 #- layer_hide,
 #- layer_show,
-#- layer_hide,
-#- layer_show,
+#- layer_change_order,
+#- layer_order_tooltip,
+#- layer_merge_warning,
 
 # waypoint manager / editor de marcadores
 waypoints, Marcadores
 create_waypoint, Crear marcador
 edit_waypoint, Editar marcador
 waypoint_name, Nombre
+#- insert_skill,
+#- set_fever_start,
+#- set_fever_end,
 
 # commands / comandos
 action, Acción
