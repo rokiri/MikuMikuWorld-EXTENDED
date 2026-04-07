@@ -156,6 +156,9 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(sfxCritTrace, "sfx_crit_trace");
 	MMW_TEXT(sfxCritTick, "sfx_crit_tick");
 	MMW_TEXT(sfxDamage, "sfx_damage");
+	MMW_TEXT(holdLayerTop, "hold_layer_top");
+	MMW_TEXT(holdLayerBottom, "hold_layer_bottom");
+	MMW_TEXT(holdLayerTooltip, "hold_layer_tooltip");
 	MMW_TEXT(del, "delete");
 	MMW_TEXT(copy);
 	MMW_TEXT(cut);

@@ -81,8 +81,15 @@ namespace MikuMikuWorld
 		inline bool supportExtendedSkill() const { return untitledVersion >= 3; }
 		inline bool supportSoundEffect() const { return untitledVersion >= 3; }
 		inline bool supportLifePoint() const { return untitledVersion >= 3; }
+		inline bool supportHoldLayer() const { return untitledVersion >= 3; }
 
 		inline bool isImplicitExtended() const { return cyanvasVersion > 0 || untitledVersion > 0; }
+		inline HoldStepLayer getImplicitLayer(const HoldNoteStep& step) const
+		{
+			return isImplicitExtended() ? HoldStepLayer::Top
+			       : step.isGuide()     ? HoldStepLayer::Bottom
+			                            : HoldStepLayer::Top;
+		}
 		inline bool isSupportedVersion() const
 		{
 			return version <= MMWS_VERSION && cyanvasVersion <= CC_MMWS_VERSION &&
@@ -440,14 +447,19 @@ namespace MikuMikuWorld
 			}
 
 			if (version.supportFadeType())
-				hold.setFadeType(static_cast<FadeType>(reader.readUInt32()));
+				hold.fadeType = static_cast<FadeType>(reader.readUInt32());
 			else
-				hold.setFadeType(metadata.isExtendedScore ? FadeType::Out : FadeType::Classic);
+				hold.fadeType = metadata.isExtendedScore ? FadeType::Out : FadeType::Classic;
 
 			if (version.supportGuideColor())
 				hold.guideColor = static_cast<GuideColor>(reader.readUInt32());
 			else
 				hold.guideColor = isStartCrit ? GuideColor::Yellow : GuideColor::Green;
+
+			if (version.supportHoldLayer())
+				hold.layer = static_cast<HoldStepLayer>(reader.readUInt32());
+			else
+				hold.layer = version.getImplicitLayer(hold);
 
 			score.notes[start.ID] = start;
 			hold.steps.push_back(start.ID);
@@ -502,6 +514,8 @@ namespace MikuMikuWorld
 					step.ID = hold.steps.at(index);
 					step.flag = static_cast<HoldNoteFlag>(reader.readUInt32());
 					step.guideColor = static_cast<GuideColor>(reader.readUInt32());
+					// Don't need to check supportHoldLayer here
+					step.layer = static_cast<HoldStepLayer>(reader.readUInt32());
 					hold.separators.push_back(step);
 				}
 			}
@@ -596,8 +610,9 @@ namespace MikuMikuWorld
 			// note data
 			const Note& start = score.notes.at(hold.steps.front());
 			writeNote(start, writer);
-			writer.writeInt32((int)hold.getFadeType());
+			writer.writeInt32((int)hold.fadeType);
 			writer.writeInt32((int)hold.guideColor);
+			writer.writeInt32((int)hold.layer);
 
 			// steps
 			int stepCount = hold.steps.size() - 2;
@@ -626,6 +641,7 @@ namespace MikuMikuWorld
 				writer.writeInt32((int)index);
 				writer.writeInt32((int)holdStep.flag);
 				writer.writeInt32((int)holdStep.guideColor);
+				writer.writeInt32((int)holdStep.layer);
 			}
 		}
 

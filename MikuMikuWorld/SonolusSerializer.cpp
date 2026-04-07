@@ -580,7 +580,7 @@ namespace MikuMikuWorld
 			bool validHold = true;
 			holdNotes.clear();
 			HoldNote hold;
-			hold.setFadeType(FadeType::Custom);
+			hold.fadeType = FadeType::Custom;
 			HoldNoteStep* holdStep = nullptr;
 			while (true)
 			{
@@ -619,6 +619,16 @@ namespace MikuMikuWorld
 						PRINT_DEBUG("Hold note doesn't have a valid segmentKind!");
 						validHold = false;
 						break;
+					}
+					int layer = 0;
+					if (noteEntity.tryGetDataValue("segmentLayer", layer))
+					{
+						holdStep->layer = fromLayerNumeric(layer);
+						if (holdStep->layer == HoldStepLayer::LayerCount)
+						{
+							unsupportedCount++;
+							holdStep->layer = HoldStepLayer::Top;
+						}
 					}
 				}
 				if (!noteEntity.tryGetDataValue("next", next))
@@ -726,12 +736,14 @@ namespace MikuMikuWorld
 	                                            const RefType& groupName, const HoldNote* hold,
 	                                            const HoldNoteStep* holdStep)
 	{
+		HoldStepLayer stepLayer = HoldStepLayer::Top;
 		bool isSeparator = false;
 		if (holdStep && hold)
 		{
 			isSeparator = (hold != holdStep && holdStep->ID == note.ID) ||
-			              (holdStep->isGuide() && hold->getFadeType() == FadeType::Classic &&
+			              (holdStep->isGuide() && hold->fadeType == FadeType::Classic &&
 			               hold->steps.back() != note.ID);
+			stepLayer = holdStep->layer;
 		}
 		return { archetype,
 			     { { "#TIMESCALE_GROUP", groupName },
@@ -744,7 +756,7 @@ namespace MikuMikuWorld
 			       { "connectorEase", toEaseNumeric(note.ease) },
 			       { "segmentKind", toSegmentNumeric(holdStep) },
 			       { "segmentAlpha", roundOff(note.guideAlpha) },
-			       { "segmentLayer", 0 },
+			       { "segmentLayer", toLayerNumeric(stepLayer) },
 			       { "effectKind", toEffectNumeric(note.soundEffect) } } };
 	}
 
@@ -989,6 +1001,20 @@ namespace MikuMikuWorld
 				PRINT_DEBUG("Unknown segment kind");
 				return 0;
 			}
+		}
+	}
+
+	int PySekaiEngine::toLayerNumeric(const HoldStepLayer& layer)
+	{
+		switch (layer)
+		{
+		case HoldStepLayer::Top:
+			return 0;
+		case HoldStepLayer::Bottom:
+			return 1;
+		default:
+			PRINT_DEBUG("Unknown segment layer");
+			return 0;
 		}
 	}
 
@@ -1325,7 +1351,7 @@ namespace MikuMikuWorld
 	}
 
 	static bool isGuideKind(int kind) { return 101 <= kind && kind <= 108; }
-	bool MikuMikuWorld::PySekaiEngine::fromSegmentNumeric(int segmentKind, HoldNoteStep& holdStep)
+	bool PySekaiEngine::fromSegmentNumeric(int segmentKind, HoldNoteStep& holdStep)
 	{
 		if (isGuideKind(segmentKind))
 		{
@@ -1346,6 +1372,19 @@ namespace MikuMikuWorld
 			return true;
 		default:
 			return false;
+		}
+	}
+
+	HoldStepLayer PySekaiEngine::fromLayerNumeric(int segmentLayer)
+	{
+		switch (segmentLayer)
+		{
+		case 0:
+			return HoldStepLayer::Top;
+		case 1:
+			return HoldStepLayer::Bottom;
+		default:
+			return HoldStepLayer::LayerCount;
 		}
 	}
 #pragma endregion

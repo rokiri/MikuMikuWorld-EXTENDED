@@ -698,7 +698,13 @@ namespace MikuMikuWorld
 				    .guideColor;
 			};
 			auto getFadeType = [&](const value_type& v)
-			{ return context.score.holdNotes.at(v.second->holdID).getFadeType(); };
+			{ return context.score.holdNotes.at(v.second->holdID).fadeType; };
+			auto getHoldLayer = [&](const value_type& v)
+			{
+				return context.score.holdNotes.at(v.second->holdID)
+				    .holdStepAt(*v.second, context.score.notes)
+				    .layer;
+			};
 			auto getAlpha = [](const value_type& v) { return v.second->guideAlpha; };
 			auto getLayer = [](const value_type& v) { return v.second->layer; };
 			bool isCrit = false, isCritHold = false, isTrace = false;
@@ -733,6 +739,7 @@ namespace MikuMikuWorld
 			    checkMixState(guideCol, context.selectedNotes, getGuideCol, isGuideHold);
 			mixedFade =
 			    checkMixState(fadeType, context.selectedNotes, getFadeType, hasAnyGuideHold);
+			mixedHoldLayer = checkMixState(holdLayer, context.selectedNotes, getHoldLayer, isHold);
 			mixedAlpha = checkMixState(alpha, context.selectedNotes, getAlpha, canSetAlpha);
 			noteFlag = setFlag(noteFlag, NoteFlag::Critical, isCrit);
 			noteFlag = setFlag(noteFlag, NoteFlag::Trace, isTrace);
@@ -956,6 +963,14 @@ namespace MikuMikuWorld
 				    UI::checkboxFlagPropertyRow(Text::holdCritical, holdFlag,
 				                                HoldNoteFlag::Critical, mixedHoldCrit))
 					context.setCriticalHold(hasFlag(holdFlag, HoldNoteFlag::Critical));
+
+				ImGui::BeginDisabled(!context.metadata.isExtendedScore);
+				if (UI::selectMixedPropertyRow(Text::layer, mixedHoldLayer, holdLayer,
+				                               Text::notePropertiesMixedValue, holdLayerTexts))
+					context.setHoldLayer(holdLayer);
+				ImGui::SetItemTooltip((const char*)localize(Text::holdLayerTooltip));
+				ImGui::EndDisabled();
+
 				UI::endPropertyTable();
 			}
 
@@ -1207,6 +1222,10 @@ namespace MikuMikuWorld
 			UI::selectPropertyRow(Text::holdStartType, edit.startType, holdJointTypeTexts);
 			UI::selectPropertyRow(Text::holdEndType, edit.endType, holdJointTypeTexts);
 			UI::selectPropertyRow(Text::easeType, edit.easeType, easeTypeTexts, context.maxEase());
+			if (isExtended)
+			{
+				UI::selectPropertyRow(Text::layer, edit.holdLayer, holdLayerTexts);
+			}
 			break;
 		case InsertMode::InsertLongMid:
 			UI::selectPropertyRow(Text::stepType, edit.stepType, stepTypeTexts);
@@ -1217,6 +1236,7 @@ namespace MikuMikuWorld
 			{
 				UI::selectPropertyRow(Text::guideColor, edit.colorType, guideColorAllTexts);
 				UI::selectPropertyRow(Text::fadeType, edit.fadeType, fadeTypeTexts);
+				UI::selectPropertyRow(Text::layer, edit.holdLayer, holdLayerTexts);
 			}
 			else
 			{

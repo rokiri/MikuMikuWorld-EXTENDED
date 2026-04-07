@@ -53,6 +53,7 @@ namespace MikuMikuWorld
 		EditHoldJointType endType{ EditHoldJointType::Normal };
 		GuideColor colorType{ GuideColor::Green };
 		FadeType fadeType{ FadeType::Out };
+		HoldStepLayer holdLayer{ HoldStepLayer::Top };
 		InsertMode insertMode{ InsertMode::Select };
 
 		float bpm{ 160.0f };
@@ -189,6 +190,7 @@ namespace MikuMikuWorld
 		void setDummy(int dummy = true);
 		void setDummyHold(int dummy = true);
 		void setGuideAlpha(float alpha);
+		void setHoldLayer(HoldStepLayer layer);
 
 		void updateSelectionFlag();
 
@@ -245,8 +247,7 @@ namespace MikuMikuWorld
 		// Please make a copy if you need to erase them while iterating
 		void eraseNote(Note& note, bool update = true);
 		std::tuple<HoldNote&, Note&, Note&> insertHold(const Note& startNote, const Note& endNote,
-		                                               const HoldNoteStep& step,
-		                                               bool update = true);
+		                                               const HoldNote& hold, bool update = true);
 		void eraseHold(HoldNote& hold, bool update = true);
 		// Connects two holds together
 		id_t connectHolds(id_t currHoldID, id_t nextHoldID, bool update = true);

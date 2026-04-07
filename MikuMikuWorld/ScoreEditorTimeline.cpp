@@ -1011,7 +1011,18 @@ namespace MikuMikuWorld
 			return;
 		const unsigned int texID = texture->getID();
 		auto&& [l, c, r, t, b] = resource.getHoldStepMapping(holdStep);
-		int channel = baseChannel + (!holdStep.isGuide() ? Channel_Hold : Channel_Guide);
+		int channel = baseChannel;
+		switch (holdStep.layer)
+		{
+		case HoldStepLayer::Top:
+			channel += (!holdStep.isGuide() ? Channel_Hold_Top : Channel_Guide_Top);
+			break;
+		case HoldStepLayer::Bottom:
+			channel += (!holdStep.isGuide() ? Channel_Hold_Bottom : Channel_Guide_Bottom);
+			break;
+		default:
+			assert(false && "Unknown layer type");
+		}
 
 		secs_t startTime = accumulateDuration(start.tick + tickOffset, context.score.tempoChanges);
 		float startX1 = toScreenPosX(start.lane + laneOffset);
@@ -2497,8 +2508,9 @@ namespace MikuMikuWorld
 		case InsertMode::InsertLong:
 			inputNoteID = !isInsertingHold ? 1 : 2;
 			previewHold.flag = HoldNoteFlag::Normal;
-			previewHold.setFadeType(FadeType::Out);
+			previewHold.fadeType = FadeType::Out;
 			previewHold.guideColor = GuideColor::Green;
+			previewHold.layer = edit.holdLayer;
 			noteStart.flag = noteEnd.flag = NoteFlag::LongNote;
 			noteStart.ease = edit.easeType, noteEnd.ease = EaseType::Linear;
 			switch (edit.startType)
@@ -2550,14 +2562,15 @@ namespace MikuMikuWorld
 		{
 			inputNoteID = !isInsertingHold ? 1 : 2;
 			previewHold.flag |= HoldNoteFlag::Guide;
-			previewHold.setFadeType(edit.fadeType);
+			previewHold.fadeType = edit.fadeType;
 			previewHold.guideColor =
 			    context.metadata.isExtendedScore || edit.colorType == GuideColor::Yellow
 			        ? edit.colorType
 			        : GuideColor::Green;
+			previewHold.layer = edit.holdLayer;
 			noteStart.flag = noteEnd.flag = NoteFlag::LongNote | NoteFlag::Hidden;
 			noteStart.ease = edit.easeType, noteEnd.ease = EaseType::Linear;
-			switch (previewHold.getFadeType())
+			switch (previewHold.fadeType)
 			{
 			case FadeType::Classic:
 				noteStart.guideAlpha = 1;
@@ -3038,7 +3051,7 @@ namespace MikuMikuWorld
 
 					ImGui::Text("-Guide Color: %s\n-Fade Type: %s\n-Alpha: %.2f",
 					            (const char*)localize(guideColorAllTexts[(int)hold.guideColor]),
-					            (const char*)localize(fadeTypeTexts[(int)hold.getFadeType()]),
+					            (const char*)localize(fadeTypeTexts[(int)hold.fadeType]),
 					            note.guideAlpha);
 
 					if (!note.isAttached())

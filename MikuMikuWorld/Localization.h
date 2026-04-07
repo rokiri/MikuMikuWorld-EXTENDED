@@ -96,4 +96,6 @@ namespace MikuMikuWorld
 
 	MMW_TEXT_TYPE skillEffectTexts[]{ Text::skillEffectScore, Text::skillEffectHeal,
 		                              Text::skillEffectPerfect };
+
+	MMW_TEXT_TYPE holdLayerTexts[]{ Text::holdLayerTop, Text::holdLayerBottom };
 }

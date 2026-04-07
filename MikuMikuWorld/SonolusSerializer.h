@@ -87,6 +87,7 @@ namespace MikuMikuWorld
 		static int toEaseNumeric(EaseType ease);
 		static int toEffectNumeric(SoundEffectType effect);
 		static int toSegmentNumeric(const HoldNoteStep* holdStep = nullptr);
+		static int toLayerNumeric(const HoldStepLayer& layer);
 
 		static bool fromGroupEntity(const Sonolus::LevelDataEntity& groupEntity, Layer& layer);
 		static bool fromTimeScaleEntity(const Sonolus::LevelDataEntity& timescaleEntity,
@@ -111,5 +112,6 @@ namespace MikuMikuWorld
 		static EaseType fromEaseNumeric(int ease);
 		static SoundEffectType fromEffectNumeric(int effectKind);
 		static bool fromSegmentNumeric(int segmentKind, HoldNoteStep& holdStep);
+		static HoldStepLayer fromLayerNumeric(int segmentLayer);
 	};
 }

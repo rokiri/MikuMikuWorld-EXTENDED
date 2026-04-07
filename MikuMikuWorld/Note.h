@@ -90,11 +90,7 @@ namespace MikuMikuWorld
 		id_t ID{ -1 }; // note id of the step
 		HoldNoteFlag flag{ HoldNoteFlag::Normal };
 		GuideColor guideColor{ GuideColor::Green };
-
-	  protected:
-		// FadeType is apply to the entire hold
-		// This is protected to prevent setting it from a separator
-		FadeType fadeType{ FadeType::Out };
+		HoldStepLayer layer{ HoldStepLayer::Top };
 
 	  public:
 		constexpr inline bool isCrit() const { return hasFlag(flag, HoldNoteFlag::Critical); }
@@ -105,6 +101,7 @@ namespace MikuMikuWorld
 	class HoldNote : public HoldNoteStep
 	{
 	  public:
+		FadeType fadeType{ FadeType::Out };
 		// Steps are all the notes in the holds
 		// A hold must always has atleast 2 steps (Begin, End)
 		// These must always be ordered by the sort predicate
@@ -176,8 +173,6 @@ namespace MikuMikuWorld
 			}
 		};
 
-		constexpr inline FadeType getFadeType() const { return fadeType; }
-		inline void setFadeType(FadeType type) { fadeType = type; }
 		bool canSetGuideAlpha(const Note& step, const NoteCollection& notes) const;
 
 		void insertStep(Note& note, NoteCollection& notes, bool swaps = false, bool update = true);

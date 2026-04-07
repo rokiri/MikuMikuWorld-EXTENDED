@@ -329,6 +329,19 @@ namespace MikuMikuWorld
 		fadeType = arrayFindOrDefault(fadeTypes, fadeString, FadeType::Out);
 	}
 
+	constexpr const char* holdStepLayerNames[] = { "top", "bottom" };
+	static_assert(std::size(holdStepLayerNames) == size_t(HoldStepLayer::LayerCount));
+	static void to_json(json& j, const HoldStepLayer& layer)
+	{
+		j = arrayGetItemSafe(holdStepLayerNames, layer);
+	}
+	static void from_json(const json& j, HoldStepLayer& layer)
+	{
+		std::string layerString = j.get<std::string>();
+		std::transform(layerString.begin(), layerString.end(), layerString.begin(), ::tolower);
+		layer = arrayFindOrDefault(holdStepLayerNames, layerString, HoldStepLayer::Top);
+	}
+
 	constexpr const char* hiSpeedEaseNames[] = { "ease_none", "linear" };
 	static_assert(std::size(hiSpeedEaseNames) == size_t(HiSpeedEaseType::EaseTypeCount));
 	static void to_json(json& j, const HiSpeedEaseType& ease)
@@ -582,6 +595,7 @@ namespace MikuMikuWorld
 		optional_get_to(data, "alpha", note.guideAlpha);
 	}
 
+
 	static void hold_note_step_to_json(json& data, const HoldNoteStep& step)
 	{
 		if (step.isGuide())
@@ -594,6 +608,7 @@ namespace MikuMikuWorld
 			// Not making the properties exclusive allow compatibility with CC version
 			data["guide"] = step.guideColor;
 		}
+		data["layer"] = step.layer;
 	}
 	static void hold_note_step_from_json(const json& data, HoldNoteStep& step,
 	                                     const json& startData)
@@ -606,6 +621,7 @@ namespace MikuMikuWorld
 		else
 			critical = tryGetValue(startData, "critical", false);
 		step.flag = setFlag(step.flag, HoldNoteFlag::Critical, critical);
+		step.layer = tryGetValue(data, "layer", HoldStepLayer::Top);
 	}
 
 	static void hispeed_to_json(json& data, const HiSpeed& hispeed, tick_t offsetTick)
@@ -700,7 +716,7 @@ namespace MikuMikuWorld
 
 			json* holdData = &holds.emplace_back();
 			hold_note_step_to_json(*holdData, *holdStep);
-			(*holdData)["fade"] = hold.getFadeType();
+			(*holdData)["fade"] = hold.fadeType;
 
 			json* holdStart = &(*holdData)["start"];
 			const Note* start = *stepIt;
@@ -820,7 +836,7 @@ namespace MikuMikuWorld
 				HoldNoteStep* holdStep = &hold;
 				hold.ID = nextHoldID++;
 				hold_note_step_from_json(*holdStepData, *holdStep, *holdStart);
-				hold.setFadeType(tryGetValue(data, "fade", FadeType::Out));
+				hold.fadeType = tryGetValue(data, "fade", FadeType::Out);
 
 				Note* start = &pasteData.notes[nextNoteID];
 				start->ID = nextNoteID++;

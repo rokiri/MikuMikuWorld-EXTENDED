@@ -136,6 +136,13 @@ namespace MikuMikuWorld
 
 	inline constexpr const char* fadeTypes[] = { "out", "none", "in", "custom", "default" };
 
+	enum class HoldStepLayer : uint8_t
+	{
+		Top,
+		Bottom,
+		LayerCount
+	};
+
 	enum class HiSpeedEaseType : uint8_t
 	{
 		None,

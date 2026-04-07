@@ -342,9 +342,9 @@ namespace MikuMikuWorld
 			if (updatedHold.emplace(note.holdID).second)
 			{
 				HoldNote& hold = score.holdNotes.at(note.holdID);
-				if (hold.getFadeType() != fade)
+				if (hold.fadeType != fade)
 				{
-					hold.setFadeType(fade);
+					hold.fadeType = fade;
 					hold.updateFading(score.notes);
 					edit = true;
 				}
@@ -716,7 +716,7 @@ namespace MikuMikuWorld
 			if (!note.isHold())
 				continue;
 			const HoldNote& hold = score.holdNotes.at(note.holdID);
-			if (hold.getFadeType() != FadeType::Custom || !hold.canSetGuideAlpha(note, score.notes))
+			if (hold.fadeType != FadeType::Custom || !hold.canSetGuideAlpha(note, score.notes))
 				continue;
 			edit = pnote->guideAlpha != alpha;
 			pnote->guideAlpha = alpha;
@@ -725,6 +725,35 @@ namespace MikuMikuWorld
 		if (edit)
 		{
 			pushHistory("Change guide alpha");
+			updateSelectionFlag();
+		}
+	}
+
+	void ScoreContext::setHoldLayer(HoldStepLayer layer)
+	{
+		if (!hasAnyNoteSelected())
+			return;
+
+		bool edit = false;
+		std::unordered_set<HoldNoteStep*> updatedStep;
+		for (auto&& [_, pnote] : selectedNotes)
+		{
+			Note& note = *pnote;
+
+			if (!note.isHold())
+				continue;
+			HoldNote& hold = score.holdNotes.at(note.holdID);
+			HoldNoteStep& step = hold.holdStepAt(note, score.notes);
+			if (!updatedStep.emplace(&step).second)
+				continue;
+
+			edit |= step.layer == layer;
+			step.layer = layer;
+		}
+
+		if (edit)
+		{
+			pushHistory("Change hold step layer");
 			updateSelectionFlag();
 		}
 	}
@@ -2006,7 +2035,7 @@ namespace MikuMikuWorld
 					    std::next(std::find_if(hold.separators.begin(), hold.separators.end(),
 					                           [&](const HoldNoteStep& s) { return &s == pstep; }));
 					id_t endID = nextIt != hold.separators.end() ? nextIt->ID : hold.steps.back();
-					
+
 					id_t otherID;
 					size_t index = std::distance(
 					    hold.steps.begin(), std::find(hold.steps.begin(), hold.steps.end(), endID));
@@ -2181,8 +2210,7 @@ namespace MikuMikuWorld
 	}
 
 	std::tuple<HoldNote&, Note&, Note&> ScoreContext::insertHold(const Note& start, const Note& end,
-	                                                             const HoldNoteStep& step,
-	                                                             bool update)
+	                                                             const HoldNote& hold, bool update)
 	{
 		id_t nextIDH = nextHoldID++;
 
@@ -2204,7 +2232,7 @@ namespace MikuMikuWorld
 			holdStart.flag = setFlag(holdStart.flag, NoteFlag::Dummy, false);
 			holdStart.flick = FlickType::None;
 			holdStart.type = NoteType::Tap;
-			if (step.isGuide())
+			if (hold.isGuide())
 				holdStart.flag = setFlag(holdStart.flag, NoteFlag::Hidden);
 		}
 
@@ -2225,7 +2253,7 @@ namespace MikuMikuWorld
 		{
 			holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Dummy, false);
 			holdEnd.type = NoteType::Tap;
-			if (step.isGuide())
+			if (hold.isGuide())
 				holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Hidden);
 		}
 
@@ -2233,7 +2261,8 @@ namespace MikuMikuWorld
 		notesOrderedView.emplace(holdEnd.tick, &holdEnd);
 
 		HoldNote& newHold = score.holdNotes[nextIDH];
-		static_cast<HoldNoteStep&>(newHold) = step;
+		static_cast<HoldNoteStep&>(newHold) = hold;
+		newHold.fadeType = hold.fadeType;
 		newHold.ID = nextIDH;
 		newHold.steps.clear();
 		newHold.joints.clear();
@@ -2245,9 +2274,10 @@ namespace MikuMikuWorld
 		if (!metadata.isExtendedScore)
 		{
 			newHold.flag = setFlag(newHold.flag, HoldNoteFlag::Dummy, false);
-			newHold.setFadeType(FadeType::Classic);
+			newHold.fadeType = FadeType::Classic;
 			if (newHold.guideColor != GuideColor::Yellow)
 				newHold.guideColor = GuideColor::Green;
+			newHold.layer = newHold.isGuide() ? HoldStepLayer::Bottom : HoldStepLayer::Top;
 		}
 
 		if (update)
@@ -2293,8 +2323,7 @@ namespace MikuMikuWorld
 			mergeHold |=
 			    currStep.isCrit() == nextHold.isCrit() && currStep.isDummy() == nextHold.isDummy();
 		else if (currStep.isGuide() == true && nextHold.isGuide() == true)
-			mergeHold |= currStep.guideColor == nextHold.guideColor &&
-			             currHold.getFadeType() == nextHold.getFadeType();
+			mergeHold |= currStep.guideColor == nextHold.guideColor;
 
 		if (mergeNote)
 		{
@@ -2397,7 +2426,7 @@ namespace MikuMikuWorld
 		if (!metadata.isExtendedScore)
 		{
 			newHold.flag = setFlag(newHold.flag, HoldNoteFlag::Dummy, false);
-			newHold.setFadeType(FadeType::Classic);
+			newHold.fadeType = FadeType::Classic;
 			if (newHold.guideColor != GuideColor::Yellow)
 				newHold.guideColor = GuideColor::Green;
 

@@ -51,8 +51,10 @@ namespace MikuMikuWorld
 	  private:
 		enum DrawChannel
 		{
-			Channel_Hold,
-			Channel_Guide,
+			Channel_Hold_Bottom,
+			Channel_Guide_Bottom,
+			Channel_Hold_Top,
+			Channel_Guide_Top,
 			Channel_HoldOutline,
 			Channel_TapNote,
 			Channel_Outline,
