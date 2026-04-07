@@ -181,8 +181,6 @@ namespace MikuMikuWorld
 				{
 					edit = true;
 					note.flag = setFlag(note.flag, NoteFlag::Attached, false);
-					if (hold)
-						updatingHolds.insert(hold->ID);
 				}
 				break;
 			case EditHoldStepType::Hidden:
@@ -192,8 +190,6 @@ namespace MikuMikuWorld
 				{
 					edit = true;
 					note.flag = setFlag(note.flag, NoteFlag::Attached, false);
-					if (hold)
-						updatingHolds.insert(hold->ID);
 				}
 				edit |= !note.isHidden();
 				note.flag = setFlag(note.flag, NoteFlag::Hidden);
@@ -204,15 +200,17 @@ namespace MikuMikuWorld
 				edit = true;
 				note.flag = setFlag(note.flag, NoteFlag::Hidden, false);
 				note.flag = setFlag(note.flag, NoteFlag::Attached, true);
-				if (hold)
-					updatingHolds.insert(hold->ID);
 				break;
 			}
+			if (hold)
+				updatingHolds.insert(hold->ID);
 		}
 
 		for (auto&& holdID : updatingHolds)
 		{
-			score.holdNotes.at(holdID).updateJoints(score.notes);
+			HoldNote& hold = score.holdNotes.at(holdID);
+			hold.updateJoints(score.notes);
+			hold.updateLongs(score.notes);
 		}
 
 		if (edit)
@@ -1082,6 +1080,7 @@ namespace MikuMikuWorld
 					selectedNotes.emplace(newNote->ID, newNote);
 			}
 			hold.updateJoints(score.notes);
+			hold.updateLongs(score.notes);
 			hold.updateFading(score.notes);
 		}
 		else
@@ -1143,6 +1142,7 @@ namespace MikuMikuWorld
 					}
 				}
 				newHold.updateJoints(score.notes);
+				newHold.updateLongs(score.notes);
 				newHold.updateFading(score.notes);
 			}
 
@@ -1784,6 +1784,7 @@ namespace MikuMikuWorld
 			}
 
 			hold.updateJoints(score.notes);
+			hold.updateLongs(score.notes);
 			hold.updateFading(score.notes);
 
 			if (deleteHold)
@@ -1906,6 +1907,7 @@ namespace MikuMikuWorld
 				}
 			}
 			hold.updateJoints(score.notes);
+			hold.updateLongs(score.notes);
 			hold.updateFading(score.notes);
 		}
 
@@ -1941,9 +1943,10 @@ namespace MikuMikuWorld
 			pstep->flag = setFlag(pstep->flag, HoldNoteFlag::Guide, false);
 			pstep->flag = setFlag(pstep->flag, HoldNoteFlag::Critical, critical);
 
+			HoldNote& hold = score.holdNotes.at(holdID);
+			hold.updateLongs(score.notes);
 			if (!metadata.isExtendedScore)
 			{
-				const HoldNote& hold = score.holdNotes.at(holdID);
 				for (auto stepID : hold.steps)
 				{
 					Note& note = score.notes.at(stepID);
@@ -1980,6 +1983,7 @@ namespace MikuMikuWorld
 		selectedNotes.clear();
 		for (auto&& [pstep, holdID] : updatingHoldSteps)
 		{
+			// Erase duplicate note cause by splitting
 			bool eraseStart = false, eraseEnd = false;
 			HoldNote& hold = score.holdNotes.at(holdID);
 			// Split the hold from it's current chain (if exist)
@@ -1990,8 +1994,11 @@ namespace MikuMikuWorld
 					size_t index = std::distance(hold.steps.begin(),
 					                             std::find(hold.steps.begin(), hold.steps.end(),
 					                                       hold.separators.front().ID));
-					splitHoldAt(hold, index, false);
+					id_t otherID = splitHoldAt(hold, index, false).second;
 					eraseEnd = true;
+					HoldNote& otherHold = score.holdNotes.at(otherID);
+					otherHold.updateLongs(score.notes);
+					otherHold.updateFading(score.notes);
 				}
 				else
 				{
@@ -1999,19 +2006,26 @@ namespace MikuMikuWorld
 					    std::next(std::find_if(hold.separators.begin(), hold.separators.end(),
 					                           [&](const HoldNoteStep& s) { return &s == pstep; }));
 					id_t endID = nextIt != hold.separators.end() ? nextIt->ID : hold.steps.back();
-
+					
+					id_t otherID;
 					size_t index = std::distance(
 					    hold.steps.begin(), std::find(hold.steps.begin(), hold.steps.end(), endID));
 					if (index > 0 && index < hold.steps.size() - 1)
 					{
-						splitHoldAt(hold, index, false);
+						otherID = splitHoldAt(hold, index, false).second;
 						eraseEnd = true;
+						HoldNote& otherHold = score.holdNotes.at(otherID);
+						otherHold.updateLongs(score.notes);
+						otherHold.updateFading(score.notes);
 					}
 					index =
 					    std::distance(hold.steps.begin(),
 					                  std::find(hold.steps.begin(), hold.steps.end(), pstep->ID));
-					holdID = splitHoldAt(hold, index, false).second;
+					std::tie(otherID, holdID) = splitHoldAt(hold, index, false);
 					eraseStart = true;
+					HoldNote& otherHold = score.holdNotes.at(otherID);
+					otherHold.updateLongs(score.notes);
+					otherHold.updateFading(score.notes);
 				}
 			}
 
@@ -2416,8 +2430,10 @@ namespace MikuMikuWorld
 		hold.separators.erase(separatorNextIt - erasePrev, hold.separators.end());
 
 		hold.updateJoints(score.notes);
+		hold.updateLongs(score.notes);
 		hold.updateFading(score.notes);
 		newHold.updateJoints(score.notes);
+		newHold.updateLongs(score.notes);
 		newHold.updateFading(score.notes);
 
 		if (update)

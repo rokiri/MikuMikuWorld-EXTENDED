@@ -107,14 +107,14 @@ namespace MikuMikuWorld
 		for (auto&& holdStep : separators)
 		{
 			Note& step = notes.at(holdStep.ID);
-			step.flag =
-			    setFlag(step.flag, NoteFlag::LongNote, holdStep.isGuide() || prevStep->isGuide());
+			step.flag = setFlag(step.flag, NoteFlag::LongNote,
+			                    holdStep.isGuide() != prevStep->isGuide() || step.isHidden());
 			prevStep = &holdStep;
 		}
 		Note& start = notes.at(steps.front());
 		Note& end = notes.at(steps.back());
-		start.flag = setFlag(start.flag, NoteFlag::LongNote);
-		end.flag = setFlag(end.flag, NoteFlag::LongNote);
+		start.flag = setFlag(start.flag, NoteFlag::LongNote, !isGuide() || start.isHidden());
+		end.flag = setFlag(end.flag, NoteFlag::LongNote, !prevStep->isGuide() || end.isHidden());
 	}
 
 	void HoldNote::updateFading(NoteCollection& notes)
