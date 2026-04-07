@@ -10,6 +10,7 @@
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-vi)](./MikuMikuWorld/res/i18n/vi.csv)
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-tr)](./MikuMikuWorld/res/i18n/tr.csv)
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-pt)](./MikuMikuWorld/res/i18n/pt.csv)
+[![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-zh)](./MikuMikuWorld/res/i18n/zh.csv)
 
 Fork of [MikuMikuWorld](https://github.com/crash5band/MikuMikuWorld) for [UntitledCharts](https://untitledcharts.com/).
 
