@@ -47,6 +47,7 @@ namespace MikuMikuWorld
 		float noteAlign{ 0.5f };
 		FlickType flickType{ FlickType::Default };
 		EaseType easeType{ EaseType::Linear };
+		SoundEffectType soundEffect{ SoundEffectType::Default };
 		EditHoldJointType startType{ EditHoldJointType::Normal };
 		EditHoldStepType stepType{ EditHoldStepType::Normal };
 		EditHoldJointType endType{ EditHoldJointType::Normal };
@@ -127,6 +128,7 @@ namespace MikuMikuWorld
 		CanEase = 1 << 8, // Any hold start + hold mid not attached
 		HasGuideAlphaNote = 1 << 9,
 		CanConnectHold = 1 << 10,
+		CanSoundEffect = 1 << 11,
 		// Flag for properties window
 		DirtyProperty = 1 << 15,
 
@@ -177,6 +179,7 @@ namespace MikuMikuWorld
 		void setStep(EditHoldStepType step);
 		void setFlick(FlickType flick);
 		void setEase(EaseType ease);
+		void setSoundEffect(SoundEffectType sound);
 		void setFadeType(FadeType fade);
 		void setGuideColor(GuideColor color);
 		void setLayer(int layer);

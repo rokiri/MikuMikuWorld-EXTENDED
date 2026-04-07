@@ -85,7 +85,8 @@ namespace MikuMikuWorld
 		                                 const Sonolus::LevelDataEntity& tail);
 		static int toDirectionNumeric(FlickType flick);
 		static int toEaseNumeric(EaseType ease);
-		static int toKindNumeric(const HoldNoteStep* holdStep = nullptr);
+		static int toEffectNumeric(SoundEffectType effect);
+		static int toSegmentNumeric(const HoldNoteStep* holdStep = nullptr);
 
 		static bool fromGroupEntity(const Sonolus::LevelDataEntity& groupEntity, Layer& layer);
 		static bool fromTimeScaleEntity(const Sonolus::LevelDataEntity& timescaleEntity,
@@ -108,6 +109,7 @@ namespace MikuMikuWorld
 
 		static FlickType fromDirectionNumeric(int direction);
 		static EaseType fromEaseNumeric(int ease);
-		static bool fromKindNumeric(int kind, HoldNoteStep& holdStep);
+		static SoundEffectType fromEffectNumeric(int effectKind);
+		static bool fromSegmentNumeric(int segmentKind, HoldNoteStep& holdStep);
 	};
 }

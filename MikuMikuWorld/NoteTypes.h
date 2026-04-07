@@ -41,6 +41,21 @@ namespace MikuMikuWorld
 	inline constexpr const char* flickTypes[]{ "none", "default",   "left",      "right",
 		                                       "down", "down_left", "down_right" };
 
+	enum class SoundEffectType : uint8_t
+	{
+		Default,
+		None,
+		TapPerfect,
+		Flick,
+		Trace,
+		Tick,
+		CritTap,
+		CritFlick,
+		CritTrace,
+		CritTick,
+		Damage,
+		SoundEffectTypeCount
+	};
 
 	enum class EaseType : uint8_t
 	{

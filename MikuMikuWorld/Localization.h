@@ -66,8 +66,13 @@ namespace MikuMikuWorld
 	MMW_TEXT_TYPE flickTypeTexts[]{ Text::none, Text::defaultValue, Text::left,     Text::right,
 		                            Text::down, Text::downLeft,     Text::downRight };
 
-	MMW_TEXT_TYPE easeTypeTexts[]{ Text::linear, Text::easeIn, Text::easeOut, Text::easeInOut,
-		                           Text::easeOutIn, Text::easeNone };
+	MMW_TEXT_TYPE easeTypeTexts[]{ Text::linear,    Text::easeIn,    Text::easeOut,
+		                           Text::easeInOut, Text::easeOutIn, Text::easeNone };
+
+	MMW_TEXT_TYPE soundEffectTexts[]{ Text::sfxDefault,  Text::sfxNone,      Text::sfxTap,
+		                              Text::sfxFlick,    Text::sfxTrace,     Text::sfxTick,
+		                              Text::sfxCritTap,  Text::sfxCritFlick, Text::sfxCritTrace,
+		                              Text::sfxCritTick, Text::sfxDamage };
 
 	MMW_TEXT_TYPE stepTypeTexts[]{ Text::normal, Text::hidden, Text::skip };
 

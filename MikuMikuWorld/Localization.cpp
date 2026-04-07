@@ -173,6 +173,7 @@ namespace MikuMikuWorld
 	static_assert(std::size(snapModeTexts) == size_t(SnapMode::SnapModeMax));
 	static_assert(std::size(flickTypeTexts) == size_t(FlickType::FlickTypeCount));
 	static_assert(std::size(easeTypeTexts) == size_t(EaseType::EaseTypeCount));
+	static_assert(std::size(soundEffectTexts) == size_t(SoundEffectType::SoundEffectTypeCount));
 	static_assert(std::size(holdJointTypeTexts) == size_t(EditHoldJointType::JointTypeCount));
 	static_assert(std::size(stepTypeTexts) == size_t(EditHoldStepType::HoldStepTypeCount));
 	static_assert(std::size(guideColorAllTexts) == size_t(GuideColor::GuideColorCount));

@@ -41,6 +41,7 @@ namespace MikuMikuWorld
 		NoteFlag flag{ NoteFlag::None };
 		FlickType flick{ FlickType::None };
 		EaseType ease{ EaseType::Linear };
+		SoundEffectType soundEffect{ SoundEffectType::Default };
 
 		float lane = 0.0f;
 		float width = 3.0f;
@@ -53,6 +54,7 @@ namespace MikuMikuWorld
 			return type == NoteType::Tap || type == NoteType::Tick;
 		}
 		constexpr inline bool canDummy() const { return !isHidden(); }
+		constexpr inline bool canSoundEffect() const { return !isDummy(); }
 		constexpr inline bool canSimLine() const { return type != NoteType::Tick && !isHidden(); }
 
 		constexpr inline bool isHold() const { return holdID != -1; }

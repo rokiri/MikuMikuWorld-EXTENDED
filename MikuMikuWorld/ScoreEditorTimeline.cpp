@@ -1888,6 +1888,13 @@ namespace MikuMikuWorld
 				ImGui::EndMenu();
 			}
 
+			SoundEffectType soundEffect;
+			if (context.metadata.isExtendedScore &&
+			    UI::selectMenuItems(Text::soundEffect,
+			                        hasFlag(context.selectedFlag, SelectionFlag::CanSoundEffect),
+			                        soundEffectTexts, soundEffect))
+				context.setSoundEffect(soundEffect);
+
 			ImGui::Separator();
 			bool canShrink =
 			    (context.selectedNotes.size() + context.selectedHiSpeedChanges.size()) >= 2;
@@ -2152,12 +2159,15 @@ namespace MikuMikuWorld
 		     it != end; ++it)
 		{
 			const auto& [_, pnote] = *it;
-			if (pnote->isHidden() || pnote->isDummy())
+			if (pnote->isDummy())
 				continue;
 
 			std::string_view se = getNoteSE(*pnote);
+			if (se.empty())
+				continue;
+
 			std::string key = IO::formatString("%d-%s", pnote->tick, se.data());
-			if (!se.empty() && (playingNoteSounds.find(key) == playingNoteSounds.end()))
+			if (playingNoteSounds.find(key) == playingNoteSounds.end())
 			{
 				secs_t startTime = accumulateDuration(pnote->tick, context.score.tempoChanges);
 				context.audio->playSoundEffect(se.data(), startTime - AUDIO_CORRECTION_OFFSET, -1,
@@ -2588,28 +2598,30 @@ namespace MikuMikuWorld
 		Note& note = previewNotes.notes[inputNoteID];
 		if (mouseInTimeline)
 		{
+			float noteWidth = edit.noteWidth;
+			if (!context.metadata.isExtendedScore)
+				noteWidth = std::max<float>(std::floor(noteWidth), context.minNoteWidth());
 			if (isInsertingNote)
 			{
 				float offset = roundToStep(mouseLane - inputLane, laneDivision);
-				float snapLane =
-				    roundToStep(inputLane - edit.noteWidth * edit.noteAlign, laneDivision) +
-				    std::min(offset + edit.noteWidth, 0.f);
-				note.width = std::clamp<float>(std::abs(edit.noteWidth + offset),
-				                               context.minNoteWidth(), context.maxNoteWidth());
+				float snapLane = roundToStep(inputLane - noteWidth * edit.noteAlign, laneDivision) +
+				                 std::min(offset + noteWidth, 0.f);
+				note.width = std::clamp<float>(std::abs(noteWidth + offset), context.minNoteWidth(),
+				                               context.maxNoteWidth());
 				note.lane =
 				    std::clamp<float>(snapLane, context.minLane(), context.maxLane(note.width));
 				note.tick = inputTick;
 			}
 			else
 			{
-				float snapLane =
-				    roundToStep(mouseLane - edit.noteWidth * edit.noteAlign, laneDivision);
-				note.width = edit.noteWidth;
+				float snapLane = roundToStep(mouseLane - noteWidth * edit.noteAlign, laneDivision);
+				note.width = noteWidth;
 				note.lane =
-				    std::clamp<float>(snapLane, context.minLane(), context.maxLane(edit.noteWidth));
+				    std::clamp<float>(snapLane, context.minLane(), context.maxLane(noteWidth));
 				note.tick = snapTick;
 			}
 		}
+		note.soundEffect = edit.soundEffect;
 		if (isInsertingHold && HoldNote::StepComparer()(noteEnd, noteStart) ||
 		    !isInsertingHold && previewHold.steps.front() != 1)
 		{

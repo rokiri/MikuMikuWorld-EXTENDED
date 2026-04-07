@@ -601,7 +601,7 @@ namespace MikuMikuWorld
 					int kind = 0;
 					if (noteEntity.tryGetDataValue("segmentKind", kind))
 					{
-						if (!fromKindNumeric(kind, *holdStep))
+						if (!fromSegmentNumeric(kind, *holdStep))
 						{
 							PRINT_DEBUG("Unsupported segmentKind %d", kind);
 							validHold = false;
@@ -736,10 +736,10 @@ namespace MikuMikuWorld
 			       { "isAttached", note.isAttached() },
 			       { "isSeparator", static_cast<IntegerType>(isSeparator) },
 			       { "connectorEase", toEaseNumeric(note.ease) },
-			       { "segmentKind", toKindNumeric(holdStep) },
+			       { "segmentKind", toSegmentNumeric(holdStep) },
 			       { "segmentAlpha", roundOff(note.guideAlpha) },
 			       { "segmentLayer", 0 },
-			       { "effectKind", 0 } } };
+			       { "effectKind", toEffectNumeric(note.soundEffect) } } };
 	}
 
 	std::string PySekaiEngine::getSingleNoteArchetype(const Note& note)
@@ -920,7 +920,38 @@ namespace MikuMikuWorld
 		}
 	}
 
-	int PySekaiEngine::toKindNumeric(const HoldNoteStep* holdStep)
+	int PySekaiEngine::toEffectNumeric(SoundEffectType effect)
+	{
+		switch (effect)
+		{
+		case SoundEffectType::None:
+			return 1;
+		case SoundEffectType::TapPerfect:
+			return 2;
+		case SoundEffectType::Flick:
+			return 3;
+		case SoundEffectType::Trace:
+			return 4;
+		case SoundEffectType::Tick:
+			return 5;
+		case SoundEffectType::CritTap:
+			return 6;
+		case SoundEffectType::CritFlick:
+			return 7;
+		case SoundEffectType::CritTrace:
+			return 8;
+		case SoundEffectType::CritTick:
+			return 9;
+		case SoundEffectType::Damage:
+			return 10;
+		default:
+			PRINT_DEBUG("Unknown SoundEffectType");
+		case SoundEffectType::Default:
+			return 0;
+		}
+	}
+
+	int PySekaiEngine::toSegmentNumeric(const HoldNoteStep* holdStep)
 	{
 		if (!holdStep)
 			return 1;
@@ -1047,6 +1078,7 @@ namespace MikuMikuWorld
 	int PySekaiEngine::fromNoteEntity(const LevelDataEntity& noteEntity, Note& note,
 	                                  const std::unordered_map<RefType, size_t>& groupNameMap)
 	{
+		int status = true;
 		RealType beat, lane, size;
 		std::string group;
 		if (!noteEntity.tryGetDataValue("#BEAT", beat))
@@ -1082,15 +1114,22 @@ namespace MikuMikuWorld
 			}
 			note.layer = it->second;
 		}
-		int effect = 0;
+		IntegerType effect = 0;
 		noteEntity.tryGetDataValue("effectKind", effect);
+		note.soundEffect = fromEffectNumeric(effect);
+		if (note.soundEffect == SoundEffectType::SoundEffectTypeCount)
+		{
+			PRINT_DEBUG("Unknown effect value %d!", effect);
+			note.soundEffect = SoundEffectType::Default;
+			status = UNSUPPORTED_ENUM;
+		}
 		if (!isValidNoteState(note))
 		{
 			PRINT_DEBUG("Invalid note state (t:%d, w:%f, l:%f) on %s (%s)", note.tick, note.width,
 			            note.lane, noteEntity.archetype.c_str(), noteEntity.name.c_str());
 			return false;
 		}
-		return effect != 0 ? UNSUPPORTED_ENUM : true;
+		return status;
 	}
 
 	int PySekaiEngine::fromTapNoteEntity(const LevelDataEntity& tapNoteEntity, Note& note,
@@ -1149,7 +1188,8 @@ namespace MikuMikuWorld
 			if (note.flick == FlickType::FlickTypeCount)
 			{
 				PRINT_DEBUG("Unknown direction value %d!", direction);
-				return false;
+				note.flick = FlickType::None;
+				status = UNSUPPORTED_ENUM;
 			}
 		}
 		if ((!hasModifier && !stringMatching(tapNoteEntity.archetype, "Tap", offset) &&
@@ -1182,7 +1222,8 @@ namespace MikuMikuWorld
 			if (note.ease == EaseType::EaseTypeCount)
 			{
 				PRINT_DEBUG("Unknown connectorEase %d", ease);
-				return false;
+				note.ease = EaseType::Linear;
+				status = UNSUPPORTED_ENUM;
 			}
 		}
 
@@ -1246,25 +1287,56 @@ namespace MikuMikuWorld
 		}
 	}
 
-	static bool isGuideKind(int kind) { return 101 <= kind && kind <= 108; }
-	bool PySekaiEngine::fromKindNumeric(int kind, HoldNoteStep& holdStep)
+	SoundEffectType PySekaiEngine::fromEffectNumeric(int effectKind)
 	{
-		if (isGuideKind(kind))
+		switch (effectKind)
+		{
+		case 0:
+			return SoundEffectType::Default;
+		case 1:
+			return SoundEffectType::None;
+		case 2:
+			return SoundEffectType::TapPerfect;
+		case 3:
+			return SoundEffectType::Flick;
+		case 4:
+			return SoundEffectType::Trace;
+		case 5:
+			return SoundEffectType::Tick;
+		case 6:
+			return SoundEffectType::CritTap;
+		case 7:
+			return SoundEffectType::CritFlick;
+		case 8:
+			return SoundEffectType::CritTrace;
+		case 9:
+			return SoundEffectType::CritTick;
+		case 10:
+			return SoundEffectType::Damage;
+		default:
+			return SoundEffectType::SoundEffectTypeCount;
+		}
+	}
+
+	static bool isGuideKind(int kind) { return 101 <= kind && kind <= 108; }
+	bool MikuMikuWorld::PySekaiEngine::fromSegmentNumeric(int segmentKind, HoldNoteStep& holdStep)
+	{
+		if (isGuideKind(segmentKind))
 		{
 			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Guide);
-			holdStep.guideColor = static_cast<GuideColor>(kind - 101);
+			holdStep.guideColor = static_cast<GuideColor>(segmentKind - 101);
 			return true;
 		}
-		if (50 < kind)
+		if (50 < segmentKind)
 		{
 			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Dummy);
-			kind -= 50;
+			segmentKind -= 50;
 		}
-		switch (kind)
+		switch (segmentKind)
 		{
 		case 1:
 		case 2:
-			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Critical, kind == 2);
+			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Critical, segmentKind == 2);
 			return true;
 		default:
 			return false;

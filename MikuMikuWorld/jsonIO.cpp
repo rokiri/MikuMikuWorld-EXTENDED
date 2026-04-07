@@ -268,8 +268,8 @@ namespace MikuMikuWorld
 		flick = arrayFindOrDefault(flickTypes, flickString, FlickType::None);
 	}
 
-	constexpr static const char* easeNames[]{ "linear", "ease_in", "ease_out", "ease_in_out",
-		                                      "ease_out_in", "ease_none" };
+	constexpr static const char* easeNames[]{ "linear",      "ease_in",     "ease_out",
+		                                      "ease_in_out", "ease_out_in", "ease_none" };
 	static_assert(std::size(easeNames) == size_t(EaseType::EaseTypeCount));
 	static void to_json(json& j, const EaseType& ease) { j = arrayGetItemSafe(easeNames, ease); }
 	static void from_json(const json& j, EaseType& ease)
@@ -288,6 +288,21 @@ namespace MikuMikuWorld
 			return;
 		}
 		ease = arrayFindOrDefault(easeNames, easeString, EaseType::Linear);
+	}
+
+	constexpr static const char* sfxNames[]{ "default",    "none",      "tap",      "flick",
+		                                     "trace",      "tick",      "crit_tap", "crit_flick",
+		                                     "crit_trace", "crit_tick", "damage" };
+	static_assert(std::size(sfxNames) == size_t(SoundEffectType ::SoundEffectTypeCount));
+	static void to_json(json& j, const SoundEffectType& sfxType)
+	{
+		j = arrayGetItemSafe(sfxNames, sfxType);
+	}
+	static void from_json(const json& j, SoundEffectType& sfxType)
+	{
+		std::string sfxString = j.get<std::string>();
+		std::transform(sfxString.begin(), sfxString.end(), sfxString.begin(), ::tolower);
+		sfxType = arrayFindOrDefault(sfxNames, sfxString, SoundEffectType::Default);
 	}
 
 	static_assert(std::size(guideColors) == size_t(GuideColor::GuideColorCount));
@@ -351,12 +366,16 @@ namespace MikuMikuWorld
 		data["tick"] = note.tick + offsetTick;
 		data["lane"] = note.lane;
 		data["width"] = note.width;
+		if (note.canSoundEffect())
+			data["soundEffect"] = note.soundEffect;
 	}
 	static void base_note_from_json(const json& data, Note& note)
 	{
 		note.tick = tryGetValue<int>(data, "tick", 0);
 		note.lane = tryGetValue<float>(data, "lane", 0.f);
 		note.width = tryGetValue<float>(data, "width", 3.f);
+		note.soundEffect =
+		    tryGetValue<SoundEffectType>(data, "soundEffect", SoundEffectType::Default);
 	}
 
 	static void dummy_note_to_json(json& data, const Note& note)

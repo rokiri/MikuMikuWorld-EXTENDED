@@ -20,7 +20,7 @@ namespace MikuMikuWorld
 	const char* CC_MMWS_SIGNATURE = "CCMMWS";
 	// Version 1: Revert version to int32, support dummy note, dummy hold
 	// Version 2: Support hispeed easing, skip, hides note; down flicks
-	// Version 3: Note data structure refactor; skill effects
+	// Version 3: Note data structure refactor; skill effects; hispeed hidenotes; sound effect
 	const int UC_MMWS_VERSION = 3;
 	const char* UC_MMWS_SIGNATURE = "UCMMWS";
 
@@ -79,6 +79,7 @@ namespace MikuMikuWorld
 		inline bool supportDownFlick() const { return untitledVersion >= 2; }
 		inline bool supportExtendedNote() const { return untitledVersion >= 3; }
 		inline bool supportExtendedSkill() const { return untitledVersion >= 3; }
+		inline bool supportSoundEffect() const { return untitledVersion >= 3; }
 
 		inline bool isImplicitExtended() const { return cyanvasVersion > 0 || untitledVersion > 0; }
 		inline bool isSupportedVersion() const
@@ -105,6 +106,9 @@ namespace MikuMikuWorld
 			note.lane = reader.readUInt32();
 			note.width = reader.readUInt32();
 		}
+
+		if (version.supportSoundEffect())
+			note.soundEffect = static_cast<SoundEffectType>(reader.readUInt32());
 
 		if (version.supportLayers())
 			note.layer = reader.readUInt32();
@@ -155,6 +159,7 @@ namespace MikuMikuWorld
 		writer.writeInt32(note.tick);
 		writer.writeSingle(note.lane);
 		writer.writeSingle(note.width);
+		writer.writeInt32(static_cast<uint32_t>(note.soundEffect));
 
 		writer.writeInt32(note.layer);
 

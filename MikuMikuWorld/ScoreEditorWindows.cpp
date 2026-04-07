@@ -649,6 +649,8 @@ namespace MikuMikuWorld
 					return EditHoldStepType::Hidden;
 				return v.second->isAttached() ? EditHoldStepType::Skip : EditHoldStepType::Normal;
 			};
+			auto canSetSfx = [](const value_type& v) { return v.second->canSoundEffect(); };
+			auto getSfx = [](const value_type& v) { return v.second->soundEffect; };
 			auto isHold = [](const value_type& v) { return v.second->isHold(); };
 			auto isNormalHold = [&](const value_type& v)
 			{
@@ -712,6 +714,8 @@ namespace MikuMikuWorld
 			             checkMixState(isDummy, context.selectedNotes, getDummy, canDummy);
 			mixedEase = hasFlag(context.selectedFlag, SelectionFlag::CanEase) &&
 			            checkMixState(easeType, context.selectedNotes, getEase, canEase);
+			mixedSoundEffect = hasFlag(context.selectedFlag, SelectionFlag::CanSoundEffect) &&
+			                   checkMixState(soundEffect, context.selectedNotes, getSfx, canSetSfx);
 			mixedStep = checkMixState(stepType, context.selectedNotes, getType, isHold);
 			mixedHoldCrit =
 			    hasFlag(context.selectedFlag, SelectionFlag::HasHoldNote) &&
@@ -914,6 +918,11 @@ namespace MikuMikuWorld
 				if (hasFlag(context.selectedFlag, SelectionFlag::CanDummy) &&
 				    UI::checkboxFlagPropertyRow(Text::dummy, noteFlag, NoteFlag::Dummy, mixedDummy))
 					context.setDummy(hasFlag(noteFlag, NoteFlag::Dummy));
+
+				if (hasFlag(context.selectedFlag, SelectionFlag::CanSoundEffect) &&
+				    UI::selectMixedPropertyRow(Text::soundEffect, mixedSoundEffect, soundEffect,
+				                               Text::notePropertiesMixedValue, soundEffectTexts))
+					context.setSoundEffect(soundEffect);
 
 				UI::endPropertyTable();
 			}
@@ -1162,12 +1171,9 @@ namespace MikuMikuWorld
 			}
 			break;
 		default: // NoteTypes
-			if (UI::floatPropertyRow(Text::noteWidth, edit.noteWidth,
-			                         localizeOrInsert("__options_lane_input", laneInputFmt),
-			                         context.minNoteWidth(), context.maxNoteWidth()))
-				if (!isExtended)
-					edit.noteWidth = std::floor(edit.noteWidth);
-
+			UI::floatPropertyRow(Text::noteWidth, edit.noteWidth,
+			                     localizeOrInsert("__options_lane_input", laneInputFmt),
+			                     context.minNoteWidth(), context.maxNoteWidth());
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip) &&
 			    (input.increaseNoteSize.count || input.decreaseNoteSize.count) &&
 			    ImGui::BeginTooltip())
@@ -1183,6 +1189,10 @@ namespace MikuMikuWorld
 				ImGui::EndTooltip();
 			}
 			UI::floatSliderPropertyRow(Text::noteAlign, edit.noteAlign, 0, 1, "%.2f");
+			if (isExtended)
+			{
+				UI::selectPropertyRow(Text::soundEffect, edit.soundEffect, soundEffectTexts);
+			}
 			break;
 		}
 		switch (edit.insertMode)

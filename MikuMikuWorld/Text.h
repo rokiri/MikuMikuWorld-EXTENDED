@@ -144,6 +144,18 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(easeInOut, "ease_in_out");
 	MMW_TEXT(easeOutIn, "ease_out_in");
 	MMW_TEXT(easeNone, "ease_none");
+	MMW_TEXT(soundEffect, "sound_effect");
+	MMW_TEXT(sfxDefault, "sfx_default");
+	MMW_TEXT(sfxNone, "sfx_none");
+	MMW_TEXT(sfxTap, "sfx_tap");
+	MMW_TEXT(sfxFlick, "sfx_flick");
+	MMW_TEXT(sfxTrace, "sfx_trace");
+	MMW_TEXT(sfxTick, "sfx_tick");
+	MMW_TEXT(sfxCritTap, "sfx_crit_tap");
+	MMW_TEXT(sfxCritFlick, "sfx_crit_flick");
+	MMW_TEXT(sfxCritTrace, "sfx_crit_trace");
+	MMW_TEXT(sfxCritTick, "sfx_crit_tick");
+	MMW_TEXT(sfxDamage, "sfx_damage");
 	MMW_TEXT(del, "delete");
 	MMW_TEXT(copy);
 	MMW_TEXT(cut);

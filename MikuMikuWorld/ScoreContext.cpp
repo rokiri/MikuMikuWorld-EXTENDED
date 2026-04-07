@@ -306,6 +306,29 @@ namespace MikuMikuWorld
 		}
 	}
 
+	void ScoreContext::setSoundEffect(SoundEffectType sound)
+	{
+		if (!hasAnyNoteSelected() || !metadata.isExtendedScore)
+			return;
+
+		bool edit = false;
+		for (auto&& [_, pnote] : selectedNotes)
+		{
+			Note& note = *pnote;
+			if (!note.canSoundEffect())
+				continue;
+
+			edit |= note.soundEffect != sound;
+			note.soundEffect = sound;
+		}
+
+		if (edit)
+		{
+			pushHistory("Change dummy note");
+			updateSelectionFlag();
+		}
+	}
+
 	void ScoreContext::setFadeType(FadeType fade)
 	{
 		if (!hasAnyNoteSelected())
@@ -789,6 +812,10 @@ namespace MikuMikuWorld
 		    setFlag(selectedFlag, SelectionFlag::CanDummy,
 		            metadata.isExtendedScore &&
 		                std::any_of(begin, end, [](auto&& nv) { return nv.second->canDummy(); }));
+		selectedFlag = setFlag(
+		    selectedFlag, SelectionFlag::CanSoundEffect,
+		    metadata.isExtendedScore &&
+		        std::any_of(begin, end, [](auto&& nv) { return nv.second->canSoundEffect(); }));
 		selectedFlag =
 		    setFlag(selectedFlag, SelectionFlag::CanEase, std::any_of(begin, end, hasEase));
 		selectedFlag =
@@ -2088,9 +2115,13 @@ namespace MikuMikuWorld
 		Note& newNote = score.notes.emplace(nextID, note).first->second;
 		newNote.ID = nextID;
 		newNote.holdID = -1;
-		newNote.width = !metadata.isExtendedScore ? std::floor(newNote.width) : newNote.width;
+		if (!metadata.isExtendedScore)
+		{
+			newNote.width = std::floor(newNote.width);
+			newNote.lane = std::floor(newNote.lane);
+			newNote.soundEffect = SoundEffectType::Default;
+		}
 		newNote.width = std::clamp<float>(newNote.width, minNoteWidth(), maxNoteWidth());
-		newNote.lane = !metadata.isExtendedScore ? std::floor(newNote.lane) : newNote.lane;
 		newNote.lane = std::clamp<float>(newNote.lane, minLane(), maxLane(newNote.width));
 		newNote.layer = selectedLayer;
 		newNote.ease = newNote.ease >= maxEase() ? EaseType::Linear : newNote.ease;

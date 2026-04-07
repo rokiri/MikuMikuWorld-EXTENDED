@@ -117,10 +117,11 @@ namespace MikuMikuWorld
 		GuideColor guideCol;
 		FadeType fadeType;
 		HiSpeedEaseType hspdEase;
+		SoundEffectType soundEffect;
 		bool hideNotes;
 		bool mixedTick, mixedLane, mixedWidth, mixedCritical, mixedTrace, mixedFlick, mixedDummy;
 		bool mixedEase, mixedStep, mixedHoldCrit, mixedHoldDummy, mixedGuideCol, mixedFade,
-		    mixedAlpha;
+		    mixedAlpha, mixedSoundEffect;
 		bool mixedLayer, mixedSpeed, mixedSkips, mixedhspdEase, mixedHideNotes;
 	};
 

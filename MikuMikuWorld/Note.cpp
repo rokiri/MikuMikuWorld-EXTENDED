@@ -227,6 +227,35 @@ namespace MikuMikuWorld
 
 	std::string_view getNoteSE(const Note& note)
 	{
+		if (note.soundEffect != SoundEffectType::Default)
+		{
+			switch (note.soundEffect)
+			{
+			default:
+			case SoundEffectType::None:
+				return "";
+			case SoundEffectType::TapPerfect:
+				return SE_PERFECT;
+			case SoundEffectType::Flick:
+				return SE_FLICK;
+			case SoundEffectType::Trace:
+				return SE_FRICTION;
+			case SoundEffectType::Tick:
+				return SE_TICK;
+			case SoundEffectType::CritTap:
+				return SE_CRITICAL_TAP;
+			case SoundEffectType::CritFlick:
+				return SE_CRITICAL_FLICK;
+			case SoundEffectType::CritTrace:
+				return SE_CRITICAL_FRICTION;
+			case SoundEffectType::CritTick:
+				return SE_CRITICAL_TICK;
+			case SoundEffectType::Damage:
+				return SE_DAMAGE;
+			}
+		}
+		if (note.isHidden())
+			return "";
 		switch (note.type)
 		{
 		case NoteType::Tap:
