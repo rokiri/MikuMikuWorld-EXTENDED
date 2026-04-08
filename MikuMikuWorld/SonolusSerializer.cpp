@@ -671,15 +671,16 @@ namespace MikuMikuWorld
 			insertedHold.sortSteps(score.notes);
 		}
 
+		auto reduceMaxLane = [](int lane, const std::pair<id_t, Note>& noteP) -> int
+		{
+			const Note& note = noteP.second;
+			int left = std::ceil(std::abs(note.lane - 6));
+			int right = std::ceil(std::abs(note.lane + note.width - 6));
+			return std::max({ left - 6, right - 6, lane });
+		};
+
 		metadata.laneExtension =
-		    -6 + std::accumulate(score.notes.begin(), score.notes.end(), 6.f,
-		                         [](LaneType lane, const std::pair<id_t, Note>& noteP)
-		                         {
-			                         const Note& note = noteP.second;
-			                         LaneType left = std::abs(note.lane - 6);
-			                         LaneType right = std::abs(note.lane + note.width - 6);
-			                         return std::max({ left, right, lane });
-		                         });
+		    std::accumulate(score.notes.begin(), score.notes.end(), 0, reduceMaxLane);
 
 		std::string message;
 		if (unsupportedCount)

@@ -114,6 +114,7 @@ namespace MikuMikuWorld
 			note.lane = reader.readUInt32();
 			note.width = reader.readUInt32();
 		}
+		note.tick = std::max(note.tick, 0);
 
 		if (version.supportSoundEffect())
 			note.soundEffect = static_cast<SoundEffectType>(reader.readUInt32());
@@ -254,7 +255,7 @@ namespace MikuMikuWorld
 			int hiSpeedCount = reader.readUInt32();
 			for (int i = 0; i < hiSpeedCount; ++i)
 			{
-				int tick = reader.readUInt32();
+				int tick = std::max((int)reader.readUInt32(), 0);
 				float speed = reader.readSingle();
 				int layer = version.supportLayers() ? reader.readUInt32() : 0;
 				float skip = version.supportHispeedSkipEase() ? reader.readSingle() : 0;
@@ -262,7 +263,14 @@ namespace MikuMikuWorld
 				    version.supportHispeedSkipEase() ? reader.readUInt16() : 0);
 				bool hideNotes = version.supportHispeedSkipEase() ? reader.readUInt16() : false;
 
-				score.layers.at(layer).hiSpeedChanges[tick] = { tick, layer, speed, skip, ease, hideNotes };
+				HiSpeedCollection& hispeeds = score.layers.at(layer).hiSpeedChanges;
+				auto it = hispeeds.find(tick);
+				while (it != hispeeds.end())
+				{
+					++tick;
+					it = hispeeds.find(tick);
+				}
+				hispeeds[tick] = { tick, layer, speed, skip, ease, hideNotes };
 			}
 		}
 
@@ -550,6 +558,20 @@ namespace MikuMikuWorld
 				int tick = reader.readUInt32();
 				score.waypoints.emplace(i, Waypoint{ i, tick, name });
 			}
+		}
+
+		if (!version.supportExtendedNote() && version.supportLaneExtension())
+		{
+			// Recalculate lane extension since it can be decreased in the previous versions
+			auto reduceMaxLane = [](int lane, NoteCollection::const_reference nv) -> int
+			{
+				const Note& note = nv.second;
+				int left = std::ceil(std::abs(note.lane - 6));
+				int right = std::ceil(std::abs(note.lane + note.width - 6));
+				return std::max({ left - 6, right - 6, lane });
+			};
+			metadata.laneExtension = std::accumulate(score.notes.begin(), score.notes.end(),
+			                                         metadata.laneExtension, reduceMaxLane);
 		}
 
 		reader.close();
