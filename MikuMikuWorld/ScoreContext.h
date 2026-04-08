@@ -202,7 +202,7 @@ namespace MikuMikuWorld
 		bool hasHispeedSelected(const HiSpeed& hispeed) const;
 		tick_t getMinTickFromSelection() const;
 
-		void selectNote(Note& note);
+		void selectNote(Note& note, bool update = true);
 		void selectHiSpeed(const HiSpeed& hispeed);
 		void deselectNote(const Note& note);
 		void deselectHiSpeed(const HiSpeed& hispeed);

@@ -228,10 +228,10 @@ namespace MikuMikuWorld
 					{
 						context.deselectAll();
 						if (grabbingNote >= 0)
-							context.selectNote(context.score.notes.at(grabbingNote));
+							context.selectNote(context.score.notes.at(grabbingNote), true);
 					}
 					else
-						context.selectNote(note);
+						context.selectNote(note, true);
 					break;
 				}
 			}
@@ -1568,7 +1568,7 @@ namespace MikuMikuWorld
 				if (ImGui::InvisibleButton("S", size))
 				{
 					if (io.KeyCtrl)
-						context.selectNote(note);
+						context.selectNote(note, true);
 					else
 						context.deselectNote(note);
 				}
@@ -2513,6 +2513,7 @@ namespace MikuMikuWorld
 			previewHold.layer = edit.holdLayer;
 			noteStart.flag = noteEnd.flag = NoteFlag::LongNote;
 			noteStart.ease = edit.easeType, noteEnd.ease = EaseType::Linear;
+			noteStart.guideAlpha = noteEnd.guideAlpha = 1;
 			switch (edit.startType)
 			{
 			case EditHoldJointType::Normal:
@@ -2660,6 +2661,10 @@ namespace MikuMikuWorld
 					    setFlag(insNote->flag, NoteFlag::Critical,
 					            hold.holdStepAt(*insNote, context.score.notes).isCrit());
 				}
+				if (insNote && ImGui::GetIO().KeyCtrl)
+				{
+					context.selectNote(*insNote, true);
+				}
 			}
 
 			break;
@@ -2668,8 +2673,13 @@ namespace MikuMikuWorld
 			case InsertMode::InsertGuide:
 				if (isInsertingHold)
 				{
-					context.insertHold(noteStart, noteEnd, previewHold);
+					auto&& [_, n1, n2] = context.insertHold(noteStart, noteEnd, previewHold);
 					isInsertingHold = false;
+					if (ImGui::GetIO().KeyCtrl)
+					{
+						context.selectNote(n1, false);
+						context.selectNote(n2);
+					}
 				}
 				else
 				{

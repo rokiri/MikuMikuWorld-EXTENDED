@@ -901,10 +901,10 @@ namespace MikuMikuWorld
 		                minTick);
 	}
 
-	void ScoreContext::selectNote(Note& note)
+	void ScoreContext::selectNote(Note& note, bool update)
 	{
 		auto&& [_, emplaced] = selectedNotes.emplace(note.ID, &note);
-		if (emplaced)
+		if (emplaced && update)
 			updateSelectionFlag();
 	}
 
@@ -2469,8 +2469,8 @@ namespace MikuMikuWorld
 		{
 			selectedNotes.clear();
 			selectedHiSpeedChanges.clear();
-			selectNote(holdEnd);
-			selectNote(newHoldStart);
+			selectNote(holdEnd, true);
+			selectNote(newHoldStart, true);
 			pushHistory("Split hold");
 		}
 
