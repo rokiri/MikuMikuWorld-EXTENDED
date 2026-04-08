@@ -15,9 +15,9 @@
 
 namespace Audio
 {
-	constexpr size_t soundEffectsProfileCount = 2;
+	constexpr size_t soundEffectsProfileCount = 3;
 
-	constexpr const char* soundEffectsProfileNames[]{ "SE 01", "SE 02" };
+	constexpr const char* soundEffectsProfileNames[]{ "SE 01", "SE 02", "Taiko" };
 
 	enum class SoundFlags : uint8_t
 	{

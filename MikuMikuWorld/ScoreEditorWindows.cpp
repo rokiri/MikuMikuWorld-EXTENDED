@@ -1718,7 +1718,7 @@ namespace MikuMikuWorld
 			if (ImGui::CollapsingHeader(localize(Text::audio), ImGuiTreeNodeFlags_DefaultOpen) &&
 			    UI::beginPropertyTable())
 			{
-				int seProfiles[] = { 0, 1 };
+				int seProfiles[] = { 0, 1, 2 };
 				static_assert(std::size(seProfiles) == std::size(Audio::soundEffectsProfileNames));
 				UI::selectPropertyRow(Text::notesSE, config.seProfileIndex, seProfiles,
 				                      std::size(seProfiles),

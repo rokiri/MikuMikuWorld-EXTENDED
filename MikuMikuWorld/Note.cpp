@@ -1,6 +1,7 @@
 #include "Note.h"
 #include "Constants.h"
 #include "Score.h"
+#include "ApplicationConfiguration.h"
 #include <algorithm>
 
 namespace MikuMikuWorld
@@ -256,6 +257,7 @@ namespace MikuMikuWorld
 		}
 		if (note.isHidden())
 			return "";
+		bool usingTaikoSFX = getConfig().seProfileIndex == 2;
 		switch (note.type)
 		{
 		case NoteType::Tap:
@@ -264,7 +266,8 @@ namespace MikuMikuWorld
 			else if (note.isTrace())
 				return note.isCrit() ? SE_CRITICAL_FRICTION : SE_FRICTION;
 			else
-				return note.isCrit() && !note.isHold() ? SE_CRITICAL_TAP : SE_PERFECT;
+				return note.isCrit() && (!note.isHold() || usingTaikoSFX) ? SE_CRITICAL_TAP
+				                                                          : SE_PERFECT;
 		case NoteType::Tick:
 			return note.isCrit() ? SE_CRITICAL_TICK : SE_TICK;
 		case NoteType::Damage:
