@@ -95,6 +95,7 @@ video, 画面
 #- notes_skin,
 notes_se, ノーツSE
 show_tick_in_properties, プロパティにTickを表示
+#- warn_score_extension_disable,
 
 # score editor
 options, オプション

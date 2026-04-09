@@ -95,6 +95,7 @@ video,비디오
 #- notes_skin,
 notes_se,노투 사운드 효과
 show_tick_in_properties,속성에 체크 표시
+#- warn_score_extension_disable,
 
 # score editor
 options,옵션

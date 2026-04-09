@@ -1934,6 +1934,7 @@ namespace MikuMikuWorld
 					Note& note = score.notes.at(stepID);
 					note.flag = setFlag(note.flag, NoteFlag::Hidden);
 				}
+				hold.layer = HoldStepLayer::Bottom;
 			}
 			hold.updateJoints(score.notes);
 			hold.updateLongs(score.notes);
@@ -1981,6 +1982,7 @@ namespace MikuMikuWorld
 					Note& note = score.notes.at(stepID);
 					note.flag = setFlag(note.flag, NoteFlag::Critical, critical);
 				}
+				hold.layer = HoldStepLayer::Top;
 			}
 		}
 
@@ -2101,7 +2103,9 @@ namespace MikuMikuWorld
 	{
 		if (history.hasUndo())
 		{
-			score = history.undo();
+			auto&& entry = history.undo();
+			score = entry.score;
+			metadata = entry.metadata;
 			deselectAll();
 			selectedLayer = std::clamp<id_t>(selectedLayer, 0, score.layers.size() - 1);
 			upToDate = recentHistoryUndo == history.undoCount();
@@ -2115,7 +2119,9 @@ namespace MikuMikuWorld
 	{
 		if (history.hasRedo())
 		{
-			score = history.redo();
+			auto&& entry = history.redo();
+			score = entry.score;
+			metadata = entry.metadata;
 			deselectAll();
 			selectedLayer = std::clamp<id_t>(selectedLayer, 0, score.layers.size() - 1);
 			upToDate = recentHistoryUndo == history.undoCount();
@@ -2127,7 +2133,7 @@ namespace MikuMikuWorld
 
 	void ScoreContext::pushHistory(std::string_view description)
 	{
-		history.pushHistory(History{ std::string(description), score });
+		history.pushHistory(description, score, metadata);
 		scoreStats.calculateStats(score);
 		upToDate = false;
 	}
@@ -2160,8 +2166,7 @@ namespace MikuMikuWorld
 		newNote.holdID = -1;
 		if (!metadata.isExtendedScore)
 		{
-			newNote.width = std::floor(newNote.width);
-			newNote.lane = std::floor(newNote.lane);
+			newNote.width = std::floor(newNote.width + std::modf(newNote.lane, &newNote.lane));
 			newNote.soundEffect = SoundEffectType::Default;
 		}
 		newNote.width = std::clamp<float>(newNote.width, minNoteWidth(), maxNoteWidth());
@@ -2261,8 +2266,10 @@ namespace MikuMikuWorld
 		notesOrderedView.emplace(holdEnd.tick, &holdEnd);
 
 		HoldNote& newHold = score.holdNotes[nextIDH];
-		static_cast<HoldNoteStep&>(newHold) = hold;
 		newHold.fadeType = hold.fadeType;
+		newHold.flag = hold.flag;
+		newHold.guideColor = hold.guideColor;
+		newHold.layer = hold.layer;
 		newHold.ID = nextIDH;
 		newHold.steps.clear();
 		newHold.joints.clear();
@@ -2565,6 +2572,221 @@ namespace MikuMikuWorld
 		auto&& [_, inserted] = score.skills.insert(Skill{ tick });
 		if (inserted)
 			pushHistory("Insert skill");
+	}
+
+	void ScoreContext::setLaneExtension(int value, bool update)
+	{
+		if (metadata.laneExtension == value)
+			return;
+		metadata.laneExtension = value;
+		std::unordered_set<id_t> updatingHolds;
+		// Clamp note within the extended lanes
+		for (auto& [_, note] : score.notes)
+		{
+			// We'll try to keep the lane and width relative to the old values
+			bool updated = false;
+			if (note.lane < minLane())
+			{
+				note.lane += std::ceil(minLane() - note.lane);
+				updated = true;
+			}
+			else if (note.lane > maxLane(note.width))
+			{
+				note.lane -= std::ceil(note.lane - maxLane(note.width));
+			}
+			if (note.width > maxNoteWidth(note.lane))
+			{
+				note.width -= std::ceil(note.width - maxNoteWidth(note.lane));
+				updated = true;
+			}
+			if (updated && note.isHold())
+				updatingHolds.insert(note.holdID);
+		}
+		for (auto& id : updatingHolds)
+		{
+			HoldNote& hold = score.holdNotes.at(id);
+			hold.sortSteps(score.notes, !metadata.isExtendedScore);
+		}
+
+		if (update)
+			pushHistory("Change lane extension");
+	}
+
+	void ScoreContext::setScoreExtension(bool isExtended)
+	{
+		if (metadata.isExtendedScore == isExtended)
+			return;
+		metadata.isExtendedScore = isExtended;
+		if (!isExtended)
+		{
+			setLaneExtension(0, false);
+			std::vector<Note> newNotes;
+			for (auto& [_, note] : score.notes)
+			{
+				// Clamp note position
+				if (!isDivisibleBy(note.lane, 1.f))
+					note.lane = roundUnderHalf(note.lane);
+				if (!isDivisibleBy(note.width, 1.f))
+					note.width = std::round(note.width);
+				// Unset extended features
+				note.layer = 0;
+				note.soundEffect = SoundEffectType::Default;
+				note.ease = note.ease < maxEase() ? note.ease : EaseType::Linear;
+				note.flick = note.flick < maxFlick() ? note.flick : FlickType::Default;
+				constexpr NoteFlag extendedFlag =
+				    NoteFlag::Dummy | NoteFlag::NonAttached | NoteFlag::LongNote;
+				if (!note.isHold())
+				{
+					note.type = NoteType::Tap;
+					note.flag = setFlag(
+					    note.flag, NoteFlag::Hidden | NoteFlag::Attached | extendedFlag, false);
+					if (note.type == NoteType::Damage)
+						eraseNote(note, false);
+				}
+				else
+				{
+					note.flag = setFlag(note.flag, extendedFlag, false);
+				}
+			}
+			for (auto&& [_, hold] : score.holdNotes)
+			{
+				hold.separators.erase(hold.separators.begin(), hold.separators.end());
+				hold.flag = setFlag(hold.flag, HoldNoteFlag::Dummy, false);
+				hold.fadeType = FadeType::Classic;
+				hold.guideColor =
+				    hold.guideColor != GuideColor::Yellow ? GuideColor::Green : hold.guideColor;
+				hold.layer = hold.isGuide() ? HoldStepLayer::Bottom : HoldStepLayer::Top;
+
+				Note& startNote = score.notes.at(hold.steps.front());
+				Note& endNote = score.notes.at(hold.steps.back());
+				if (hold.isGuide())
+				{
+					hold.flag = setFlag(hold.flag, HoldNoteFlag::Critical, false);
+					if (startNote.type == NoteType::Tap && !startNote.isHidden())
+					{
+						newNotes.emplace_back(startNote).holdID = -1;
+						startNote.tick += 1; // auto shrink up
+					}
+					if (endNote.type == NoteType::Tap && !endNote.isHidden())
+					{
+						newNotes.emplace_back(endNote).holdID = -1;
+						endNote.tick -= 1; // auto shrink down
+					}
+					startNote.type = NoteType::Tap;
+					startNote.flag = setFlag(startNote.flag, NoteFlag::Hidden);
+					endNote.flag = setFlag(endNote.flag, NoteFlag::Hidden);
+
+					startNote.flag = setFlag(startNote.flag, NoteFlag::Critical,
+					                         hold.guideColor == GuideColor::Yellow);
+					endNote.flag = setFlag(endNote.flag, NoteFlag::Critical, startNote.flag);
+
+					for (size_t i = 1; i < hold.steps.size() - 1; ++i)
+					{
+						Note& stepNote = score.notes.at(hold.steps[i]);
+						if (stepNote.isAttached())
+						{
+							auto startJoint = hold.jointBeforeStep(stepNote, score.notes);
+							auto endJoint = hold.jointAfterStep(stepNote, score.notes);
+							assert(startJoint != nullptr && endJoint != nullptr);
+							if (startJoint && endJoint)
+							{
+								float l1 = startJoint->lane, r1 = l1 + startJoint->width;
+								float l2 = endJoint->lane, r2 = l2 + endJoint->width;
+								float ratio =
+								    unlerp(startJoint->tick, endJoint->tick, stepNote.tick, 0.5f);
+								auto easeFunc = getEaseFunction(startJoint->ease);
+								float lane = easeFunc(l1, l2, ratio);
+								float width = easeFunc(r1, r2, ratio) - lane;
+								stepNote.width = std::max<float>(
+								    std::floor(std::modf(lane, &stepNote.lane) + width),
+								    minNoteWidth());
+							}
+							stepNote.flag = setFlag(stepNote.flag, NoteFlag::Attached, false);
+							newNotes.emplace_back(stepNote).holdID = -1;
+						}
+						else if (!stepNote.isHidden() || stepNote.type != NoteType::Tick)
+						{
+							newNotes.emplace_back(stepNote).holdID = -1;
+						}
+						stepNote.type = NoteType::Tick;
+						stepNote.flag = setFlag(stepNote.flag, NoteFlag::Hidden);
+						stepNote.flag = setFlag(stepNote.flag, NoteFlag::Critical, startNote.flag);
+					}
+				}
+				else
+				{
+					hold.flag = setFlag(hold.flag, HoldNoteFlag::Critical,
+					                    hasFlag(startNote.flag, NoteFlag::Critical));
+					if (!startNote.isHidden() && startNote.isFlick())
+					{
+						newNotes.emplace_back(startNote).holdID = -1;
+						startNote.tick += 1; // auto shrink up
+						startNote.flick = FlickType::None;
+						startNote.flag = setFlag(startNote.flag, NoteFlag::Hidden);
+					}
+					if (!endNote.isTrace() && !endNote.isFlick())
+						endNote.flag = setFlag(endNote.flag, NoteFlag::Critical, startNote.flag);
+
+					std::vector<id_t> steps = { hold.steps.front() };
+					steps.reserve(hold.steps.size());
+					for (size_t i = 1; i < hold.steps.size() - 1; ++i)
+					{
+						Note& stepNote = score.notes.at(hold.steps[i]);
+						if (stepNote.isAttached() && stepNote.type != NoteType::Tick)
+						{
+							auto startJoint = hold.jointBeforeStep(stepNote, score.notes);
+							auto endJoint = hold.jointAfterStep(stepNote, score.notes);
+							assert(startJoint != nullptr && endJoint != nullptr);
+							if (startJoint && endJoint)
+							{
+								float l1 = startJoint->lane, r1 = l1 + startJoint->width;
+								float l2 = endJoint->lane, r2 = l2 + endJoint->width;
+								float ratio =
+								    unlerp(startJoint->tick, endJoint->tick, stepNote.tick, 0.5f);
+								auto easeFunc = getEaseFunction(startJoint->ease);
+								float lane = easeFunc(l1, l2, ratio);
+								float width = easeFunc(r1, r2, ratio) - lane;
+								stepNote.width = std::max<float>(
+								    std::floor(std::modf(lane, &stepNote.lane) + width),
+								    minNoteWidth());
+							}
+							stepNote.flag = setFlag(stepNote.flag, NoteFlag::Attached, false);
+							newNotes.emplace_back(stepNote).holdID = -1;
+
+							stepNote.flag = setFlag(stepNote.flag, NoteFlag::Hidden);
+						}
+						else if (stepNote.type != NoteType::Tick && !stepNote.isHidden())
+						{
+							newNotes.emplace_back(stepNote).holdID = -1;
+							stepNote.flag = setFlag(stepNote.flag, NoteFlag::Hidden);
+							steps.push_back(stepNote.ID);
+						}
+						else
+							steps.push_back(stepNote.ID);
+
+						stepNote.type = NoteType::Tick;
+						stepNote.flag = setFlag(stepNote.flag, NoteFlag::Critical, startNote.flag);
+					}
+					steps.push_back(hold.steps.back());
+					hold.steps = steps;
+				}
+
+				hold.sortSteps(score.notes, !metadata.isExtendedScore);
+			}
+			for (auto&& note : newNotes)
+				insertNote(note, note.holdID, false);
+			// Remove extra layers
+			score.layers.erase(score.layers.begin() + 1, score.layers.end());
+			selectedLayer = 0;
+			for (auto&& [_, hispeed] : score.layers[0].hiSpeedChanges)
+			{
+				hispeed.skips = 0;
+				hispeed.ease = HiSpeedEaseType::None;
+				hispeed.hideNotes = false;
+			}
+		}
+
+		pushHistory("Change score extension");
 	}
 
 	bool ScoreContext::isLayerVisible(id_t layer) const

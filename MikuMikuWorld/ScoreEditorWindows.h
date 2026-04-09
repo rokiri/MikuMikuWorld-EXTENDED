@@ -86,7 +86,7 @@ namespace MikuMikuWorld
 	  public:
 		static const char* getWindowName();
 		void update(ScoreEditorTimeline& timeline, ScoreContext& context,
-		            Audio::AudioManager& manager);
+		            Audio::AudioManager& manager, GenericDialog& dialog);
 
 	  private:
 		std::string loadingText = "Loading...";

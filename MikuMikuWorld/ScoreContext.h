@@ -259,6 +259,9 @@ namespace MikuMikuWorld
 		void eraseWaypoint(id_t waypointID);
 		void insertSkill(tick_t tick);
 
+		void setLaneExtension(int value, bool update = true);
+		void setScoreExtension(bool isExtended);
+
 		bool isLayerVisible(id_t layer) const;
 		bool isLayerInteractive(id_t layer) const;
 		bool isLayerSelected(id_t layer) const;

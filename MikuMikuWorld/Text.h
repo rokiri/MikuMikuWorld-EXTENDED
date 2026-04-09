@@ -108,6 +108,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(notesSkin, "notes_skin");
 	MMW_TEXT(notesSE, "notes_se");
 	MMW_TEXT(showTickInProperties, "show_tick_in_properties");
+	MMW_TEXT(warnScoreExtensionDisable, "warn_score_extension_disable");
 
 	// score editor
 	MMW_TEXT(options);

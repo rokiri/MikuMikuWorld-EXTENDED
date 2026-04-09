@@ -95,6 +95,7 @@ visuals,Đồ Họa
 notes_skin,Note Skin
 notes_se,Notes hiệu ứng âm thanh
 show_tick_in_properties,Hiện thuộc tính Tick trên thanh thông tin
+warn_score_extension_disable,Tắt tính năng mở rộng sẽ xóa dữ liệu của tính năng đó. Bạn có muốn tiếp tục?
 
 # score editor
 options,Cài đặt

@@ -95,6 +95,7 @@ visuals,Visuals
 notes_skin, Notes Skin
 notes_se,Notes SE
 show_tick_in_properties, Show Tick in Note Properties Window
+warn_score_extension_disable,Disabling extended features will remove associated data. Do you want to continue?
 
 # score editor
 options,Options

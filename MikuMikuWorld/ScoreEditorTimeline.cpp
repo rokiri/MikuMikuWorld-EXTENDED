@@ -354,8 +354,8 @@ namespace MikuMikuWorld
 			}
 			if (absScreenSize.x > 50)
 			{
-				const float leftPanThreshold = absScreenPos.x + absScreenSize.x * 0.1f;
-				const float rightPanThreshold = absScreenPos.x + absScreenSize.x * 0.9f;
+				const float leftPanThreshold = absScreenPos.x + absScreenSize.x * 0.05f;
+				const float rightPanThreshold = absScreenPos.x + absScreenSize.x * 0.95f;
 				if (absMousePos.x < leftPanThreshold)
 					targetOffset.x -=
 					    toLaneUnit(std::min(leftPanThreshold - absMousePos.x, 200.f) / 10);
@@ -1293,7 +1293,7 @@ namespace MikuMikuWorld
 		if (ImGui::IsItemDeactivated())
 		{
 			grabbingNote = -1;
-			const Score& score = context.history.peekCurrent();
+			const Score& score = context.history.peekCurrent().score;
 			for (auto&& [ID, pnote] : context.selectedNotes)
 			{
 				const Note& oldNote = score.notes.at(ID);
@@ -3510,7 +3510,7 @@ namespace MikuMikuWorld
 	{
 		context.deselectAll();
 		context.selectedLayer = 0;
-		context.history.clear(score);
+		context.history.clear(score, metadata);
 		context.recentHistoryUndo = context.history.undoCount();
 		context.score = std::move(score);
 		context.metadata = std::move(metadata);

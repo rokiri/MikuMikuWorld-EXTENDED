@@ -11,6 +11,7 @@ namespace MikuMikuWorld
 	{
 		std::string description;
 		Score score;
+		ScoreMetadata metadata;
 	};
 
 	class HistoryManager
@@ -23,18 +24,19 @@ namespace MikuMikuWorld
 
 	  public:
 		HistoryManager();
-		const Score& peekCurrent() const;
-		Score undo();
-		Score redo();
+		const History& peekCurrent() const;
+		const History& undo();
+		const History& redo();
 
 		int undoCount() const;
 		int redoCount() const;
 		std::tuple<iterator, iterator, iterator> getHistories() const;
 
 		void pushHistory(const History& history);
-		void pushHistory(const std::string& description, const Score& score);
+		void pushHistory(std::string_view description, const Score& score,
+		                 const ScoreMetadata& metadata);
 		void clear();
-		void clear(const Score& score);
+		void clear(const Score& score, const ScoreMetadata& metadata);
 		bool hasUndo() const;
 		bool hasRedo() const;
 	};

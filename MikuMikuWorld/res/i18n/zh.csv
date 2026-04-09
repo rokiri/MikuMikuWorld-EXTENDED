@@ -99,6 +99,7 @@ video,视频
 #- notes_skin,
 notes_se,音符音效
 show_tick_in_properties,在属性中显示刻度
+#- warn_score_extension_disable,
 
 # score editor
 options,选项

@@ -97,6 +97,7 @@ video, Видео
 #- notes_skin,
 notes_se, Звуковой эффект нот
 show_tick_in_properties, Показывать тик в характеристиках
+#- warn_score_extension_disable,
 
 # score editor / Редактор уровня
 options, Настройки

@@ -97,6 +97,7 @@ video, Video
 #- notes_skin,
 notes_se, Efecto de sonido de las notas
 show_tick_in_properties, Mostrar tick en las propiedades
+#- warn_score_extension_disable,
 
 # score editor / editor de partitura
 options, Opciones

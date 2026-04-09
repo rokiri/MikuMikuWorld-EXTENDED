@@ -179,7 +179,11 @@ namespace MikuMikuWorld
 			if (ImGui::Begin(timeline.getWindowName(), &open, timelineFlags | extraFlags))
 			{
 				if (ImGui::IsWindowFocused())
+				{
 					currTimelineId = id;
+					ScoreContext& newContext = timelines.at(id).context;
+					newContext.selectedFlag = setFlag(newContext.selectedFlag, SelectionFlag::DirtyProperty);
+				}
 
 				timeline.update(edit, pasteData);
 			}
@@ -200,7 +204,7 @@ namespace MikuMikuWorld
 		if (ImGui::Begin(ScorePropertiesWindow::getWindowName(), NULL, propWindowFlags))
 		{
 			if (currContext)
-				propertiesWindow.update(*currTimeline, *currContext, audio);
+				propertiesWindow.update(*currTimeline, *currContext, audio, dialog);
 			else
 				updateWindowNoContext();
 		}

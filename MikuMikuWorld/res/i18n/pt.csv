@@ -95,6 +95,7 @@ video, Vídeo
 #- notes_skin,
 notes_se, Efeito sonoro das notas
 show_tick_in_properties, Mostrar tick nas propriedades
+#- warn_score_extension_disable,
 
 # score editor / Editor de charts
 options, Opções

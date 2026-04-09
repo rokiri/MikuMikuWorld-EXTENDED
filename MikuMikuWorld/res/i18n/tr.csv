@@ -95,6 +95,7 @@ video, Video
 #- notes_skin,
 notes_se, Not SE
 show_tick_in_properties, Not Özellikleri Penceresinde Tik Göster
+#- warn_score_extension_disable,
 
 # score editor
 options, Seçenekler

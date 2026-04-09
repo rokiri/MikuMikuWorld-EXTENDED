@@ -415,7 +415,7 @@ namespace MikuMikuWorld
 	}
 
 	void ScorePropertiesWindow::update(ScoreEditorTimeline& timeline, ScoreContext& context,
-	                                   Audio::AudioManager& manager)
+	                                   Audio::AudioManager& manager, GenericDialog& dialog)
 	{
 		auto metadataName = []() { return UI::iconTitle(ICON_FA_ALIGN_LEFT, Text::metadata); };
 		if (ImGui::CollapsingHeader(
@@ -424,13 +424,20 @@ namespace MikuMikuWorld
 		{
 			UI::beginPropertyTable();
 			UI::stringPropertyRow(Text::title, context.metadata.title);
+			if (ImGui::IsItemDeactivatedAfterEdit())
+				context.pushHistory("Change score title");
 			UI::stringPropertyRow(Text::designer, context.metadata.author);
+			if (ImGui::IsItemDeactivatedAfterEdit())
+				context.pushHistory("Change score designer");
 			UI::stringPropertyRow(Text::artist, context.metadata.artist);
+			if (ImGui::IsItemDeactivatedAfterEdit())
+				context.pushHistory("Change score artist");
 
 			int result = UI::filePropertyRow(Text::jacket, context.metadata.jacketFile);
 			if (result == 1)
 			{
 				// context.workingData.jacket.load(jacketFile);
+				context.pushHistory("Change score jacket");
 			}
 			else if (result == 2)
 			{
@@ -441,14 +448,32 @@ namespace MikuMikuWorld
 
 				// if (fileDialog.openFile() == IO::FileDialogResult::OK)
 				//	context.workingData.jacket.load(fileDialog.outputFilename);
+				context.pushHistory("Change score jacket");
 			}
 			// context.workingData.jacket.draw();
 
-			UI::checkboxPropertyRow(Text::extendedScore, context.metadata.isExtendedScore);
+			bool isExtend = context.metadata.isExtendedScore;
+			if (UI::checkboxPropertyRow(Text::extendedScore, isExtend))
+			{
+				if (!isExtend)
+				{
+					std::string title = UI::modalTitle(Text::extendedScore);
+					std::string content = localize(Text::warnScoreExtensionDisable).string;
+					DialogContent::Action onYes = { localize(Text::yes).string,
+						                            [&]() { context.setScoreExtension(false); } };
+					DialogContent::Action onNo = { localize(Text::no).string, nullptr };
+					dialog.open(title, { content }, { onYes, onNo });
+				}
+				else
+					context.setScoreExtension(true);
+			}
 			if (context.metadata.isExtendedScore)
 			{
-				UI::intPropertyRow(Text::laneExtension, context.metadata.laneExtension, "%d", 0,
-				                   10000);
+				int laneExt = context.metadata.laneExtension;
+				if (UI::intPropertyRow(Text::laneExtension, laneExt, "%d", 0, 10000))
+					context.setLaneExtension(laneExt, false);
+				if (ImGui::IsItemDeactivatedAfterEdit())
+					context.pushHistory("Change lane extension");
 				UI::intPropertyRow(Text::lifePoint, context.metadata.baseLifePoint, "%d", 10,
 				                   1000000);
 			}

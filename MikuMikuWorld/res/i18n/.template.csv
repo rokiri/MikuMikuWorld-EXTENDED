@@ -95,6 +95,7 @@ visuals,
 notes_skin,
 notes_se,
 show_tick_in_properties,
+warn_score_extension_disable,
 
 # score editor
 options,
