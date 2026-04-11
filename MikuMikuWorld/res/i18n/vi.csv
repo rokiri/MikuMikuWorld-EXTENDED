@@ -73,8 +73,8 @@ theme_light,Sáng
 theme_dark,Tối
 custom_color,Màu tự chọn
 timeline,Dòng thời gian
-match_timeline_size_to_window,Điểu chỉnh kích thước làn theo độ rộng của màn hình
-match_notes_size_to_timeline,Điểu chỉnh kích thước note theo độ rộng của dòng thời gian
+match_timeline_size_to_window,Tự chỉnh độ rộng làn theo kích thước màn hình
+match_notes_size_to_timeline,Tự chỉnh độ cao note theo độ rộng làn
 lane_width,Độ rộng làn
 notes_height,Độ cao của note
 scrolling,Cuộn
@@ -84,7 +84,7 @@ use_smooth_scroll,Sử dụng cuộn mượt
 smooth_scroll_time,Thời gian cuộn mượt
 return_to_last_tick,Quay lại tick cuối khi dừng
 cursor_auto_scroll,Tự động cuộn theo con trỏ
-cursor_auto_scroll_amount,Phần trăm tự động cuộn theo con trỏ trên dòng thời gian
+cursor_auto_scroll_amount,Phần trăm tự động cuộn theo con trỏ
 background,Nền
 background_image,Ảnh hình nền
 draw_background,Hiện ảnh hình nền
