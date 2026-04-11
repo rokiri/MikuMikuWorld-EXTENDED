@@ -594,7 +594,8 @@ namespace MikuMikuWorld
 		const tick_t stopTick = accumulateTicks(timelineMax.y, context.score.tempoChanges);
 
 		measure_t measure = accumulateMeasures(startTick, context.score.timeSignatures);
-		auto currentTS = std::prev(context.score.timeSignatures.upper_bound(measure));
+		auto nextTS = context.score.timeSignatures.upper_bound(measure);
+		auto currentTS = std::prev(nextTS);
 		tick_t currentTickTS = accumulateTicks(currentTS->first, context.score.timeSignatures);
 		tick_t tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
 		tick_t tickPerBeat = ticksPerBeat(currentTS->second);
@@ -671,12 +672,13 @@ namespace MikuMikuWorld
 				measureTick += tickPerMeasure * offsetMeasure;
 				measureBeat += beatsPerMeasure(currentTS->second) * offsetMeasure;
 				// Check if time signature changes on current measure
-				auto it = context.score.timeSignatures.find(measure);
-				if (it != currentTS && it != context.score.timeSignatures.end())
+				if (nextTS != context.score.timeSignatures.end() &&
+				    nextTS->second.measure <= measure)
 				{
-					tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(it->second);
-					tickPerBeat = ticksPerBeat(it->second);
-					currentTS = it;
+					currentTS = nextTS;
+					tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
+					tickPerBeat = ticksPerBeat(currentTS->second);
+					++nextTS;
 				}
 			}
 
@@ -697,7 +699,9 @@ namespace MikuMikuWorld
 		}
 
 		measure = accumulateMeasures(startTick, context.score.timeSignatures);
-		currentTS = std::prev(context.score.timeSignatures.upper_bound(measure));
+		nextTS = context.score.timeSignatures.upper_bound(measure);
+		currentTS = std::prev(nextTS);
+		tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
 		const tick_t startTickMes = startTick - (startTick % tickPerMeasure),
 		             stopTickMes = stopTick + tickPerMeasure - (stopTick % tickPerMeasure);
 		color = measureColor;
@@ -721,6 +725,13 @@ namespace MikuMikuWorld
 				              y };
 			ImU32 col = ImAlphaBlendColors(0xff111111, measureTxtColor);
 			drawList->AddText(txtPos - txtSize, col, measureStr.c_str());
+
+			if (nextTS != context.score.timeSignatures.end() && nextTS->second.measure <= measure)
+			{
+				currentTS = nextTS;
+				tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
+				++nextTS;
+			}
 		}
 		ImGui::PopFont();
 
@@ -789,13 +800,6 @@ namespace MikuMikuWorld
 		if (leftX > maxScreenPos.x || (rightX + sideWidth) < absScreenPos.x)
 			return;
 
-		// if (hasFlag(note.flag, NoteFlag::LongNote))
-		//{
-		//	Color fill = stepFills[note.isCrit() ? Step_HiddenCritical : Step_Hidden] * tint;
-		//	drawSplitter.SetCurrentChannel(drawList, baseChannel + Channel_Outline);
-		//	drawList->AddRectFilled({ (leftX + sideWidth), centerY - height },
-		//	                        { rightX, centerY + height }, fill.toImU32());
-		// }
 		drawSplitter.SetCurrentChannel(drawList, baseChannel + Channel_TapNote);
 		drawList->AddImage(texID, { leftX, top }, { leftX + sideWidth, bottom }, { l, t }, { c, b },
 		                   col);
