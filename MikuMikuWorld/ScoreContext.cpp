@@ -2727,8 +2727,6 @@ namespace MikuMikuWorld
 					if (!endNote.isTrace() && !endNote.isFlick())
 						endNote.flag = setFlag(endNote.flag, NoteFlag::Critical, startNote.flag);
 
-					std::vector<id_t> steps = { hold.steps.front() };
-					steps.reserve(hold.steps.size());
 					for (size_t i = 1; i < hold.steps.size() - 1; ++i)
 					{
 						Note& stepNote = score.notes.at(hold.steps[i]);
@@ -2759,16 +2757,11 @@ namespace MikuMikuWorld
 						{
 							newNotes.emplace_back(stepNote).holdID = -1;
 							stepNote.flag = setFlag(stepNote.flag, NoteFlag::Hidden);
-							steps.push_back(stepNote.ID);
 						}
-						else
-							steps.push_back(stepNote.ID);
 
 						stepNote.type = NoteType::Tick;
 						stepNote.flag = setFlag(stepNote.flag, NoteFlag::Critical, startNote.flag);
 					}
-					steps.push_back(hold.steps.back());
-					hold.steps = steps;
 				}
 
 				hold.sortSteps(score.notes, !metadata.isExtendedScore);
