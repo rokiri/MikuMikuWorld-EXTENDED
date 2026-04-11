@@ -78,6 +78,8 @@ namespace Audio
 				SoundInstance& debugSound = baseSounds.emplace_back();
 				auto filename = (path / mmw::SE_NAMES[i]).wstring();
 				filename.append(L".mp3");
+				if (!IO::File::exists(IO::stringToPath(filename)))
+					continue;
 				ma_sound_init_from_file_w(&engine, filename.c_str(), maSoundFlagsDecodeAsync,
 				                          &soundEffectsGroup, nullptr, &debugSound.source);
 			}
