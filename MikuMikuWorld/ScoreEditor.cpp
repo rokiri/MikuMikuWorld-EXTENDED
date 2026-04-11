@@ -177,9 +177,13 @@ namespace MikuMikuWorld
 			{
 				if (ImGui::IsWindowFocused())
 				{
+					if (currTimelineId != id)
+					{
+						ScoreContext& newContext = timelines.at(id).context;
+						newContext.selectedFlag =
+						    setFlag(newContext.selectedFlag, SelectionFlag::DirtyProperty);
+					}
 					currTimelineId = id;
-					ScoreContext& newContext = timelines.at(id).context;
-					newContext.selectedFlag = setFlag(newContext.selectedFlag, SelectionFlag::DirtyProperty);
 				}
 
 				timeline.update(edit, pasteData, renderer.get());
