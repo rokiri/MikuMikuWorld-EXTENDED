@@ -2035,7 +2035,11 @@ namespace MikuMikuWorld
 
 	const char* LayersWindow::getWindowName()
 	{
-		auto fetchName = []() { return UI::iconTitle(ICON_FA_LAYER_GROUP, Text::layer); };
+		auto fetchName = []()
+		{
+			return IO::formatString("%s %s###%s", ICON_FA_LAYER_GROUP, localize(Text::layer),
+			                        "layers");
+		};
 		return localizeOrInsert("__layers_window", fetchName);
 	}
 
