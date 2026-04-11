@@ -62,6 +62,13 @@ namespace MikuMikuWorld
 		Texture(const std::string& filename, TextureFilterMode min, TextureFilterMode mag);
 		Texture(const std::string& filename, TextureFilterMode filter);
 		Texture(const std::string& filename);
+
+		Texture(const Texture&) = delete;
+		Texture& operator=(const Texture&) = delete;
+
+		Texture(Texture&& other) noexcept;
+		Texture& operator=(Texture&& other) noexcept;
+
 		~Texture();
 
 		inline int getWidth() const { return width; }

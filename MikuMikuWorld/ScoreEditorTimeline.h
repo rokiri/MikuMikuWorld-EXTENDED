@@ -15,7 +15,7 @@ namespace MikuMikuWorld
 	  public:
 		ScoreContext context;
 
-		void update(EditArgs& edit, PasteData& pasteData);
+		void update(EditArgs& edit, PasteData& pasteData, Renderer* renderer);
 		void updateInBackground();
 
 		int getQuarterDivision() const noexcept;
@@ -47,6 +47,8 @@ namespace MikuMikuWorld
 		secs_t getCurrentTime() const;
 		tick_t getCurrentTick() const;
 		measure_t getCurrentMeasure() const;
+		const Jacket& getJacket() const;
+		Background& getBackground();
 
 	  private:
 		enum DrawChannel
@@ -194,6 +196,7 @@ namespace MikuMikuWorld
 		NotesContext previewNotes;
 		EventArgs eventEditArgs;
 		Background background;
+		Jacket jacket; 
 		ImDrawListSplitter drawSplitter;
 		std::future<void> loadMusicFuture;
 		std::unordered_set<std::string> playingNoteSounds;

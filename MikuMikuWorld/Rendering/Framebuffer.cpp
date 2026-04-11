@@ -13,6 +13,38 @@ namespace MikuMikuWorld
 
 	Framebuffer::~Framebuffer() { dispose(); }
 
+	Framebuffer::Framebuffer(Framebuffer&& other) noexcept
+	    : fbo(other.fbo), rbo(other.rbo), buffer(other.buffer), width(other.width),
+	      height(other.height)
+	{
+		other.fbo = 0;
+		other.rbo = 0;
+		other.buffer = 0;
+		other.width = 0;
+		other.height = 0;
+	}
+
+	Framebuffer& Framebuffer::operator=(Framebuffer&& other) noexcept
+	{
+		if (this != &other)
+		{
+			dispose();
+
+			fbo = other.fbo;
+			rbo = other.rbo;
+			buffer = other.buffer;
+			width = other.width;
+			height = other.height;
+
+			other.fbo = 0;
+			other.rbo = 0;
+			other.buffer = 0;
+			other.width = 0;
+			other.height = 0;
+		}
+		return *this;
+	}
+
 	unsigned int Framebuffer::getWidth() const { return width; }
 
 	unsigned int Framebuffer::getHeight() const { return height; }
@@ -40,14 +72,20 @@ namespace MikuMikuWorld
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 		glBindTexture(GL_TEXTURE_2D, 0);
 
-		glDeleteFramebuffers(1, &fbo);
+		if (fbo)
+			glDeleteFramebuffers(1, &fbo);
 		fbo = 0;
 
-		glDeleteTextures(1, &buffer);
+		if (buffer)
+			glDeleteTextures(1, &buffer);
 		buffer = 0;
 
-		glDeleteRenderbuffers(1, &rbo);
+		if (rbo)
+			glDeleteRenderbuffers(1, &rbo);
 		rbo = 0;
+
+		width = 0;
+		height = 0;
 	}
 
 	void Framebuffer::resize(unsigned int w, unsigned int h)

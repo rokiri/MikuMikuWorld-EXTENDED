@@ -6,57 +6,70 @@
 #include "VertexBuffer.h"
 #include <vector>
 #include <array>
+#include <map>
 
 namespace MikuMikuWorld
 {
-	constexpr size_t maxQuads = 1500;
-
 	class Renderer
 	{
 	  private:
-		size_t numVertices;
-		size_t numBatchVertices;
-		size_t numIndices;
-		size_t numQuads;
-		size_t numBatchQuads;
+		size_t numVertices{};
+		size_t numBatchVertices{};
+		size_t numIndices{};
+		size_t numQuads{};
+		size_t numBatchQuads{};
 
+		struct DrawConfig
+		{
+			int channel;
+			int texID;
+			int texMaskID;
+			int offset;
+			int length;
+		};
+		std::vector<DrawConfig> draws;
+		std::vector<Vertex> vertices;
 		VertexBuffer vBuffer;
-		std::vector<Quad> quads;
 		std::array<DirectX::XMVECTOR, 4> vPos;
 		std::array<DirectX::XMVECTOR, 4> uvCoords;
+		std::array<DirectX::XMVECTOR, 4> vColor;
 
-		unsigned int vao, vbo, ebo;
-		int texID;
-		bool batchStarted;
+		bool batchStarted{ false };
 
-		void init();
 		void resetRenderStats();
+		void newDrawConfig(int channel, int texID = -1, int texMaskID = -1);
+		void bindTexture(const DrawConfig& config);
+		void unbindTexture();
 
 	  public:
 		Renderer();
 
-		void drawSprite(const Vector2& pos, float rot, const Vector2& sz, AnchorType anchor,
-		                const Texture& tex, const Sprite& spr, const Color& tint, int z = 0);
-		void drawSprite(const Vector2& pos, float rot, const Vector2& sz, AnchorType anchor,
-		                const Texture& tex, float x1, float x2, float y1, float y2,
-		                const Color& tint = { 1.0f, 1.0f, 1.0f, 1.0f }, int z = 0);
+		int getChannelID() const;
+		void setChannelID(int id);
 
-		void drawQuad(const Vector2& p1, const Vector2& p2, const Vector2& p3, const Vector2& p4,
-		              const Texture& tex, float x1, float x2, float y1, float y2,
-		              const Color& tint = { 1.0f, 1.0f, 1.0f, 1.0f }, int z = 0);
+		void setTexture(const Texture& tex, const Sprite& spr);
+		void setTexture(const Texture& tex, const Sprite& spr, const Texture& mask,
+		                const Sprite& maskSpr);
+		void setTexture(int texID, const Vector2& uvMin, const Vector2& uvMax);
+		void setTexture(int texID, const std::array<DirectX::XMFLOAT4, 4>& uvs);
+		void setTexture(int texID, int maskID, const Vector2& uvMin, const Vector2& uvMax,
+		                const Vector2& muvMin, const Vector2& muvMax);
+		void setTexture(int texID, int maskID, const std::array<DirectX::XMFLOAT4, 4>& uvs);
 
-		void drawRectangle(Vector2 position, Vector2 size, const Texture& tex, float x1, float x2,
-		                   float y1, float y2, Color tint, int z);
+		void setColors(const Color& color);
+		void setColors(const Color& c1, const Color& c2, const Color& c3, const Color& c4);
+		void setColors(const std::array<DirectX::XMFLOAT4, 4>& colors);
 
-		void setUVCoords(const Texture& tex, float x1, float x2, float y1, float y2);
-		void setAnchor(AnchorType type);
-		DirectX::XMMATRIX getModelMatrix(const Vector2& pos, const float rot, const Vector2& sz);
+		// Draw functions
+		using Degree = float;
+		void drawSprite(const Vector2& pos, Degree rot, const Vector2& size, AnchorType anchor);
+		void drawRectangle(const Vector2& pos, const Vector2& size);
 
-		void pushQuad(const std::array<DirectX::XMVECTOR, 4>& pos,
-		              const std::array<DirectX::XMVECTOR, 4>& uv, const DirectX::XMMATRIX& m,
-		              const DirectX::XMVECTOR& col, int tex, int z);
+		void drawQuad(const Vector2& p1, const Vector2& p2, const Vector2& p3, const Vector2& p4);
+		void drawQuad(const std::array<DirectX::XMFLOAT4, 4>& pos, const DirectX::XMMATRIX& m);
 
-		void bindTexture(int tex);
+		void pushQuad();
+
 		void beginBatch();
 		void endBatch();
 

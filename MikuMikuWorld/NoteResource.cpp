@@ -24,7 +24,7 @@ namespace MikuMikuWorld
 		INS_SPR_MAX
 	};
 
-	const Sprite* TimelineTexture::getScoreStatsSprite(const InsertMode& mode)
+	const Sprite* TimelineResources::getScoreStatsSprite(const InsertMode& mode)
 	{
 		if (!toolbarTex)
 			return nullptr;
@@ -46,8 +46,8 @@ namespace MikuMikuWorld
 		}
 	}
 
-	const Sprite* TimelineTexture::getInsertModeSprite(const InsertMode& mode,
-	                                                   const EditArgs& edit) const
+	const Sprite* TimelineResources::getInsertModeSprite(const InsertMode& mode,
+	                                                     const EditArgs& edit) const
 	{
 		if (!toolbarTex)
 			return nullptr;
@@ -76,7 +76,7 @@ namespace MikuMikuWorld
 		return toolbarTex->getSprite(name);
 	}
 
-	bool TimelineTexture::load()
+	bool TimelineResources::load()
 	{
 		auto path =
 		    Application::getInstance().getResourcePath("textures", "editor", "timeline_tools.png");
@@ -108,7 +108,7 @@ namespace MikuMikuWorld
 		return true;
 	}
 
-	const Texture* TimelineTexture::getToolbarTexture() const { return toolbarTex.get(); }
+	const Texture* TimelineResources::getToolbarTexture() const { return toolbarTex.get(); }
 
 	enum SPR_
 	{
@@ -157,7 +157,7 @@ namespace MikuMikuWorld
 		SPR_MAX
 	};
 
-	const Sprite* NoteTexture::getNoteSprite(const Note& note) const
+	const Sprite* NoteResources::getNoteSprite(const Note& note) const
 	{
 		if (!texture)
 			return nullptr;
@@ -188,7 +188,7 @@ namespace MikuMikuWorld
 		return sprites[spr];
 	}
 
-	const Sprite* NoteTexture::getFlickArrowSprite(const Note& note) const
+	const Sprite* NoteResources::getFlickArrowSprite(const Note& note) const
 	{
 		if (!texture)
 			return nullptr;
@@ -200,19 +200,19 @@ namespace MikuMikuWorld
 		return sprites[SPR_FLICK_ARROW_01 + offset + arrowSize];
 	}
 
-	const Sprite* NoteTexture::getFrictionSprite(const Note& note) const
+	const Sprite* NoteResources::getFrictionSprite(const Note& note) const
 	{
 		return sprites[note.isCrit()    ? SPR_NOTE_FRICTION_AMONG_CRITICAL
 		               : note.isFlick() ? SPR_NOTE_FRICTION_AMONG_FLICK
 		                                : SPR_NOTE_FRICTION_AMONG];
 	}
 
-	const Sprite* NoteTexture::getDummyCrossSprite() const
+	const Sprite* NoteResources::getDummyCrossSprite() const
 	{
 		return texture ? sprites[SPR_DUMMY_CROSS] : nullptr;
 	}
 
-	const Sprite* NoteTexture::getHoldNoteSprite(const HoldNoteStep& holdStep) const
+	const Sprite* NoteResources::getHoldNoteSprite(const HoldNoteStep& holdStep) const
 	{
 		if (!texture)
 			return nullptr;
@@ -221,7 +221,7 @@ namespace MikuMikuWorld
 		return sprites[!holdStep.isCrit() ? SPR_LONG_NORMAL : SPR_LONG_CRITICAL_NORMAL];
 	}
 
-	bool NoteTexture::load(const std::string& profile)
+	bool NoteResources::load(const std::string& profile)
 	{
 		auto path =
 		    Application::getInstance().getResourcePath("textures", "note", profile, "notes.png");
@@ -272,11 +272,11 @@ namespace MikuMikuWorld
 		return true;
 	}
 
-	const Texture* NoteTexture::getTexture() const { return texture.get(); }
+	const Texture* NoteResources::getTexture() const { return texture.get(); }
 
-	const std::vector<std::string>& NoteTexture::getProfiles() const { return profiles; }
+	const std::vector<std::string>& NoteResources::getProfiles() const { return profiles; }
 
-	void NoteTexture::scanProfiles()
+	void NoteResources::scanProfiles()
 	{
 		profiles.clear();
 		auto notePath = Application::getInstance().getResourcePath("textures", "note");
@@ -287,7 +287,7 @@ namespace MikuMikuWorld
 				profiles.push_back(entry.path().filename().string());
 	}
 
-	NoteMapping NoteTexture::getTapNoteMapping(const Note& note) const
+	NoteMapping NoteResources::getTapNoteMapping(const Note& note) const
 	{
 		const Sprite* sprite = getNoteSprite(note);
 		if (!sprite)
@@ -298,7 +298,7 @@ namespace MikuMikuWorld
 		return { left / w, center / w, right / w, sprite->getY1() / h, sprite->getY2() / h };
 	}
 
-	NoteMapping NoteTexture::getHoldStepMapping(const HoldNoteStep& holdStep) const
+	NoteMapping NoteResources::getHoldStepMapping(const HoldNoteStep& holdStep) const
 	{
 		const Sprite* sprite = getHoldNoteSprite(holdStep);
 		if (!sprite)
@@ -308,4 +308,238 @@ namespace MikuMikuWorld
 		const float w = texture->getWidth(), h = texture->getHeight();
 		return { left / w, center / w, right / w, sprite->getY1() / h, sprite->getY2() / h };
 	}
+
+	bool BackgroundResources::load()
+	{
+		bool success = true;
+		auto path = Application::getInstance().getResourcePath("textures", "editor", "stage.png");
+		if (fs::exists(path))
+			stage = std::make_unique<Texture>(IO::toString(path));
+		else
+		{
+			success = false;
+			fprintf(stderr, "ERROR: Could not find texture file %s\n", IO::toString(path).c_str());
+		}
+
+		path.replace_filename("stage_deco.png");
+		if (fs::exists(path))
+			stageDecoration = std::make_unique<Texture>(IO::toString(path));
+		else
+		{
+			success = false;
+			fprintf(stderr, "ERROR: Could not find texture file %s\n", IO::toString(path).c_str());
+		}
+
+		path.replace_filename("default.png");
+		if (fs::exists(path))
+			stageBackground = std::make_unique<Texture>(IO::toString(path));
+		else
+		{
+			success = false;
+			fprintf(stderr, "ERROR: Could not find texture file %s\n", IO::toString(path).c_str());
+		}
+
+		path.replace_filename("default_jacket.png");
+		if (fs::exists(path))
+			jacket = std::make_unique<Texture>(IO::toString(path));
+		else
+		{
+			success = false;
+			fprintf(stderr, "ERROR: Could not find texture file %s\n", IO::toString(path).c_str());
+		}
+
+		return success && setBackground(getConfig().backgroundImage);
+	}
+
+	bool BackgroundResources::setBackground(const std::string& filename)
+	{
+		if (background && background->getFilename() == filename)
+			return true;
+		if (filename.empty())
+		{
+			background = nullptr;
+			return true;
+		}
+		auto path = IO::toString(filename);
+		if (!fs::exists(path))
+		{
+			fprintf(stderr, "ERROR: Could not find texture file %s\n", filename.c_str());
+			return false;
+		}
+		else
+			background = std::make_unique<Texture>(filename);
+		return true;
+	}
+
+	bool BackgroundResources::isBackgroundSet() const { return (bool)background; }
+
+	const Texture* BackgroundResources::getStageTexture() const { return stage.get(); }
+	const Texture* BackgroundResources::getStageBGTexture() const { return stageBackground.get(); }
+	const Texture* BackgroundResources::getStageDecoTexture() const { return &*stageDecoration; }
+	const Texture* BackgroundResources::getBackgroundTexture() const { return background.get(); }
+	const Texture* BackgroundResources::getDefaultJacketTexture() const { return jacket.get(); }
+
+	const Sprite* BackgroundResources::getMaskWhite() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("tex_mask_all") : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getJacketLeftCover() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("tex_2dmode_jacket_nml_l") : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getJacketRightCover() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("tex_2dmode_jacket_nml_r") : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getJacketLeftCoverMirror() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("tex_2dmode_jacket_mirror_l") : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getJacketRightCoverMirror() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("tex_2dmode_jacket_mirror_r") : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getJacketCenterWindow() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("bg_2dmode_window_nml") : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getJacketCenterWindowMirror() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("bg_2dmode_window_mirror") : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getJacketCenterCover() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("tex_2dmode_jacket_nml_main") : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getJacketCenterCoverMirror() const
+	{
+		return stageDecoration ? stageDecoration->getSprite("tex_2dmode_jacket_mirror_main")
+		                       : nullptr;
+	}
+
+	const Sprite* BackgroundResources::getStageFloor() const
+	{
+		return stage ? stage->getSprite("mask_2dmode_floor_grd") : nullptr;
+	}
+
+	static void applyMask(std::array<DirectX::XMFLOAT4, 4>& uvs, const Texture& tex,
+	                      const Sprite& spr)
+	{
+		Vector2 uvVec[4];
+		std::tie(uvVec[0], uvVec[2]) = tex.getCoords(spr);
+		uvVec[1] = { uvVec[2].x, uvVec[0].y };
+		uvVec[3] = { uvVec[0].x, uvVec[2].y };
+		for (int i = 0; i < 4; ++i)
+		{
+			uvs[i].z = uvVec[i].x;
+			uvs[i].w = uvVec[i].y;
+		}
+	};
+
+	using Quad_t = std::array<DirectX::XMFLOAT4, 4>;
+
+	Quad_t BackgroundResources::getJacketMaskLeftUV() const
+	{
+		Quad_t uvs{ {
+			{ 5.500 / 740, 278.3 / 740, 0, 0 },
+			{ 317.5 / 740, 297.7 / 740, 0, 0 },
+			{ 303.8 / 740, 504.8 / 740, 0, 0 },
+			{ -8.00 / 740, 497.4 / 740, 0, 0 },
+		} };
+		const Sprite* sprite = nullptr;
+		if (!stageDecoration ||
+		    !(sprite = stageDecoration->getSprite("tex_2dmode_jacket_nml_l_mask")))
+			return uvs;
+		applyMask(uvs, *stageDecoration, *sprite);
+		return uvs;
+	}
+
+	Quad_t BackgroundResources::getJacketMaskRightUV() const
+	{
+		Quad_t uvs{ {
+			{ 415.0 / 740, 171.4 / 740, 0, 0 },
+			{ 738.2 / 740, 188.1 / 740, 0, 0 },
+			{ 749.5 / 740, 377.7 / 740, 0, 0 },
+			{ 432.1 / 740, 363.9 / 740, 0, 0 },
+		} };
+		const Sprite* sprite = nullptr;
+		if (!stageDecoration ||
+		    !(sprite = stageDecoration->getSprite("tex_2dmode_jacket_nml_r_mask")))
+			return uvs;
+		applyMask(uvs, *stageDecoration, *sprite);
+		return uvs;
+	}
+
+	Quad_t BackgroundResources::getJacketMaskLeftMirrorUV() const
+	{
+		Quad_t uvs{ {
+			{ 6.89224600 / 740, 498.470642 / 740, 0, 0 },
+			{ 310.765869 / 740, 491.944763 / 740, 0, 0 },
+			{ 292.761414 / 740, 247.401382 / 740, 0, 0 },
+			{ -6.2467040 / 740, 258.264862 / 740, 0, 0 },
+		} };
+		const Sprite* sprite = nullptr;
+		if (!stageDecoration ||
+		    !(sprite = stageDecoration->getSprite("tex_2dmode_jacket_mirror_l_mask")))
+			return uvs;
+		applyMask(uvs, *stageDecoration, *sprite);
+		return uvs;
+	}
+
+	Quad_t BackgroundResources::getJacketMaskRightMirrorUV() const
+	{
+		Quad_t uvs{ {
+			{ 418.899414 / 740, 332.759491 / 740, 0, 0 },
+			{ 743.541321 / 740, 355.960449 / 740, 0, 0 },
+			{ 733.444458 / 740, 183.954681 / 740, 0, 0 },
+			{ 410.746246 / 740, 155.907684 / 740, 0, 0 },
+		} };
+		const Sprite* sprite = nullptr;
+		if (!stageDecoration ||
+		    !(sprite = stageDecoration->getSprite("tex_2dmode_jacket_mirror_r_mask")))
+			return uvs;
+		applyMask(uvs, *stageDecoration, *sprite);
+		return uvs;
+	}
+
+	Quad_t BackgroundResources::getJacketMaskCenterUV() const
+	{
+		Quad_t uvs{ {
+			{ 0.04369600 / 740, -1.8595040 / 740, 0, 0 },
+			{ 739.961182 / 740, -1.8595040 / 740, 0, 0 },
+			{ 755.541687 / 740, 744.057861 / 740, 0, 0 },
+			{ -17.484388 / 740, 744.057861 / 740, 0, 0 },
+		} };
+		const Sprite* sprite = nullptr;
+		if (!stageDecoration ||
+		    !(sprite = stageDecoration->getSprite("tex_2dmode_jacket_nml_main_mask")))
+			return uvs;
+		applyMask(uvs, *stageDecoration, *sprite);
+		return uvs;
+	}
+
+	Quad_t BackgroundResources::getJacketMaskCenterMirrorUV() const
+	{
+		Quad_t uvs{ {
+			{ -1.8640660 / 740, 731.297241 / 740, 0, 0 },
+			{ 743.909424 / 740, 731.297241 / 740, 0, 0 },
+			{ 747.697083 / 740, 2.16445300 / 740, 0, 0 },
+			{ 3.83724200 / 740, 2.16445300 / 740, 0, 0 },
+		} };
+		const Sprite* sprite = nullptr;
+		if (!stageDecoration ||
+		    !(sprite = stageDecoration->getSprite("tex_2dmode_jacket_mirror_main_mask")))
+			return uvs;
+		applyMask(uvs, *stageDecoration, *sprite);
+		return uvs;
+	}
+
 }

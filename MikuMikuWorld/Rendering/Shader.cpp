@@ -14,7 +14,28 @@ namespace MikuMikuWorld
 		compile(source);
 	}
 
-	Shader::~Shader() { glDeleteProgram(ID); }
+	Shader::Shader(Shader&& other) noexcept
+	    : ID(other.ID), name(std::move(other.name)), locMap(std::move(other.locMap))
+	{
+		other.ID = 0;
+	}
+
+	Shader& Shader::operator=(Shader&& other) noexcept
+	{
+		if (this != &other)
+		{
+			dispose();
+
+			ID = other.ID;
+			name = std::move(other.name);
+			locMap = std::move(other.locMap);
+
+			other.ID = 0;
+		}
+		return *this;
+	}
+
+	Shader::~Shader() { dispose(); }
 
 	std::string Shader::getName() const { return name; }
 
@@ -112,6 +133,16 @@ namespace MikuMikuWorld
 
 	void Shader::use() { glUseProgram(ID); }
 
+	void Shader::dispose()
+	{
+		if (ID == 0)
+			return;
+		glDeleteProgram(ID);
+		ID = 0;
+		name.clear();
+		locMap.clear();
+	}
+
 	void Shader::setBool(const std::string& name, bool value)
 	{
 		glUniform1i(getUniformLoc(name), (int)value);
@@ -144,7 +175,9 @@ namespace MikuMikuWorld
 
 	void Shader::setMatrix4(const std::string& name, DirectX::XMMATRIX value)
 	{
-		glUniformMatrix4fv(getUniformLoc(name), 1, GL_FALSE, (GLfloat*)&value.r->m128_f32[0]);
+		DirectX::XMFLOAT4X4 mat;
+		DirectX::XMStoreFloat4x4(&mat, value);
+		glUniformMatrix4fv(getUniformLoc(name), 1, GL_FALSE, (GLfloat*)&mat.m[0][0]);
 	}
 
 }

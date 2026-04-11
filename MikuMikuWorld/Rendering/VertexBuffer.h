@@ -9,7 +9,7 @@ namespace MikuMikuWorld
 		Vertex* buffer;
 		int* indices;
 		int indexCapacity;
-		int vertexCapcity;
+		int vertexCapacity;
 		int bufferPos;
 
 		unsigned int vao;
@@ -20,10 +20,16 @@ namespace MikuMikuWorld
 		VertexBuffer(int _capacity);
 		~VertexBuffer();
 
+		VertexBuffer(const VertexBuffer&) = delete;
+		VertexBuffer& operator=(const VertexBuffer&) = delete;
+
+		VertexBuffer(VertexBuffer&& other) noexcept;
+		VertexBuffer& operator=(VertexBuffer&& other) noexcept;
+
 		void setup();
 		void dispose();
 		void bind() const;
-		void pushBuffer(const Quad& q);
+		size_t pushBuffer(const Vertex* vertices, size_t count);
 		void resetBufferPos();
 		void uploadBuffer();
 		void flushBuffer();

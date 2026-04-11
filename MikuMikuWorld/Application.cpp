@@ -171,11 +171,12 @@ namespace MikuMikuWorld
 	void Application::loadResources()
 	{
 		resource.loadShader("basic2d");
+		resource.loadShader("basicMask");
 
-		resource.noteTexture.scanProfiles();
-		resource.noteTexture.load(config.notesSkin);
-
-		resource.timelineTexture.load();
+		resource.noteResources.scanProfiles();
+		resource.noteResources.load(config.notesSkin);
+		resource.timelineResources.load();
+		resource.backgroundResources.load();
 
 		if (!localization.setLanguage(config.language))
 		{

@@ -20,6 +20,8 @@ namespace MikuMikuWorld
 {
 	ScoreEditor::ScoreEditor()
 	{
+		renderer = std::make_unique<Renderer>();
+
 		const auto& config = getConfig();
 		audio.initializeAudioEngine();
 		audio.setMasterVolume(config.masterVolume);
@@ -117,7 +119,6 @@ namespace MikuMikuWorld
 	void ScoreEditor::uninitialize()
 	{
 		audio.uninitializeAudioEngine();
-		//timeline.background.dispose();
 	}
 
 	void ScoreEditor::update()
@@ -136,17 +137,13 @@ namespace MikuMikuWorld
 
 		handleEvents();
 
-		//if (config.backgroundBrightness != timeline.background.getBrightness())
-		//	timeline.background.setBrightness(config.backgroundBrightness);
-
-		//if (settingsWindow.isBackgroundChangePending)
-		//{
-		//	static const std::string defaultBackgroundPath =
-		//	    Application::getAppDir() + "res\\textures\\default.png";
-		//	timeline.background.load(config.backgroundImage.empty() ? defaultBackgroundPath
-		//	                                                        : config.backgroundImage);
-		//	settingsWindow.isBackgroundChangePending = false;
-		// }
+		if (settingsWindow.isBackgroundChangePending)
+		{
+			getResources().backgroundResources.setBackground(config.backgroundImage);
+			for (auto& [_, timeline] : timelines)
+				timeline.getBackground().setDirty();
+			settingsWindow.isBackgroundChangePending = false;
+		}
 
 		if (config.seProfileIndex != audio.getSoundEffectsProfileIndex())
 		{
@@ -185,7 +182,7 @@ namespace MikuMikuWorld
 					newContext.selectedFlag = setFlag(newContext.selectedFlag, SelectionFlag::DirtyProperty);
 				}
 
-				timeline.update(edit, pasteData);
+				timeline.update(edit, pasteData, renderer.get());
 			}
 			else
 			{
@@ -881,8 +878,8 @@ namespace MikuMikuWorld
 			std::string extension = IO::toString(file.path().extension());
 			std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 			std::string filename = IO::toString(file.path().filename());
-			if (extension == UC_MMWS_EXTENSION &&
-			    (IO::startsWith(filename, "mmw_auto_save_") || IO::startsWith(filename, "auto_save_")))
+			if (extension == UC_MMWS_EXTENSION && (IO::startsWith(filename, "mmw_auto_save_") ||
+			                                       IO::startsWith(filename, "auto_save_")))
 				deleteFiles.push_back(file);
 		}
 

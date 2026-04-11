@@ -70,35 +70,6 @@ namespace MikuMikuWorld
 		bool isNoteInsertMode() const;
 	};
 
-	class EditorScoreData
-	{
-	  public:
-		std::string title{};
-		std::string designer{};
-		std::string artist{};
-		std::string filename{};
-		std::string musicFilename{};
-		float musicOffset{};
-		int laneExtension{};
-		Jacket jacket{};
-
-		EditorScoreData() {}
-		EditorScoreData(const ScoreMetadata& metadata, const std::string& filename)
-		    : title{ metadata.title }, designer{ metadata.author }, artist{ metadata.artist },
-		      musicFilename{ metadata.musicFile }, musicOffset{ metadata.musicOffset },
-		      laneExtension{ metadata.laneExtension }
-		{
-			this->filename = filename;
-			jacket.load(metadata.jacketFile);
-		}
-
-		ScoreMetadata toScoreMetadata() const
-		{
-			return { title,       artist,       designer, musicFilename, jacket.getFilename(),
-				     musicOffset, laneExtension };
-		}
-	};
-
 	struct PasteData : public NotesContext
 	{
 		NoteOrderedCollection notesOrderedView;
@@ -140,7 +111,6 @@ namespace MikuMikuWorld
 		static constexpr id_t LAYER_ALL = -1;
 
 		Score score;
-		// EditorScoreData workingData;
 		ScoreMetadata metadata;
 		std::string filename;
 		ScoreStats scoreStats;

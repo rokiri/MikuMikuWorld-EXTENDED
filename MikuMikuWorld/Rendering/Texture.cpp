@@ -88,6 +88,34 @@ namespace MikuMikuWorld
 		}
 	}
 
+	Texture::Texture(Texture&& other) noexcept
+	    : name(std::move(other.name)), filename(std::move(other.filename)), width(other.width),
+	      height(other.height), glID(other.glID)
+	{
+		other.glID = 0;
+		other.width = 0;
+		other.height = 0;
+	}
+
+	Texture& Texture::operator=(Texture&& other) noexcept
+	{
+		if (this != &other)
+		{
+			dispose();
+
+			name = std::move(other.name);
+			filename = std::move(other.filename);
+			width = other.width;
+			height = other.height;
+			glID = other.glID;
+
+			other.glID = 0;
+			other.width = 0;
+			other.height = 0;
+		}
+		return *this;
+	}
+
 	Texture::~Texture() { dispose(); }
 
 	std::pair<Vector2, Vector2> Texture::getCoords(const Sprite& sprite) const

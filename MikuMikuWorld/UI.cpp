@@ -275,7 +275,7 @@ namespace MikuMikuWorld
 
 	void UI::statPropertyColumn(std::string_view text, int mode, ImVec2 size)
 	{
-		auto& resource = getResources().timelineTexture;
+		auto& resource = getResources().timelineResources;
 		const Texture* texture = resource.getToolbarTexture();
 		const Sprite* sprite = resource.getScoreStatsSprite(InsertMode(mode));
 		if (texture && sprite)

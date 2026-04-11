@@ -224,7 +224,7 @@ namespace MikuMikuWorld
 	static void insertModeComboItems(InsertMode mode, EditArgs& edit, T EditArgs::* type,
 	                                 const std::string_view texts[], T max, T min = T(0))
 	{
-		auto& resource = getResources().timelineTexture;
+		auto& resource = getResources().timelineResources;
 		const Texture* texture = resource.getToolbarTexture();
 		const Sprite* sprite;
 		auto& styleColors = ImGui::GetStyle().Colors;
@@ -276,7 +276,7 @@ namespace MikuMikuWorld
 	void EditorToolbar::updateEditBar(EditArgs& edit)
 	{
 		auto& input = getConfig().input;
-		auto& resource = getResources().timelineTexture;
+		auto& resource = getResources().timelineResources;
 		const Texture* texture = resource.getToolbarTexture();
 		float insertXOffset[size_t(InsertMode::InsertModeMax)] = {};
 
@@ -434,23 +434,25 @@ namespace MikuMikuWorld
 				context.pushHistory("Change score artist");
 
 			int result = UI::filePropertyRow(Text::jacket, context.metadata.jacketFile);
-			if (result == 1)
+			if (result > 0)
 			{
-				// context.workingData.jacket.load(jacketFile);
 				context.pushHistory("Change score jacket");
 			}
-			else if (result == 2)
+			else if (result < 0)
 			{
 				IO::FileDialog fileDialog{};
 				fileDialog.title = "Open Image File";
 				fileDialog.filters = { IO::imageFilter, IO::allFilter };
 				fileDialog.parentWindowHandle = Application::getAppWindowHandle();
 
-				// if (fileDialog.openFile() == IO::FileDialogResult::OK)
-				//	context.workingData.jacket.load(fileDialog.outputFilename);
-				context.pushHistory("Change score jacket");
+				if (fileDialog.openFile() == IO::FileDialogResult::OK)
+				{
+					context.metadata.jacketFile = fileDialog.outputFilename;
+					context.pushHistory("Change score jacket");
+				}
 			}
-			// context.workingData.jacket.draw();
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip))
+				timeline.getJacket().draw();
 
 			bool isExtend = context.metadata.isExtendedScore;
 			if (UI::checkboxPropertyRow(Text::extendedScore, isExtend))
@@ -1732,11 +1734,11 @@ namespace MikuMikuWorld
 			if (ImGui::CollapsingHeader(localize(Text::visuals), ImGuiTreeNodeFlags_DefaultOpen) &&
 			    UI::beginPropertyTable())
 			{
-				auto& profile = getResources().noteTexture.getProfiles();
+				auto& profile = getResources().noteResources.getProfiles();
 				if (UI::selectPropertyRow(Text::notesSkin, config.notesSkin, profile,
 				                          profile.size(), profile.begin(),
 				                          [](const std::string& s) { return s.c_str(); }))
-					getResources().noteTexture.load(config.notesSkin);
+					getResources().noteResources.load(config.notesSkin);
 				UI::endPropertyTable();
 			}
 
@@ -1764,7 +1766,7 @@ namespace MikuMikuWorld
 					config.backgroundImage = backgroundFile;
 					isBackgroundChangePending = true;
 				}
-				else if (result == 2)
+				else if (result < 0)
 				{
 					IO::FileDialog fileDialog{};
 					fileDialog.title = "Open Image File";

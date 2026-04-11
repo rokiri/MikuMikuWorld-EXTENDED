@@ -8,8 +8,9 @@ namespace MikuMikuWorld
 	struct ApplicationResource
 	{
 		std::unordered_map<std::string, Shader> shaders;
-		TimelineTexture timelineTexture;
-		NoteTexture noteTexture;
+		TimelineResources timelineResources;
+		NoteResources noteResources;
+		BackgroundResources backgroundResources;
 
 		void loadShader(const std::string& name);
 	};

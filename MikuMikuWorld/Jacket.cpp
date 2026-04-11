@@ -3,6 +3,7 @@
 #include "File.h"
 #include "Math.h"
 #include "PlatformIO.h"
+#include "ApplicationResource.h"
 #include <algorithm>
 
 namespace MikuMikuWorld
@@ -44,24 +45,18 @@ namespace MikuMikuWorld
 		if (texture == nullptr)
 			return;
 
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip))
-		{
-			// animate opacity
-			ImVec4 color{ 1.0f, 1.0f, 1.0f, 0.0f };
-			float displayTime = GImGui->HoveredIdTimer - ImGui::GetStyle().HoverDelayNormal;
-			float ratio = std::clamp(displayTime / 0.25f, 0.0f, 1.0f);
-			color.w = ratio;
+		// animate opacity
+		float displayTime = GImGui->HoveredIdTimer - ImGui::GetStyle().HoverDelayNormal;
+		float ratio = std::clamp(displayTime / 0.25f, 0.0f, 1.0f);
+		ImVec4 color{ 1.0f, 1.0f, 1.0f, ratio };
 
-			ImGui::SetNextWindowSize(previewSize, ImGuiCond_Always);
-			ImGui::SetNextWindowBgAlpha(color.w);
+		ImGui::SetNextWindowSize(UI::scale(previewSize), ImGuiCond_Always);
+		ImGui::SetNextWindowBgAlpha(color.w);
 
-			ImGui::BeginTooltip();
-			ImGui::GetWindowDrawList()->AddImage(
-			    texture->getID(), ImGui::GetWindowPos() + imageOffset,
-			    ImGui::GetWindowPos() + imageOffset + imageSize, ImVec2{ 0.0, 0.0f },
-			    ImVec2{ 1.0f, 1.0f }, ImGui::ColorConvertFloat4ToU32(color));
-			ImGui::EndTooltip();
-		}
+		ImGui::BeginTooltip();
+		ImGui::ImageWithBg(texture->getID(), ImGui::GetContentRegionAvail(), { 0, 0 }, { 1, 1 },
+		                   { 0, 0, 0, 0 }, color);
+		ImGui::EndTooltip();
 	}
 
 	const std::string& Jacket::getFilename() const { return filename; }
@@ -70,6 +65,10 @@ namespace MikuMikuWorld
 	{
 		if (texture)
 			return texture->getID();
+
+		auto tex = getResources().backgroundResources.getDefaultJacketTexture();
+		if (tex)
+			return tex->getID();
 
 		return 0;
 	}

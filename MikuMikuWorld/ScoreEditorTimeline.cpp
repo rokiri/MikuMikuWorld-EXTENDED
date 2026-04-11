@@ -20,13 +20,6 @@ namespace MikuMikuWorld
 	    : windowID(id),
 	      windowNameKey(std::string("__notes_timeline_").append(std::to_string(windowID)))
 	{
-		std::string imageFile = getConfig().backgroundImage;
-		if (imageFile.empty())
-			imageFile =
-			    IO::toString(Application::getInstance().getResourcePath("textures", "default.png"));
-		background.load(imageFile);
-		background.setBrightness(getConfig().backgroundBrightness);
-
 		windowName = windowUntitled;
 		windowName.append("###notes_timeline");
 		if (windowID != 0)
@@ -60,7 +53,7 @@ namespace MikuMikuWorld
 		getLocalization().updateText(windowNameKey, { createTitleName(windowName) });
 	}
 
-	void ScoreEditorTimeline::update(EditArgs& edit, PasteData& pasteData)
+	void ScoreEditorTimeline::update(EditArgs& edit, PasteData& pasteData, Renderer* renderer)
 	{
 		auto& config = getConfig();
 		const ImGuiIO& io = ImGui::GetIO();
@@ -125,7 +118,19 @@ namespace MikuMikuWorld
 
 		ImGui::PushClipRect(absScreenPos, maxScreenPos, true);
 		drawList->AddRectFilled(absScreenPos, maxScreenPos, 0xff202020);
-		background.draw(drawList, absScreenPos, maxScreenPos);
+		if (jacket.getFilename() != context.metadata.jacketFile)
+		{
+			jacket.load(context.metadata.jacketFile);
+			if (background.hasJacket())
+				background.setDirty();
+		}
+		if (background.isDirty())
+			background.process(renderer, jacket);
+		if (config.drawBackground)
+		{
+			background.setBrightness(config.backgroundBrightness);
+			background.draw(drawList, absScreenPos, maxScreenPos);
+		}
 		mouseInTimeline = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
 		                  ImGui::IsMouseHoveringRect(absScreenPos, maxScreenPos);
 		mouseClicked = mouseInTimeline && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
@@ -742,7 +747,7 @@ namespace MikuMikuWorld
 	                                      int baseChannel, const NotesContext& notesContext,
 	                                      float laneOffset, tick_t tickOffset)
 	{
-		NoteTexture& resource = getResources().noteTexture;
+		NoteResources& resource = getResources().noteResources;
 		const Texture* texture = resource.getTexture();
 		if (!texture)
 			return;
@@ -860,7 +865,7 @@ namespace MikuMikuWorld
 	                                       const NotesContext& notesContext, float laneOffset,
 	                                       tick_t tickOffset)
 	{
-		auto& resource = getResources().noteTexture;
+		auto& resource = getResources().noteResources;
 		const Texture* texture = resource.getTexture();
 		const Sprite* sprite = resource.getFrictionSprite(note);
 		if (!texture || !sprite)
@@ -1005,7 +1010,7 @@ namespace MikuMikuWorld
 	                                        const Color& startTint, const Color& endTint,
 	                                        int baseChannel, float laneOffset, tick_t tickOffset)
 	{
-		NoteTexture& resource = getResources().noteTexture;
+		NoteResources& resource = getResources().noteResources;
 		const Texture* texture = resource.getTexture();
 		if (!texture)
 			return;
@@ -3412,6 +3417,10 @@ namespace MikuMikuWorld
 	{
 		return accumulateMeasures(getCurrentTick(), context.score.timeSignatures);
 	}
+
+	const Jacket& ScoreEditorTimeline::getJacket() const { return jacket; }
+
+	Background& ScoreEditorTimeline::getBackground() { return background; }
 
 	ImVec2 ScoreEditorTimeline::screenCenter() const noexcept
 	{
