@@ -76,8 +76,8 @@ namespace MikuMikuWorld
 			glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-		window = glfwCreateWindow(getConfig().windowSize.x, getConfig().windowSize.y, APP_NAME,
-		                          NULL, NULL);
+		window = glfwCreateWindow(std::max(getConfig().windowSize.x, 100.f),
+		                          std::max(getConfig().windowSize.y, 100.f), APP_NAME, NULL, NULL);
 		possibleError = glfwGetError(&glfwErrorDescription);
 		if (possibleError != GLFW_NO_ERROR)
 		{
