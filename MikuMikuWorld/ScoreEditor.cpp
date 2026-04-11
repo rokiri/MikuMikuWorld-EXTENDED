@@ -1,5 +1,6 @@
 // Put httplib first otherwise the compiler will throw an error
 #define CPPHTTPLIB_OPENSSL_SUPPORT 1
+#define CPPHTTPLIB_ZLIB_SUPPORT 1
 #include <cpp-httplib/httplib.h>
 
 #include "Application.h"
@@ -782,6 +783,12 @@ namespace MikuMikuWorld
 						audio.stopEngine();
 					else
 						audio.startEngine();
+				}
+
+				if (ImGui::MenuItem("Check updates"))
+				{
+					std::thread fetchUpdateThread(&ScoreEditor::fetchUpdate, this);
+					fetchUpdateThread.detach();
 				}
 
 				ImGui::EndMenu();

@@ -224,7 +224,10 @@
     <ClCompile Include="SusParser.cpp" />
     <ClCompile Include="SusSerializer.cpp" />
     <ClCompile Include="Tempo.cpp" />
-    <ClCompile Include="ScoreEditor.cpp" />
+    <ClCompile Include="ScoreEditor.cpp">
+      <SDLCheck Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SDLCheck>
+      <SDLCheck Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</SDLCheck>
+    </ClCompile>
     <ClCompile Include="UI.cpp" />
     <ClCompile Include="UscSerializer.cpp" />
     <ClCompile Include="Utilities.cpp" />
