@@ -596,7 +596,6 @@ namespace MikuMikuWorld
 		measure_t measure = accumulateMeasures(startTick, context.score.timeSignatures);
 		auto nextTS = context.score.timeSignatures.upper_bound(measure);
 		auto currentTS = std::prev(nextTS);
-		tick_t currentTickTS = accumulateTicks(currentTS->first, context.score.timeSignatures);
 		tick_t tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
 		tick_t tickPerBeat = ticksPerBeat(currentTS->second);
 		tick_t tickPerDivision = TICKS_PER_QUARTER / quarterDivision;
@@ -702,13 +701,13 @@ namespace MikuMikuWorld
 		nextTS = context.score.timeSignatures.upper_bound(measure);
 		currentTS = std::prev(nextTS);
 		tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
-		const tick_t startTickMes = startTick - (startTick % tickPerMeasure),
-		             stopTickMes = stopTick + tickPerMeasure - (stopTick % tickPerMeasure);
+		tick_t currentTickTS = accumulateTicks(currentTS->first, context.score.timeSignatures);
+		const tick_t startTickMes = startTick - (startTick - currentTickTS) % tickPerMeasure;
 		color = measureColor;
 		exColor = exMeasureColor;
 		thickness = primaryLineThickness;
 		padding = MEASURE_X_OFFSET;
-		for (tick_t tick = startTickMes; tick <= stopTickMes; tick += tickPerMeasure, measure++)
+		for (tick_t tick = startTickMes; tick <= stopTickDiv; tick += tickPerMeasure, measure++)
 		{
 			const float y = toScreenPosY(accumulateDuration(tick, context.score.tempoChanges));
 			if (context.metadata.laneExtension)
