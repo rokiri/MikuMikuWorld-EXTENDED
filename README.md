@@ -44,7 +44,7 @@ If you want to contribute a translation, please see [the guide](./TRANSLATION.md
 - Tiếng Việt (Vietnamese) by @uwulovecrosshand and @SweetSea
 - 한글 (Korean) by @fjordic
 - Türkçe (Turkish) by @sctech-tr
-- Português do Brasil (Brazillian Portuguese) by @\_\_noradrenaline
+- Português do Brasil (Brazillian Portuguese) by @\_\_noradrenaline and Myllo (@mynameismyllo)
 - 中文(简体) (Chinese Simplified) by Guanfei(@\_guanfei\_)
 
 ## Requirements
