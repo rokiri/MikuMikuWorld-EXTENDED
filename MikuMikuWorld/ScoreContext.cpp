@@ -1035,7 +1035,7 @@ namespace MikuMikuWorld
 		for (auto&& [_, pnote] : selectedNotes)
 		{
 			Note& note = *pnote;
-			note.lane = ScoreEditorTimeline::NUM_LANES - note.lane - note.width + 1;
+			note.lane = ScoreEditorTimeline::NUM_LANES - note.lane - note.width;
 
 			switch (note.flick)
 			{
