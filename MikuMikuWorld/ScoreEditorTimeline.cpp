@@ -572,8 +572,8 @@ namespace MikuMikuWorld
 		float primeLane = laneStep * 2;
 		while (primeLane < 1.f)
 			primeLane *= 2;
-		float minLaneEx = std::max<float>(context.minLane(), toLanePos(absScreenPos.x));
-		float maxLaneEx = std::min<float>(context.maxLane(), toLanePos(maxScreenPos.x));
+		float minLaneEx = std::max(context.minLane(), toLanePos(absScreenPos.x));
+		float maxLaneEx = std::min(context.maxLane(), toLanePos(maxScreenPos.x));
 		float floorLaneEx = std::floor(minLaneEx * laneDivision) / laneDivision;
 		float ceilLaneEx = std::ceil(maxLaneEx * laneDivision) / laneDivision;
 		for (float l = floorLaneEx; l <= ceilLaneEx; l += laneStep)
@@ -2326,10 +2326,9 @@ namespace MikuMikuWorld
 		    !playing)
 		{
 			float noteWidth =
-			    std::clamp<float>(pasteData.width, context.minNoteWidth(), context.maxNoteWidth());
+			    std::clamp(pasteData.width, context.minNoteWidth(), context.maxNoteWidth());
 			float snapLane = roundToStep(mouseLane - noteWidth / 2, laneDivision);
-			float noteLane =
-			    std::clamp<float>(snapLane, context.minLane(), context.maxLane(noteWidth));
+			float noteLane = std::clamp(snapLane, context.minLane(), context.maxLane(noteWidth));
 			float offsetLane = noteLane - pasteData.minLane;
 			float offsetTick = snapTick;
 
@@ -2618,24 +2617,22 @@ namespace MikuMikuWorld
 		{
 			float noteWidth = edit.noteWidth;
 			if (!context.metadata.isExtendedScore)
-				noteWidth = std::max<float>(std::floor(noteWidth), context.minNoteWidth());
+				noteWidth = std::max(std::floor(noteWidth), context.minNoteWidth());
 			if (isInsertingNote)
 			{
 				float offset = roundToStep(mouseLane - inputLane, laneDivision);
 				float snapLane = roundToStep(inputLane - noteWidth * edit.noteAlign, laneDivision) +
 				                 std::min(offset + noteWidth, 0.f);
-				note.width = std::clamp<float>(std::abs(noteWidth + offset), context.minNoteWidth(),
-				                               context.maxNoteWidth());
-				note.lane =
-				    std::clamp<float>(snapLane, context.minLane(), context.maxLane(note.width));
+				note.width = std::clamp(std::abs(noteWidth + offset), context.minNoteWidth(),
+				                        context.maxNoteWidth());
+				note.lane = std::clamp(snapLane, context.minLane(), context.maxLane(note.width));
 				note.tick = inputTick;
 			}
 			else
 			{
 				float snapLane = roundToStep(mouseLane - noteWidth * edit.noteAlign, laneDivision);
 				note.width = noteWidth;
-				note.lane =
-				    std::clamp<float>(snapLane, context.minLane(), context.maxLane(noteWidth));
+				note.lane = std::clamp(snapLane, context.minLane(), context.maxLane(noteWidth));
 				note.tick = snapTick;
 			}
 		}

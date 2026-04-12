@@ -138,12 +138,12 @@ namespace MikuMikuWorld
 		NoteOrderedCollection notesOrderedView; // fast lookup
 		WaypointOrderedCollection waypointOrderedView;
 
-		int minNoteWidth() const noexcept;
-		int maxNoteWidth() const noexcept;
-		int maxNoteWidth(float lane) const noexcept;
-		int minLane() const noexcept;
-		int maxLane() const noexcept;
-		int maxLane(float width) const noexcept;
+		float minNoteWidth() const noexcept;
+		float maxNoteWidth() const noexcept;
+		float maxNoteWidth(float lane) const noexcept;
+		float minLane() const noexcept;
+		float maxLane() const noexcept;
+		float maxLane(float width) const noexcept;
 		EaseType maxEase() const noexcept;
 		FlickType maxFlick() const noexcept;
 

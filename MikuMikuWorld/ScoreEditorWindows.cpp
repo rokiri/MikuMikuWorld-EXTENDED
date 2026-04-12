@@ -918,9 +918,8 @@ namespace MikuMikuWorld
 				{
 					float offset = width - oldWidth;
 					for (auto& [id, pnote] : context.selectedNotes)
-						pnote->width =
-						    std::clamp<float>(pnote->width + offset, context.minNoteWidth(),
-						                      context.maxNoteWidth(pnote->lane));
+						pnote->width = std::clamp(pnote->width + offset, context.minNoteWidth(),
+						                          context.maxNoteWidth(pnote->lane));
 					if (ImGui::IsItemDeactivated())
 					{
 						context.pushHistory("Edit note width");
@@ -930,8 +929,8 @@ namespace MikuMikuWorld
 				else if (state > 0)
 				{
 					for (auto& [id, pnote] : context.selectedNotes)
-						pnote->width = std::clamp<float>(width, context.minNoteWidth(),
-						                                 context.maxNoteWidth(pnote->lane));
+						pnote->width = std::clamp(width, context.minNoteWidth(),
+						                          context.maxNoteWidth(pnote->lane));
 					context.pushHistory("Edit note width");
 					context.updateSelectionFlag();
 				}

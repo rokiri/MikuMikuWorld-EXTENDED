@@ -103,25 +103,25 @@ namespace MikuMikuWorld
 		return insertMode >= InsertMode::InsertTap && insertMode <= InsertMode::MakeDummy;
 	}
 
-	int ScoreContext::minNoteWidth() const noexcept { return metadata.isExtendedScore ? 0 : 1; }
-	int ScoreContext::maxNoteWidth() const noexcept
+	float ScoreContext::minNoteWidth() const noexcept { return metadata.isExtendedScore ? 0 : 1; }
+	float ScoreContext::maxNoteWidth() const noexcept
 	{
 		return metadata.isExtendedScore ? 12 + metadata.laneExtension * 2 : 12;
 	}
 
-	int ScoreContext::maxNoteWidth(float lane) const noexcept
+	float ScoreContext::maxNoteWidth(float lane) const noexcept
 	{
 		return (metadata.isExtendedScore ? 12 + metadata.laneExtension : 12) - lane;
 	}
 
-	int ScoreContext::minLane() const noexcept { return -metadata.laneExtension; }
+	float ScoreContext::minLane() const noexcept { return -metadata.laneExtension; }
 
-	int ScoreContext::maxLane() const noexcept
+	float ScoreContext::maxLane() const noexcept
 	{
 		return ScoreEditorTimeline::NUM_LANES + metadata.laneExtension;
 	}
 
-	int ScoreContext::maxLane(float width) const noexcept
+	float ScoreContext::maxLane(float width) const noexcept
 	{
 		return ScoreEditorTimeline::NUM_LANES + metadata.laneExtension - width;
 	}
@@ -2169,8 +2169,8 @@ namespace MikuMikuWorld
 			newNote.width = std::floor(newNote.width + std::modf(newNote.lane, &newNote.lane));
 			newNote.soundEffect = SoundEffectType::Default;
 		}
-		newNote.width = std::clamp<float>(newNote.width, minNoteWidth(), maxNoteWidth());
-		newNote.lane = std::clamp<float>(newNote.lane, minLane(), maxLane(newNote.width));
+		newNote.width = std::clamp(newNote.width, minNoteWidth(), maxNoteWidth());
+		newNote.lane = std::clamp(newNote.lane, minLane(), maxLane(newNote.width));
 		newNote.layer = selectedLayer;
 		newNote.ease = newNote.ease >= maxEase() ? EaseType::Linear : newNote.ease;
 		newNote.flick = newNote.flick >= maxFlick() ? FlickType::Default : newNote.flick;
@@ -2224,9 +2224,9 @@ namespace MikuMikuWorld
 		holdStart.ID = nextID;
 		holdStart.holdID = nextIDH;
 		holdStart.width = !metadata.isExtendedScore ? std::floor(holdStart.width) : holdStart.width;
-		holdStart.width = std::clamp<float>(holdStart.width, minNoteWidth(), maxNoteWidth());
+		holdStart.width = std::clamp(holdStart.width, minNoteWidth(), maxNoteWidth());
 		holdStart.lane = !metadata.isExtendedScore ? std::floor(holdStart.lane) : holdStart.lane;
-		holdStart.lane = std::clamp<float>(holdStart.lane, minLane(), maxLane(holdStart.width));
+		holdStart.lane = std::clamp(holdStart.lane, minLane(), maxLane(holdStart.width));
 		holdStart.layer = selectedLayer;
 		holdStart.flag = setFlag(holdStart.flag, NoteFlag::LongNote);
 		holdStart.flag = setFlag(holdStart.flag, NoteFlag::NonAttached, NoteFlag::Attached);
@@ -2246,9 +2246,9 @@ namespace MikuMikuWorld
 		holdEnd.ID = nextID;
 		holdEnd.holdID = nextIDH;
 		holdEnd.width = !metadata.isExtendedScore ? std::floor(holdEnd.width) : holdEnd.width;
-		holdEnd.width = std::clamp<float>(holdEnd.width, minNoteWidth(), maxNoteWidth());
+		holdEnd.width = std::clamp(holdEnd.width, minNoteWidth(), maxNoteWidth());
 		holdEnd.lane = !metadata.isExtendedScore ? std::floor(holdEnd.lane) : holdEnd.lane;
-		holdEnd.lane = std::clamp<float>(holdEnd.lane, minLane(), maxLane(holdEnd.width));
+		holdEnd.lane = std::clamp(holdEnd.lane, minLane(), maxLane(holdEnd.width));
 		holdEnd.layer = selectedLayer;
 		holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::LongNote);
 		holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::NonAttached, NoteFlag::Attached);
@@ -2628,6 +2628,8 @@ namespace MikuMikuWorld
 					note.lane = roundUnderHalf(note.lane);
 				if (!isDivisibleBy(note.width, 1.f))
 					note.width = std::round(note.width);
+				note.width = std::clamp(note.width, minNoteWidth(), maxNoteWidth());
+				note.lane = std::clamp(note.lane, minLane(), maxLane(note.width));
 				// Unset extended features
 				note.layer = 0;
 				note.soundEffect = SoundEffectType::Default;
@@ -2697,9 +2699,9 @@ namespace MikuMikuWorld
 								auto easeFunc = getEaseFunction(startJoint->ease);
 								float lane = easeFunc(l1, l2, ratio);
 								float width = easeFunc(r1, r2, ratio) - lane;
-								stepNote.width = std::max<float>(
-								    std::floor(std::modf(lane, &stepNote.lane) + width),
-								    minNoteWidth());
+								stepNote.width =
+								    std::max(std::floor(std::modf(lane, &stepNote.lane) + width),
+								             minNoteWidth());
 							}
 							stepNote.flag = setFlag(stepNote.flag, NoteFlag::Attached, false);
 							newNotes.emplace_back(stepNote).holdID = -1;
@@ -2744,9 +2746,9 @@ namespace MikuMikuWorld
 								auto easeFunc = getEaseFunction(startJoint->ease);
 								float lane = easeFunc(l1, l2, ratio);
 								float width = easeFunc(r1, r2, ratio) - lane;
-								stepNote.width = std::max<float>(
-								    std::floor(std::modf(lane, &stepNote.lane) + width),
-								    minNoteWidth());
+								stepNote.width =
+								    std::max(std::floor(std::modf(lane, &stepNote.lane) + width),
+								             minNoteWidth());
 							}
 							stepNote.flag = setFlag(stepNote.flag, NoteFlag::Attached, false);
 							newNotes.emplace_back(stepNote).holdID = -1;
