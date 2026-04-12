@@ -52,7 +52,7 @@ error_load_score_file, 譜面ファイルの読み込み中にエラーが発生
 error_save_score_file, 譜面ファイルの保存中にエラーが発生しました
 error_load_music_file, 音楽ファイルの読み込みに失敗しました
 score_partially_missing, 譜面の一部が欠落している可能性があります
-#- export_format_not_avail_extended,
+export_format_not_avail_extended, この形式は拡張機能に対応していません
 cancel, キャンセル
 general, 一般
 key_config, キーコンフィグ
@@ -73,7 +73,7 @@ theme_light, ライト
 theme_dark, ダーク
 custom_color, カスタム色
 timeline, タイムライン
-#- match_timeline_size_to_window,
+match_timeline_size_to_window, タイムラインの幅をウィンドウの幅に合わせる
 match_notes_size_to_timeline, ノーツの高さをレーンの幅に合わせる
 lane_width, レーンの幅
 notes_height, ノーツの高さ
@@ -91,11 +91,11 @@ draw_background,背景画像を描く
 background_brightness,背景の明るさ
 lanes_opacity,レーンの不透明度
 video, 画面
-#- visuals,
-#- notes_skin,
+visuals, 見た目
+notes_skin, ノーツスキン
 notes_se, ノーツSE
 show_tick_in_properties, プロパティにTickを表示
-#- warn_score_extension_disable,
+warn_score_extension_disable,拡張機能を無効にすると、関連データが削除されます。続行しますか？
 
 # score editor
 options, オプション
@@ -110,7 +110,7 @@ flick, フリック
 critical, クリティカル
 dummy, フェイク
 hold_dummy, フェイクスライド
-#- hold_critical,
+hold_critical, クリティカルスライド
 trace, トレース
 guide, ガイド
 damage, ダメージ
@@ -131,22 +131,22 @@ ease_in, 加速
 ease_out, 減速
 ease_in_out, 加速+減速
 ease_out_in, 減速+加速
-#- ease_none,
-#- sound_effect,
-#- sfx_default,
-#- sfx_none,
-#- sfx_tap,
-#- sfx_flick,
-#- sfx_trace,
-#- sfx_tick,
-#- sfx_crit_tap,
-#- sfx_crit_flick,
-#- sfx_crit_trace,
-#- sfx_crit_tick,
-#- sfx_damage,
-#- hold_layer_top,
-#- hold_layer_bottom,
-#- hold_layer_tooltip,
+ease_none, 無し
+sound_effect, SE
+sfx_default, デフォルト
+sfx_none, 無し
+sfx_tap, タップ
+sfx_flick, フリック
+sfx_trace, トレース
+sfx_tick, Tick
+sfx_crit_tap, クリティカルタップ
+sfx_crit_flick, クリティカルフリック
+sfx_crit_trace, クリティカルトレース
+sfx_crit_tick, クリティカルTick
+sfx_damage, ダメージ
+hold_layer_top, 上
+hold_layer_bottom, 下
+hold_layer_tooltip, デフォルトでは、ガイドノーツがスライドノートの上に表示されます。この設定を変更すると、表示順序を変更できます。
 delete, 削除
 copy, コピー
 cut, 切り取り
@@ -156,7 +156,7 @@ duplicate, 複製
 flip_duplicate, 複製+反転
 flip, 反転
 note_width, ノーツ幅
-#- note_align,
+note_align, ノーツ位置
 shrink_down, 縮める（最初に合わせる）
 shrink_up, 縮める（最後に合わせる）
 compress_selection, 選択範囲を圧縮
@@ -169,10 +169,10 @@ convert_hold_to_traces, トレースに変換
 convert_guide_hold, ガイド・スライド変換
 convert_guide_to_hold,スライドに変換
 convert_hold_to_guide, ガイドに変換
-#- convert_hold_to_none,
+convert_hold_to_none, スライドを消す
 lerp_hispeeds, ハイスピードを補間
 step_type, 中継点の種類
-#- step_alpha,
+step_alpha, ガイドノーツの透明度
 ease_type, 曲線の種類
 flick_type, フリックの方向
 hold_type, スライドの種類
@@ -185,14 +185,14 @@ designer, 譜面作者
 artist, アーティスト
 jacket, ジャケット
 lane_extension, 拡張レーン
-#- life_point,
+life_point, ライフポイント
 audio, 音源
 music_file, 音源ファイル
 music_offset, オフセット
 volume_master, 全体音量
 volume_bgm, BGM音量
 volume_se, SE音量
-#- playback_speed,
+playback_speed, 再生速度
 statistics, 統計
 hispeeds, ハイスピード
 taps, タップ
@@ -220,11 +220,11 @@ remove, 削除
 edit_time_signature, 拍子を編集
 measure, 小節
 skill, スキル
-#- skill_effect,
-#- skill_effect_score,
-#- skill_effect_heal,
-#- skill_effect_perfect,
-#- skill_level,
+skill_effect, エフェクト
+skill_effect_score, スコアブースト
+skill_effect_heal, ライフ回復
+skill_effect_perfect, 判定強化
+skill_level, レベル
 increase_note_size, ノーツの幅を広げる
 decrease_note_size, ノーツの幅を狭める
 hi_speed, ハイスピード
@@ -238,8 +238,8 @@ hi_speed_hide_notes, ノーツを非表示
 fade_none, フェードなし
 fade_in, フェードイン
 fade_out, フェードアウト
-#- fade_custom,
-#- fade_classic,
+fade_custom,フェードカスタム
+fade_classic,フェードクラシック
 guide_color, ガイドの色
 guide_neutral, 灰
 guide_red, 赤
@@ -263,12 +263,12 @@ note_properties_hi_speed, ハイスピード
 note_properties_hold_note, スライド
 note_properties_guide, ガイド
 note_properties_not_selected, ノーツ、またはハイスピードを選択してください。
-#- note_properties_mixed_value,
+note_properties_mixed_value,--Mixed--
 translated_by, 翻訳：%s
 zoom_tooltip, Ctrl+クリックで値を編集
-#- timeline_context_not_selected,
-#- extended_score,
-#- note_select_tool_tip,
+timeline_context_not_selected, タイムラインは開かれておらず、選択もされていません。
+extended_score, 拡張スコア
+note_select_tool_tip, Ctrl キーで選択、Alt キーで選択解除
 
 # preset manager
 presets, プリセット
@@ -291,18 +291,18 @@ layer_merge, 一つ下と結合
 layer_delete, 削除
 layer_hide, 非表示
 layer_show, 表示
-#- layer_change_order,
-#- layer_order_tooltip,
-#- layer_merge_warning,
+layer_change_order, レイヤー順序の変更
+layer_order_tooltip, ドラッグして並べ替えれます。
+layer_merge_warning, ハイスピードの重複部分があるので、それらは削除されます。それでもマージしますか？
 
 # waypoint manager
 waypoints, しおり
 create_waypoint, しおりを作成
 edit_waypoint, しおりを編集
 waypoint_name, 削除
-#- insert_skill,
-#- set_fever_start,
-#- set_fever_end,
+insert_skill, スキルを挿入
+set_fever_start, フィーバー開始
+set_fever_end, フィーバー終了
 
 # commands
 action, コマンド
