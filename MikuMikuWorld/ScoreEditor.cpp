@@ -345,19 +345,19 @@ namespace MikuMikuWorld
 					pasteData.startPaste();
 					pasteData.flip();
 				}
-				if (ImGui::AnyShortcut(input.flip))
+				if (ImGui::AnyShortcut(input.flip, defaultFlags))
 					currContext->flipSelection();
-				if (ImGui::IsAnyPressed(input.shrinkDown))
+				if (ImGui::IsAnyPressed(input.shrinkDown, defaultFlags))
 					currContext->shrinkSelection(1);
-				if (ImGui::IsAnyPressed(input.shrinkUp))
+				if (ImGui::IsAnyPressed(input.shrinkUp, defaultFlags))
 					currContext->shrinkSelection(-1);
-				if (ImGui::IsAnyPressed(input.compressSelection))
+				if (ImGui::IsAnyPressed(input.compressSelection, defaultFlags))
 					currContext->compressSelection();
-				if (ImGui::IsAnyPressed(input.connectHolds))
+				if (ImGui::IsAnyPressed(input.connectHolds, defaultFlags))
 					currContext->connectHoldsInSelection();
-				if (ImGui::IsAnyPressed(input.splitHold))
+				if (ImGui::IsAnyPressed(input.splitHold, defaultFlags))
 					currContext->splitHoldInSelection();
-				if (ImGui::IsAnyPressed(input.lerpHiSpeeds))
+				if (ImGui::IsAnyPressed(input.lerpHiSpeeds, defaultFlags))
 					currContext->lerpHiSpeeds(currTimeline->getQuarterDivision(), EaseType::Linear);
 			}
 		}

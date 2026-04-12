@@ -1028,7 +1028,7 @@ namespace MikuMikuWorld
 
 	void ScoreContext::flipSelection()
 	{
-		if (hasAnyNoteSelected())
+		if (!hasAnyNoteSelected())
 			return;
 
 		static_assert(int(FlickType::FlickTypeCount) == 7, "Make sure nothing broke here!");
