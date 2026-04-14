@@ -2,7 +2,7 @@
 # key, value
 
 language_name, 한국어
-translator, fjordic, TK50P (Seoul4083)
+translator, fjordic, TK50P
 
 # menu bar
 file, 파일
@@ -127,10 +127,10 @@ normal, 노멀
 hidden, 숨김
 skip, 건너뛰기
 linear, 선형
-ease_in, 안쪽으로 편하게
-ease_out, 바깥쪽으로 편하게
-ease_in_out, 안쪽으로 바깥쪽으로 편하게
-ease_out_in, 바깥쪽으로 안쪽으로 편하게
+ease_in, 바깥쪽 곡선
+ease_out, 안쪽 곡선
+ease_in_out, 바깥쪽 → 안쪽 곡선
+ease_out_in, 안쪽 → 바깥쪽 곡선
 ease_none, 없음
 sound_effect, 효과음
 sfx_default, 기본
@@ -173,7 +173,7 @@ convert_hold_to_none, 홀드를 없음으로 변환
 lerp_hispeeds, 배속 보간
 step_type, 롱노트 중간 타입
 step_alpha, Alpha 가이드
-ease_type, 이징 타입
+ease_type, 이징 (곡선) 타입
 flick_type, 플릭 타입
 hold_type, 홀드 타입
 fade_type, 페이드 타입
@@ -251,7 +251,7 @@ guide_cyan, 청록
 guide_black, 검정
 layer, 레이어
 edit_skill, 스킬 트리거 편집
-edit_fever, 피버 트리거 편집
+edit_fever, Fever 트리거 편집
 edit_none, 편집
 edit_event, 이벤트 편집
 beat, 비트
