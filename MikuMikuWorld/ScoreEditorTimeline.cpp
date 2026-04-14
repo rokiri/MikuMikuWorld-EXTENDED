@@ -464,10 +464,11 @@ namespace MikuMikuWorld
 	void ScoreEditorTimeline::jumpToPrevDivision()
 	{
 		qnote_t quarter = ticksToQuarters(getCurrentTick());
-		const qnote_t zero = 0, one = 1;
+		const qnote_t zero = 0, one = 1, epsilon = 0.5f / TICKS_PER_QUARTER;
 		qnote_t quarterPerDivision = one / quarterDivision;
 		qnote_t offset = std::fmod(quarter, quarterPerDivision);
-		quarter = std::max(quarter - (isClose(offset, zero) ? quarterPerDivision : offset), zero);
+		quarter = std::max(quarter - (isClose(offset, zero, epsilon) ? quarterPerDivision : offset),
+		                   zero);
 		prevTime = curTime;
 		curTime = accumulateDuration(quartersToTicks(quarter), context.score.tempoChanges);
 		scrollToCursor(-1);
@@ -476,10 +477,10 @@ namespace MikuMikuWorld
 	void ScoreEditorTimeline::jumpToNextDivision()
 	{
 		qnote_t quarter = ticksToQuarters(getCurrentTick());
-		const qnote_t one = 1;
+		const qnote_t zero = 0, one = 1, epsilon = 0.5f / TICKS_PER_QUARTER;
 		qnote_t quarterPerDivision = one / quarterDivision;
 		qnote_t offset = quarterPerDivision - std::fmod(quarter, quarterPerDivision);
-		quarter += isClose(offset, quarterPerDivision) ? quarterPerDivision : offset;
+		quarter += isClose(offset, zero, epsilon) ? quarterPerDivision : offset;
 		prevTime = curTime;
 		curTime = accumulateDuration(quartersToTicks(quarter), context.score.tempoChanges);
 		scrollToCursor(1);
@@ -1528,9 +1529,9 @@ namespace MikuMikuWorld
 			if ((shiftingLane == 0 || (mouseLane - inputLane) == 0) &&
 			    (shiftingTick == 0 || (mouseTick - inputTick) == 0))
 				return false;
-			//if (std::abs(shiftingLane) < std::abs(mouseLane - inputLane))
+			// if (std::abs(shiftingLane) < std::abs(mouseLane - inputLane))
 			//	shiftingLane = mouseLane - inputLane;
-			//if (std::abs(shiftingTick) < std::abs(mouseTick - inputTick))
+			// if (std::abs(shiftingTick) < std::abs(mouseTick - inputTick))
 			//	shiftingTick = mouseTick - inputTick;
 			return context.canMoveNoteSelection(shiftingTick, quarterDivision, shiftingLane,
 			                                    laneDivision, snapMode);
