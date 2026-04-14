@@ -1179,9 +1179,9 @@ namespace MikuMikuWorld
 			{
 				HiSpeed newHispeed = hispeed;
 				newHispeed.tick += offsetTick;
-				insertHispeedChange(newHispeed, false);
+				const HiSpeed& inserted = insertHispeedChange(newHispeed, false);
 				// select newly pasted
-				selectHiSpeed(newHispeed);
+				selectHiSpeed(inserted);
 			}
 		}
 
