@@ -1528,10 +1528,10 @@ namespace MikuMikuWorld
 			if ((shiftingLane == 0 || (mouseLane - inputLane) == 0) &&
 			    (shiftingTick == 0 || (mouseTick - inputTick) == 0))
 				return false;
-			if (std::abs(shiftingLane) < std::abs(mouseLane - inputLane))
-				shiftingLane = mouseLane - inputLane;
-			if (std::abs(shiftingTick) < std::abs(mouseTick - inputTick))
-				shiftingTick = mouseTick - inputTick;
+			//if (std::abs(shiftingLane) < std::abs(mouseLane - inputLane))
+			//	shiftingLane = mouseLane - inputLane;
+			//if (std::abs(shiftingTick) < std::abs(mouseTick - inputTick))
+			//	shiftingTick = mouseTick - inputTick;
 			return context.canMoveNoteSelection(shiftingTick, quarterDivision, shiftingLane,
 			                                    laneDivision, snapMode);
 		}
