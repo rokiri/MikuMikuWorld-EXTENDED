@@ -1798,8 +1798,10 @@ namespace MikuMikuWorld
 			ImVec2 scrolling = targetOffset - visualOffset;
 			float scrollSpeed = getConfig().smoothScrollingTime / (ImGui::GetIO().DeltaTime * 1000);
 			ImVec2 delta = scrolling / scrollSpeed;
-			visualOffset.x += std::max(delta.x, std::min(0.01f, scrolling.x));
-			visualOffset.y += std::max(delta.y, std::min(0.05f, scrolling.y));
+			visualOffset.x += std::copysign(
+			    std::max(std::abs(delta.x), std::min(0.01f, std::abs(scrolling.x))), delta.x);
+			visualOffset.y += std::copysign(
+			    std::max(std::abs(delta.y), std::min(0.05f, std::abs(scrolling.y))), delta.y);
 		}
 		else
 		{
