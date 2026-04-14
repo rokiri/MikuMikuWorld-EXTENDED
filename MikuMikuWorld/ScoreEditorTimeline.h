@@ -196,7 +196,7 @@ namespace MikuMikuWorld
 		NotesContext previewNotes;
 		EventArgs eventEditArgs;
 		Background background;
-		Jacket jacket; 
+		Jacket jacket;
 		ImDrawListSplitter drawSplitter;
 		std::future<void> loadMusicFuture;
 		std::unordered_set<std::string> playingNoteSounds;

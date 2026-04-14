@@ -6,11 +6,11 @@
 namespace MikuMikuWorld
 {
 	float quatersPerMeasure(const TimeSignature& t) { return 4.0f * t.numerator / t.denominator; }
-	beat_t beatsPerMeasure(const TimeSignature& t) { return t.numerator; }
-	tick_t ticksPerBeat(const TimeSignature& t, tick_t quarterTicks)
+	qnote_t quartersPerBeat(const TimeSignature& t)
 	{
-		return quarterTicks * quatersPerMeasure(t) / beatsPerMeasure(t);
+		return quatersPerMeasure(t) / beatsPerMeasure(t);
 	}
+	beat_t beatsPerMeasure(const TimeSignature& t) { return t.numerator; }
 
 	qnote_t ticksToQuarters(tick_t ticks, tick_t quarterTicks)
 	{

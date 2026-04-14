@@ -8,8 +8,8 @@
 namespace MikuMikuWorld
 {
 	qnote_t quatersPerMeasure(const TimeSignature& t);
+	qnote_t quartersPerBeat(const TimeSignature& t);
 	beat_t beatsPerMeasure(const TimeSignature& t);
-	tick_t ticksPerBeat(const TimeSignature& t, tick_t quarterTicks = TICKS_PER_QUARTER);
 
 	qnote_t ticksToQuarters(tick_t ticks, tick_t quarterTicks = TICKS_PER_QUARTER);
 	tick_t quartersToTicks(qnote_t quarters, tick_t quarterTicks = TICKS_PER_QUARTER);

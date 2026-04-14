@@ -463,30 +463,25 @@ namespace MikuMikuWorld
 
 	void ScoreEditorTimeline::jumpToPrevDivision()
 	{
-		tick_t tick = getCurrentTick();
-		measure_t measure = accumulateMeasures(tick, context.score.timeSignatures);
-		const TimeSignature& currentTS = getTimeSignAt(context.score, measure);
-		tick_t tickPerDivision = TICKS_PER_QUARTER / quarterDivision;
-		tick_t tickFromMeasure = accumulateTicks(currentTS.measure, context.score.timeSignatures);
-		tick_t tickOffset = (tick - tickFromMeasure) % tickPerDivision;
-		tick = std::max(tick - (tickOffset ? tickOffset : tickPerDivision), 0);
+		qnote_t quarter = ticksToQuarters(getCurrentTick());
+		const qnote_t zero = 0, one = 1;
+		qnote_t quarterPerDivision = one / quarterDivision;
+		qnote_t offset = std::fmod(quarter, quarterPerDivision);
+		quarter = std::max(quarter - (isClose(offset, zero) ? quarterPerDivision : offset), zero);
 		prevTime = curTime;
-		curTime = accumulateDuration(tick, context.score.tempoChanges);
+		curTime = accumulateDuration(quartersToTicks(quarter), context.score.tempoChanges);
 		scrollToCursor(-1);
 	}
 
 	void ScoreEditorTimeline::jumpToNextDivision()
 	{
-		tick_t tick = getCurrentTick();
-		measure_t measure = accumulateMeasures(tick, context.score.timeSignatures);
-		const TimeSignature& currentTS = getTimeSignAt(context.score, measure);
-		tick_t tickPerDivision = TICKS_PER_QUARTER / quarterDivision;
-		tick_t tickFromMeasure = accumulateTicks(currentTS.measure, context.score.timeSignatures);
-		tick_t tickOffset = tickPerDivision - (tick - tickFromMeasure) % tickPerDivision;
-		tick = std::min(tick + (tickOffset ? tickOffset : tickPerDivision),
-		                accumulateTicks(maxTime, context.score.tempoChanges));
+		qnote_t quarter = ticksToQuarters(getCurrentTick());
+		const qnote_t one = 1;
+		qnote_t quarterPerDivision = one / quarterDivision;
+		qnote_t offset = quarterPerDivision - std::fmod(quarter, quarterPerDivision);
+		quarter += isClose(offset, quarterPerDivision) ? quarterPerDivision : offset;
 		prevTime = curTime;
-		curTime = accumulateDuration(tick, context.score.tempoChanges);
+		curTime = accumulateDuration(quartersToTicks(quarter), context.score.tempoChanges);
 		scrollToCursor(1);
 	}
 
@@ -541,8 +536,8 @@ namespace MikuMikuWorld
 		ImVec2 timelineScreenMax = timelineScreenPos + timelineScreenSize;
 		const float x1 = toScreenPosX(0);
 		const float x2 = toScreenPosX(NUM_LANES);
-		float xe1 = toScreenPosX(context.minLane());
-		float xe2 = toScreenPosX(context.maxLane());
+		const float xe1 = toScreenPosX(context.minLane());
+		const float xe2 = toScreenPosX(context.maxLane());
 
 		// Draw lane background
 		int laneOpacity = static_cast<int>(std::clamp(getConfig().laneOpacity, 0.f, 1.f) * 255);
@@ -588,127 +583,32 @@ namespace MikuMikuWorld
 			                  UI::scale(thickness));
 		}
 
-		// Draw measures
+		// Drawing lines
 		const tick_t startTick =
 		    accumulateTicks(std::max(timelinePos.y, 0.f), context.score.tempoChanges);
 		const tick_t stopTick = accumulateTicks(timelineMax.y, context.score.tempoChanges);
 
-		measure_t measure = accumulateMeasures(startTick, context.score.timeSignatures);
-		auto nextTS = context.score.timeSignatures.upper_bound(measure);
-		auto currentTS = std::prev(nextTS);
-		tick_t tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
-		tick_t tickPerBeat = ticksPerBeat(currentTS->second);
-		tick_t tickPerDivision = TICKS_PER_QUARTER / quarterDivision;
-
+		// Draw division lines
+		qnote_t quarterPerDivision = qnote_t(1) / quarterDivision;
 		// Reduce the divisions drawn at widder zooms
-		const qnote_t quarterPerDivision = qnote_t(1) / quarterDivision;
 		auto nextTempo = context.score.tempoChanges.upper_bound(startTick);
 		// require that each division is atleast 10 pixels apart
-		const secs_t spacingMin = toTimeUnit(10);
-		secs_t spacing =
-		    quartersToSecs(quarterPerDivision, std::prev(nextTempo)->second.quarterPerMinute);
+		secs_t spacingMin = toTimeUnit(10);
+		float quarterPerMinute = std::prev(nextTempo)->second.quarterPerMinute;
+		secs_t spacing = quartersToSecs(quarterPerDivision, quarterPerMinute);
 		if (spacingMin > spacing)
 		{
-			// Find the least significant bit
-			// there by calculating the minimum power of 2 divisor
-			int maxScale = tickPerBeat & -tickPerBeat;
-			int scale = roundUpToPowerOfTwo(std::round(spacingMin / spacing));
-			tickPerDivision = TICKS_PER_QUARTER * std::min(scale, maxScale) / quarterDivision;
+			float scale = roundUpToPowerOfTwo(std::round(spacingMin / spacing));
+			quarterPerDivision = scale / quarterDivision;
 		}
-
-		ImU32 color;
-		ImU32 exColor;
-		float thickness, padding;
-		ImGui::PushFont(NULL, ImGui::GetStyle().FontSizeBase * 1.25f);
-		const tick_t startTickDiv = startTick - (startTick % tickPerDivision),
-		             stopTickDiv = stopTick + tickPerDivision - (stopTick % tickPerDivision);
-		tick_t measureTick = accumulateTicks(measure, context.score.timeSignatures);
-		beat_t measureBeat = accumulateBeats(measure, context.score.timeSignatures);
-		for (tick_t tick = startTickDiv; tick <= stopTickDiv; tick += tickPerDivision)
+		ImU32 color = divColor2;
+		ImU32 exColor = exDivColor2;
+		float thickness = secondaryLineThickness, padding = 0;
+		for (int div = std::floor(ticksToQuarters(startTick) / quarterPerDivision),
+		         stopDiv = std::ceil(ticksToQuarters(stopTick) / quarterPerDivision);
+		     div <= stopDiv; div++)
 		{
-			tick_t tickDiff = tick - measureTick;
-
-			if (tickDiff % tickPerBeat == 0)
-			{
-				color = divColor1;
-				exColor = exDivColor1;
-				thickness = primaryLineThickness;
-				padding = BEAT_X_OFFSET;
-			}
-			else
-			{
-				color = divColor2;
-				exColor = exDivColor2;
-				thickness = secondaryLineThickness;
-				padding = 0;
-			}
-
-			const float y = toScreenPosY(accumulateDuration(tick, context.score.tempoChanges));
-			if (context.metadata.laneExtension)
-			{
-				drawList->AddLine({ xe1 - padding, y }, { x1, y }, exColor, thickness);
-				drawList->AddLine({ x2, y }, { xe2 + padding, y }, exColor, thickness);
-			}
-			if (tickDiff != tickPerMeasure)
-				drawList->AddLine({ x1 - padding, y }, { x2 + padding, y }, color, thickness);
-
-			// Draw strings
-			if (tickDiff % tickPerBeat == 0)
-			{
-				std::string beatStr =
-				    std::to_string(tick_t(tickDiff / beat_t(tickPerBeat) + measureBeat));
-				ImVec2 txtSize = ImGui::CalcTextSize(beatStr.c_str());
-				float x = std::min(xe2 + MEASURE_X_OFFSET - txtSize.x / 2,
-				                   rightPanelScreenPos.x - txtSize.x);
-				ImU32 col = ImAlphaBlendColors(0xff010101, measureTxtColor);
-				drawList->AddText({ x, y }, col, beatStr.c_str());
-			}
-
-			if (tickDiff >= tickPerMeasure)
-			{
-				measure_t offsetMeasure = tickDiff / tickPerMeasure;
-				measure += offsetMeasure;
-				measureTick += tickPerMeasure * offsetMeasure;
-				measureBeat += beatsPerMeasure(currentTS->second) * offsetMeasure;
-				// Check if time signature changes on current measure
-				if (nextTS != context.score.timeSignatures.end() &&
-				    nextTS->second.measure <= measure)
-				{
-					currentTS = nextTS;
-					tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
-					tickPerBeat = ticksPerBeat(currentTS->second);
-					++nextTS;
-				}
-			}
-
-			if (nextTempo != context.score.tempoChanges.end() && nextTempo->first <= tick)
-			{
-				spacing = quartersToSecs(quarterPerDivision, nextTempo->second.quarterPerMinute);
-				if (spacingMin > spacing)
-				{
-					// Find the least significant bit
-					// there by calculating the minimum power of 2 divisor
-					int maxScale = tickPerBeat & -tickPerBeat;
-					int scale = roundUpToPowerOfTwo(std::round(spacingMin / spacing));
-					tickPerDivision =
-					    TICKS_PER_QUARTER * std::min(scale, maxScale) / quarterDivision;
-				}
-				++nextTempo;
-			}
-		}
-
-		measure = accumulateMeasures(startTick, context.score.timeSignatures);
-		nextTS = context.score.timeSignatures.upper_bound(measure);
-		currentTS = std::prev(nextTS);
-		tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
-		tick_t currentTickTS = accumulateTicks(currentTS->first, context.score.timeSignatures);
-		const tick_t startTickMes = startTick - (startTick - currentTickTS) % tickPerMeasure;
-		color = measureColor;
-		exColor = exMeasureColor;
-		thickness = primaryLineThickness;
-		padding = MEASURE_X_OFFSET;
-		for (tick_t tick = startTickMes; tick <= stopTickDiv; tick += tickPerMeasure, measure++)
-		{
+			tick_t tick = quartersToTicks(div * quarterPerDivision);
 			const float y = toScreenPosY(accumulateDuration(tick, context.score.tempoChanges));
 			if (context.metadata.laneExtension)
 			{
@@ -717,19 +617,131 @@ namespace MikuMikuWorld
 			}
 			drawList->AddLine({ x1 - padding, y }, { x2 + padding, y }, color, thickness);
 
-			std::string measureStr = std::to_string(measure);
-			ImVec2 txtSize = { ImGui::CalcTextSize(measureStr.c_str()).x / 2, 0 };
-			ImVec2 txtPos = { std::max(xe1 - MEASURE_X_OFFSET,
-				                       leftPanelScreenPos.x + panelScreenSize.x + txtSize.x),
-				              y };
-			ImU32 col = ImAlphaBlendColors(0xff111111, measureTxtColor);
-			drawList->AddText(txtPos - txtSize, col, measureStr.c_str());
-
-			if (nextTS != context.score.timeSignatures.end() && nextTS->second.measure <= measure)
+			if (nextTempo != context.score.tempoChanges.end() && nextTempo->first <= tick)
 			{
-				currentTS = nextTS;
-				tickPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
-				++nextTS;
+				spacing = quartersToSecs(quarterPerDivision, nextTempo->second.quarterPerMinute);
+				if (spacingMin > spacing)
+				{
+					float scale = roundUpToPowerOfTwo(std::round(spacingMin / spacing));
+					quarterPerDivision = scale / quarterDivision;
+				}
+				++nextTempo;
+			}
+		}
+
+		// Draw measure lines
+		measure_t measure = accumulateMeasures(startTick, context.score.timeSignatures);
+		beat_t measureBeat = accumulateBeats(measure, context.score.timeSignatures);
+		tick_t measureTick = accumulateTicks(measure, context.score.timeSignatures);
+
+		auto nextTS = context.score.timeSignatures.upper_bound(measure);
+		auto currentTS = std::prev(nextTS);
+		tick_t currentTickTS = accumulateTicks(currentTS->first, context.score.timeSignatures);
+		tick_t ticksPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
+		tick_t ticksPerBeats = TICKS_PER_QUARTER * quartersPerBeat(currentTS->second);
+
+		// Reduce the number of drawn text at widder zooms
+		int beatStep = 1;
+		int measureStep = 1;
+		nextTempo = context.score.tempoChanges.upper_bound(measureTick);
+		spacingMin = toTimeUnit(ImGui::GetTextLineHeight());
+		quarterPerMinute = std::prev(nextTempo)->second.quarterPerMinute;
+		spacing = quartersToSecs(ticksToQuarters(ticksPerBeats), quarterPerMinute);
+		if (spacingMin > spacing)
+			beatStep = roundUpToPowerOfTwo(std::round(spacingMin / spacing));
+		spacing = quartersToSecs(ticksToQuarters(ticksPerMeasure), quarterPerMinute);
+		if (spacingMin > spacing)
+			measureStep = roundUpToPowerOfTwo(std::round(spacingMin / spacing));
+
+		ImGui::PushFont(NULL, ImGui::GetStyle().FontSizeBase * 1.25f);
+		for (tick_t tick = startTick - (startTick - currentTickTS) % ticksPerBeats,
+		            stop = stopTick + ticksPerBeats;
+		     tick < stop; tick += ticksPerBeats)
+		{
+			tick_t tickDiff = tick - measureTick;
+			int beat = beat_t(tickDiff / ticksPerBeats) + measureBeat;
+
+			bool resetSpacing = false;
+			if (tick >= ticksPerMeasure)
+			{
+				measure_t offsetMeasure = tickDiff / ticksPerMeasure;
+				measure += offsetMeasure;
+				measureBeat += beatsPerMeasure(currentTS->second) * offsetMeasure;
+				measureTick += ticksPerMeasure * offsetMeasure;
+				// Check if time signature changed on current measure
+				if (nextTS != context.score.timeSignatures.end() &&
+				    nextTS->second.measure <= measure)
+				{
+					currentTS = nextTS++;
+					ticksPerMeasure = TICKS_PER_QUARTER * quatersPerMeasure(currentTS->second);
+					ticksPerBeats = TICKS_PER_QUARTER * quartersPerBeat(currentTS->second);
+					resetSpacing = true;
+				}
+			}
+
+			bool isMeasureLine = tickDiff % ticksPerMeasure == 0 && measure % measureStep == 0;
+			bool isBeatLine = beat % beatStep == 0;
+			if (isMeasureLine || isBeatLine)
+			{
+				secs_t time = accumulateDuration(tick, context.score.tempoChanges);
+				const float y = toScreenPosY(time);
+				if (isMeasureLine)
+				{
+					color = measureColor;
+					exColor = exMeasureColor;
+					thickness = primaryLineThickness;
+					padding = MEASURE_X_OFFSET;
+				}
+				else
+				{
+					color = divColor1;
+					exColor = exDivColor1;
+					thickness = primaryLineThickness;
+					padding = BEAT_X_OFFSET;
+				}
+
+				if (context.metadata.laneExtension)
+				{
+					drawList->AddLine({ xe1 - padding, y }, { x1, y }, exColor, thickness);
+					drawList->AddLine({ x2, y }, { xe2 + padding, y }, exColor, thickness);
+				}
+				drawList->AddLine({ x1 - padding, y }, { x2 + padding, y }, color, thickness);
+				if (isBeatLine)
+				{
+					std::string beatStr = std::to_string(beat);
+					ImVec2 txtSize = ImGui::CalcTextSize(beatStr.c_str());
+					float x = std::min(xe2 + MEASURE_X_OFFSET - txtSize.x / 2,
+					                   rightPanelScreenPos.x - txtSize.x);
+					ImU32 col = ImAlphaBlendColors(0xff010101, measureTxtColor);
+					drawList->AddText({ x, y }, col, beatStr.c_str());
+				}
+				if (isMeasureLine)
+				{
+					std::string measureStr = std::to_string(measure);
+					ImVec2 txtSize = ImGui::CalcTextSize(measureStr.c_str());
+					float x = std::max(xe1 - MEASURE_X_OFFSET,
+					                   leftPanelScreenPos.x + panelScreenSize.x + txtSize.x / 2);
+					ImVec2 txtPos = { x - txtSize.x / 2, y };
+					ImU32 col = ImAlphaBlendColors(0xff111111, measureTxtColor);
+					drawList->AddText(txtPos, col, measureStr.c_str());
+				}
+			}
+
+			if (nextTempo != context.score.tempoChanges.end() && nextTempo->first <= tick)
+			{
+				quarterPerMinute = nextTempo->second.quarterPerMinute;
+				resetSpacing = true;
+			}
+
+			if (resetSpacing)
+			{
+				spacing = quartersToSecs(ticksToQuarters(ticksPerBeats), quarterPerMinute);
+				if (spacingMin > spacing)
+					beatStep = roundUpToPowerOfTwo(std::round(spacingMin / spacing));
+				spacing = quartersToSecs(ticksToQuarters(ticksPerMeasure), quarterPerMinute);
+				if (spacingMin > spacing)
+					measureStep = roundUpToPowerOfTwo(std::round(spacingMin / spacing));
+				++nextTempo;
 			}
 		}
 		ImGui::PopFont();
@@ -1808,13 +1820,22 @@ namespace MikuMikuWorld
 
 			measure_t measure = accumulateMeasures(mouseTick, context.score.timeSignatures);
 			const TimeSignature& currentTS = getTimeSignAt(context.score, measure);
-			tick_t tickPerDivision =
-			    std::min<tick_t>(TICKS_PER_QUARTER / quarterDivision,
-			                     TICKS_PER_QUARTER * quatersPerMeasure(currentTS));
-			tick_t measureTick = accumulateTicks(measure, context.score.timeSignatures);
-			tick_t tickOffset = (mouseTick - measureTick) % tickPerDivision;
-			tickOffset -= (tickOffset > tickPerDivision / 2 ? tickPerDivision : 0);
-			snapTick = std::max(mouseTick - tickOffset, 0);
+
+			qnote_t measureDivision = 1 / quatersPerMeasure(currentTS);
+			if (quarterDivision > measureDivision)
+			{
+				snapTick =
+				    quartersToTicks(roundToStep(ticksToQuarters(mouseTick), quarterDivision));
+			}
+			else
+			{
+				tick_t tickPerMeasure = TICKS_PER_QUARTER / measureDivision;
+				tick_t measureTick = accumulateTicks(measure, context.score.timeSignatures);
+				tick_t tickOffset = (mouseTick - measureTick) % tickPerMeasure;
+				tickOffset -= (tickOffset > tickPerMeasure / 2 ? tickPerMeasure : 0);
+				snapTick = mouseTick - tickOffset;
+			}
+			snapTick = std::max(snapTick, 0);
 		}
 	}
 
