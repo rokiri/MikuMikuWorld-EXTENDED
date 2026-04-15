@@ -2076,7 +2076,8 @@ namespace MikuMikuWorld
 				Note& note = score.notes.at(step);
 				note.holdID = -1;
 				note.flag = setFlag(note.flag, NoteFlag::LongNote, false);
-				note.flag = setFlag(note.flag, NoteFlag::NonAttached, NoteFlag::Attached);
+				note.flag = setFlag(note.flag, NoteFlag::NonAttached,
+				                    hasFlag(note.flag, NoteFlag::Attached));
 			}
 			score.holdNotes.erase(erasingHold.ID);
 		}
@@ -2229,7 +2230,8 @@ namespace MikuMikuWorld
 		holdStart.lane = std::clamp(holdStart.lane, minLane(), maxLane(holdStart.width));
 		holdStart.layer = selectedLayer;
 		holdStart.flag = setFlag(holdStart.flag, NoteFlag::LongNote);
-		holdStart.flag = setFlag(holdStart.flag, NoteFlag::NonAttached, NoteFlag::Attached);
+		holdStart.flag = setFlag(holdStart.flag, NoteFlag::NonAttached,
+		                         hasFlag(holdStart.flag, NoteFlag::Attached));
 		holdStart.ease = holdStart.ease >= maxEase() ? EaseType::Linear : holdStart.ease;
 
 		if (!metadata.isExtendedScore)
@@ -2251,7 +2253,8 @@ namespace MikuMikuWorld
 		holdEnd.lane = std::clamp(holdEnd.lane, minLane(), maxLane(holdEnd.width));
 		holdEnd.layer = selectedLayer;
 		holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::LongNote);
-		holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::NonAttached, NoteFlag::Attached);
+		holdEnd.flag =
+		    setFlag(holdEnd.flag, NoteFlag::NonAttached, hasFlag(holdEnd.flag, NoteFlag::Attached));
 		holdEnd.ease = holdEnd.ease >= maxEase() ? EaseType::Linear : holdEnd.ease;
 
 		if (!metadata.isExtendedScore)
@@ -2446,7 +2449,8 @@ namespace MikuMikuWorld
 				holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Hidden);
 		}
 		holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::LongNote);
-		holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Attached, NoteFlag::NonAttached);
+		holdEnd.flag =
+		    setFlag(holdEnd.flag, NoteFlag::NonAttached, hasFlag(holdEnd.flag, NoteFlag::Attached));
 		Note& newHoldStart = score.notes[nextNoteID] = holdEnd;
 		newHoldStart.ID = nextNoteID++;
 		newHoldStart.holdID = newHold.ID;
