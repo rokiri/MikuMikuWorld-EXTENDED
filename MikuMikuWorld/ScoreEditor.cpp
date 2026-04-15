@@ -356,6 +356,16 @@ namespace MikuMikuWorld
 					currContext->splitHoldInSelection();
 				if (ImGui::IsAnyPressed(input.lerpHiSpeeds, defaultFlags))
 					currContext->lerpHiSpeeds(currTimeline->getQuarterDivision(), EaseType::Linear);
+				if (ImGui::IsAnyPressed(input.addTracesForHold, defaultFlags))
+					currContext->convertHoldToTraces(currTimeline->getQuarterDivision(), false);
+				if (ImGui::IsAnyPressed(input.convertHoldToTraces, defaultFlags))
+					currContext->convertHoldToTraces(currTimeline->getQuarterDivision(), true);
+				if (ImGui::IsAnyPressed(input.convertHoldToGuide, defaultFlags))
+					currContext->convertHoldToGuide(edit.colorType);
+				if (ImGui::IsAnyPressed(input.convertGuideToHold, defaultFlags))
+					currContext->convertGuideToHold(edit.insertMode == InsertMode::MakeCritical);
+				if (ImGui::IsAnyPressed(input.convertHoldToNone, defaultFlags))
+					currContext->convertHoldToNone();
 			}
 		}
 

@@ -18,6 +18,11 @@ namespace MikuMikuWorld
 		MultiInputBinding connectHolds = { Text::connectHolds, {} };
 		MultiInputBinding splitHold = { Text::splitHold, {} };
 		MultiInputBinding lerpHiSpeeds = { Text::lerpHispeeds, {} };
+		MultiInputBinding addTracesForHold = { Text::addTracesForHold, {} };
+		MultiInputBinding convertHoldToTraces = { Text::convertHoldToTraces, {} };
+		MultiInputBinding convertHoldToGuide = { Text::convertHoldToGuide, {} };
+		MultiInputBinding convertGuideToHold = { Text::convertGuideToHold, {} };
+		MultiInputBinding convertHoldToNone = { Text::convertHoldToNone, {} };
 		MultiInputBinding openHelp = { Text::help, { ImGuiKey_F1 } };
 		MultiInputBinding openSettings = { Text::settings, { ImGuiKey_Comma, ImGuiMod_Ctrl } };
 		MultiInputBinding deleteSelection = { Text::del, { ImGuiKey_Delete } };
@@ -100,6 +105,11 @@ namespace MikuMikuWorld
 		&InputConfiguration::connectHolds,
 		&InputConfiguration::splitHold,
 		&InputConfiguration::lerpHiSpeeds,
+		&InputConfiguration::addTracesForHold,
+		&InputConfiguration::convertHoldToTraces,
+		&InputConfiguration::convertHoldToGuide,
+		&InputConfiguration::convertGuideToHold,
+		&InputConfiguration::convertHoldToNone,
 		&InputConfiguration::selectAll,
 		// Timeline bindings
 		&InputConfiguration::togglePlayback,
