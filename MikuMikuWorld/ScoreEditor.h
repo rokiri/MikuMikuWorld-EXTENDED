@@ -57,6 +57,7 @@ namespace MikuMikuWorld
 
 		static void openHelp();
 		static void openReleasePage();
+		void openAutoSavePath() const;
 
 	  public:
 		ScoreEditor();

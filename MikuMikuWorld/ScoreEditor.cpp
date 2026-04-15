@@ -117,10 +117,7 @@ namespace MikuMikuWorld
 		config.seVolume = audio.getSoundEffectsVolume();
 	}
 
-	void ScoreEditor::uninitialize()
-	{
-		audio.uninitializeAudioEngine();
-	}
+	void ScoreEditor::uninitialize() { audio.uninitializeAudioEngine(); }
 
 	void ScoreEditor::update()
 	{
@@ -754,6 +751,8 @@ namespace MikuMikuWorld
 			ImGui::MenuItem(localize(Text::returnToLastTick), NULL,
 			                &config.returnToLastSelectedTickOnPause);
 			ImGui::MenuItem(localize(Text::drawWaveform), NULL, &config.drawWaveform);
+			if (ImGui::MenuItem(localize(Text::autoSave), NULL))
+				openAutoSavePath();
 
 			ImGui::EndMenu();
 		}
@@ -927,5 +926,10 @@ namespace MikuMikuWorld
 	{
 		ImGui::GetPlatformIO().Platform_OpenInShellFn(
 		    GImGui, "https://github.com/UntitledCharts/MikuMikuWorld4UC/releases");
+	}
+
+	void ScoreEditor::openAutoSavePath() const
+	{
+		ImGui::GetPlatformIO().Platform_OpenInShellFn(GImGui, IO::toString(autoSavePath).c_str());
 	}
 }
