@@ -716,7 +716,8 @@ namespace MikuMikuWorld
 		writer.writeInt32(note.width);
 
 		if (type != LegacyNoteType::Hold && type != LegacyNoteType::HoldMid)
-			writer.writeInt32((int)(note.flick <= FlickType::Down ? FlickType::None : note.flick));
+			writer.writeInt32(
+			    (int)(note.flick >= FlickType::Down ? FlickType::Default : note.flick));
 
 		unsigned int flags{};
 		if (note.isCrit())
