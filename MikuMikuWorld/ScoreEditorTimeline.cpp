@@ -348,8 +348,8 @@ namespace MikuMikuWorld
 			// Panning timeline
 			if (absScreenSize.y > 50)
 			{
-				const float upPanThreshold = absScreenPos.y + absScreenSize.y * 0.1f;
-				const float downPanThreshold = absScreenPos.y + absScreenSize.y * 0.9f;
+				const float upPanThreshold = absScreenPos.y + absScreenSize.y * 0.075f;
+				const float downPanThreshold = absScreenPos.y + absScreenSize.y * 0.925f;
 				if (absMousePos.y < upPanThreshold)
 					targetOffset.y +=
 					    toTimeUnit(std::min(upPanThreshold - absMousePos.y, 200.f) / 10);
@@ -360,7 +360,7 @@ namespace MikuMikuWorld
 			if (absScreenSize.x > 50)
 			{
 				const float leftPanThreshold = absScreenPos.x + absScreenSize.x * 0.05f;
-				const float rightPanThreshold = absScreenPos.x + absScreenSize.x * 0.95f;
+				const float rightPanThreshold = absScreenPos.x + absScreenSize.x * 1.025f;
 				if (absMousePos.x < leftPanThreshold)
 					targetOffset.x -=
 					    toLaneUnit(std::min(leftPanThreshold - absMousePos.x, 200.f) / 10);
