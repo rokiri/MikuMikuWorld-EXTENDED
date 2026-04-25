@@ -40,7 +40,7 @@ If you want to contribute a translation, please see [the guide](./TRANSLATION.md
 
 - 日本語 (Japanese) by [@sevenc_nanashi](https://github.com/sevenc-nanashi) and [@MI11435](https://github.com/MI11435)
 - Español (Spanish) by @mi.honesta.reaccion
-- Русский (Russian) by [@\_notfallen\_](https://github.com/notfallen-dev)
+- Русский (Russian) by [@\_notfallen\_](https://github.com/notfallen-dev) and Ababik (ababikmeoww)
 - Tiếng Việt (Vietnamese) by @uwulovecrosshand and [@SweetSea](https://github.com/SweetSea-ButImNotSweet)
 - 한국어 (Korean) by @fjordic and [@TK50P](https://github.com/TK50P)
 - Türkçe (Turkish) by [@sctech-tr](https://github.com/sctech-tr)
