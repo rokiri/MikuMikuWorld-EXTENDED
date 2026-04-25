@@ -2015,13 +2015,13 @@ namespace MikuMikuWorld
 
 				ImGui::EndMenu();
 			}
-			ImGui::EndPopup();
-
 			ImGui::Separator();
 
 			if (UI::selectMenuItems(Text::lerpHispeeds, context.selectedHiSpeedChanges.size() >= 2,
 			                        easeTypeTexts, ease))
 				context.lerpHiSpeeds(quarterDivision, ease);
+
+			ImGui::EndPopup();
 		}
 	}
 
