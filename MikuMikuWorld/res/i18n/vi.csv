@@ -215,6 +215,7 @@ snap_mode_absolute,Dính Tuyệt đối
 snap_mode_individual_absolute,Dính Tuyệt đối Riêng
 zoom,Zoom
 show_step_outlines,Hiện Step Outlines
+#- hide_step_outlines_during_playback,
 draw_waveform,Hiện Waveform
 #- stop_playback_at_music_end,
 edit_bpm,Sửa nhịp độ

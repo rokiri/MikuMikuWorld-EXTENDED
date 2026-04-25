@@ -757,6 +757,7 @@ namespace MikuMikuWorld
 		if (ImGui::BeginMenu(localize(Text::view)))
 		{
 			ImGui::MenuItem(localize(Text::showStepOutlines), NULL, &edit.drawHoldStepOutlines);
+			ImGui::MenuItem(localize(Text::hideStepOutlinesInPlayback), NULL, &config.hideStepOutlinesInPlayback);
 			ImGui::MenuItem(localize(Text::cursorAutoScroll), NULL, &config.followCursorInPlayback);
 			ImGui::MenuItem(localize(Text::returnToLastTick), NULL,
 			                &config.returnToLastSelectedTickOnPause);

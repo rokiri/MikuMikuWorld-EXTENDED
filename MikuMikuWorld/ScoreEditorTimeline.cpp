@@ -960,7 +960,7 @@ namespace MikuMikuWorld
 	                                          const Color& outline, const Color& fill,
 	                                          int baseChannel, float laneOffset, tick_t tickOffset)
 	{
-		if (!drawHoldStepOutlines)
+		if (!drawHoldStepOutlines || (playing && getConfig().hideStepOutlinesInPlayback))
 			return;
 		float width = toScreenWidth(note.width);
 		float left = toScreenPosX(note.lane + laneOffset);

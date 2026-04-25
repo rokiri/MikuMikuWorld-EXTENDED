@@ -215,6 +215,7 @@ snap_mode_absolute,Absolute Snap
 snap_mode_individual_absolute,Individual Absolute Snap
 zoom,Zoom
 show_step_outlines,Show Hold Mid Outlines
+hide_step_outlines_during_playback,Hide Hold Mid Outlines during playback
 draw_waveform,Show Waveform
 stop_playback_at_music_end,Stop playback at music end
 edit_bpm,Edit Tempo

@@ -34,6 +34,7 @@ namespace MikuMikuWorld
 		bool matchNotesSizeToTimeline;
 		bool drawBackground;
 		bool drawWaveform;
+		bool hideStepOutlinesInPlayback;
 		bool stopPlaybackAtMusicEnd;
 		bool showTickInProperties;
 		bool followCursorInPlayback;

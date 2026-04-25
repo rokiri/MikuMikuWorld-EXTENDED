@@ -215,6 +215,7 @@ snap_mode_absolute, Modo de encaixe absoluto
 snap_mode_individual_absolute, Modo de encaixe individual absoluto
 zoom, Zoom
 show_step_outlines, Mostrar contorno de steps
+#- hide_step_outlines_during_playback,
 draw_waveform, Mostrar waveform
 #- stop_playback_at_music_end,
 edit_bpm,  Editar BPM

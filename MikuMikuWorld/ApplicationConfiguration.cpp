@@ -44,6 +44,7 @@ namespace MikuMikuWorld
 		showTickInProperties = false;
 		followCursorInPlayback = true;
 		returnToLastSelectedTickOnPause = false;
+		hideStepOutlinesInPlayback = true;
 		stopPlaybackAtMusicEnd = true;
 
 		autoSaveEnabled = true;

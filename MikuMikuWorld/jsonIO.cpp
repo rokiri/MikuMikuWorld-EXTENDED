@@ -128,6 +128,7 @@ namespace MikuMikuWorld
 			j_timeline["return_to_last_tick_on_pause"] = cfg.returnToLastSelectedTickOnPause;
 			j_timeline["cursor_position_threshold"] = cfg.cursorPositionThreshold;
 			j_timeline["show_tick_in_properties"] = cfg.showTickInProperties;
+			j_timeline["hide_step_outlines_in_playback"] = cfg.hideStepOutlinesInPlayback;
 			j_timeline["stop_at_end"] = cfg.stopPlaybackAtMusicEnd;
 		}
 		{
@@ -212,6 +213,8 @@ namespace MikuMikuWorld
 			                cfg.returnToLastSelectedTickOnPause);
 			optional_get_to(j_timeline, "cursor_position_threshold", cfg.cursorPositionThreshold);
 			optional_get_to(j_timeline, "show_tick_in_properties", cfg.showTickInProperties);
+			optional_get_to(j_timeline, "hide_step_outlines_in_playback",
+			                cfg.hideStepOutlinesInPlayback);
 			optional_get_to(j_timeline, "stop_at_end", cfg.stopPlaybackAtMusicEnd);
 		}
 
