@@ -46,6 +46,7 @@ If you want to contribute a translation, please see [the guide](./TRANSLATION.md
 - Türkçe (Turkish) by [@sctech-tr](https://github.com/sctech-tr)
 - Português do Brasil (Brazillian Portuguese) by @\_\_noradrenaline and Myllo (@mynameismyllo)
 - 中文(简体) (Chinese Simplified) by [@\_guanfei\_](https://github.com/GuanFeiHK)
+- 中文(繁體) (Chinese Traditional) by [(@269Seahorse)](https://github.com/269Seahorse)
 
 ## Requirements
 

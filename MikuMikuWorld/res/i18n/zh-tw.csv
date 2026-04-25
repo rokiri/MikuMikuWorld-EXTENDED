@@ -1,7 +1,7 @@
 # code: zh-tw
 # key, value
 
-language_name,繁體中文
+language_name,中文(繁體)
 translator,TEmPTaTiON(@269Seahorse)
 
 # menu bar
@@ -85,6 +85,7 @@ smooth_scroll_time,平滑捲動時間
 return_to_last_tick,暫停時返回上一個刻度
 cursor_auto_scroll,游標自動捲動
 cursor_auto_scroll_amount,游標從時間軸自動捲動的百分比
+#- division_type,
 background,背景
 background_image,背景圖片
 draw_background,繪製背景圖片
@@ -111,6 +112,7 @@ critical,Critical
 dummy,假音符
 hold_dummy,假長按
 hold_critical,Critical 長按
+#- hold_separator,
 trace,軌跡
 guide,引導
 damage,傷害
@@ -213,7 +215,9 @@ snap_mode_absolute,絕對吸附
 snap_mode_individual_absolute,單獨絕對吸附
 zoom,縮放
 show_step_outlines,顯示長按中繼點輪廓
+#- hide_step_outlines_during_playback,
 draw_waveform,顯示波形
+#- stop_playback_at_music_end,
 edit_bpm,編輯 BPM
 tick,刻度
 remove,移除
