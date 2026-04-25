@@ -85,7 +85,7 @@ smooth_scroll_time,Smooth Scrolling Time
 return_to_last_tick,Return To Last Tick On Pause
 cursor_auto_scroll,Cursor Auto Scroll
 cursor_auto_scroll_amount,Cursor Auto Scroll Percentage From Timeline
-division_type, Display Division Type
+division_type,Display Division Type
 background,Background
 background_image,Background Image
 draw_background,Draw Background Image
@@ -93,9 +93,9 @@ background_brightness,Background Brightness
 lanes_opacity,Lanes Opacity
 video,Video
 visuals,Visuals
-notes_skin, Notes Skin
+notes_skin,Notes Skin
 notes_se,Notes SE
-show_tick_in_properties, Show Tick in Note Properties Window
+show_tick_in_properties,Show Tick in Note Properties Window
 warn_score_extension_disable,Disabling extended features will remove associated data. Do you want to continue?
 
 # score editor
@@ -179,8 +179,8 @@ ease_type,Ease Type
 flick_type,Flick Type
 hold_type,Hold Type
 fade_type,Fade Type
-hold_start_type, Hold Start Type
-hold_end_type, Hold End Type
+hold_start_type,Hold Start Type
+hold_end_type,Hold End Type
 metadata,Metadata
 title,Title
 designer,Designer
@@ -208,7 +208,7 @@ combo,Combo
 goto_measure,Go To Measure
 division,%d Division
 division_affix,%d Division
-custom, Custom
+custom,Custom
 snap_mode,Snapping
 snap_mode_relative,Relative Snap
 snap_mode_absolute,Absolute Snap
@@ -295,9 +295,9 @@ layer_merge,Merge Layer
 layer_delete,Delete Layer
 layer_hide,Hide Layer
 layer_show,Show Layer
-layer_change_order, Change Layer Order
-layer_order_tooltip, Drag to reorder
-layer_merge_warning, There are hispeeds overlaps, they'll be deleted. Do you want to merge anyways?
+layer_change_order,Change Layer Order
+layer_order_tooltip,Drag to reorder
+layer_merge_warning,There are hispeeds overlaps, they'll be deleted. Do you want to merge anyways?
 
 # waypoint manager
 waypoints,Waypoints
