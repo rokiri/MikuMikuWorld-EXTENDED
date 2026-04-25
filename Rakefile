@@ -170,3 +170,207 @@ task "action:version" do
     f.puts "EOF"
   end
 end
+
+desc "Convert i18n files to YAML format"
+task "convert_locales_yaml" do
+  input_dir  = "./MikuMikuWorld/res/i18n"
+  output_dir = "./MikuMikuWorld/Localization"
+
+  FileUtils.mkdir_p(output_dir)
+
+  Dir.glob(File.join(input_dir, "*.csv"), File::FNM_DOTMATCH).each do |file_path|
+    lines = File.readlines(file_path, encoding: "utf-8")
+
+    if lines.empty?
+      puts "Skipping empty file: #{file_path}"
+      next
+    end
+
+    # Extract language code
+    first_line = lines[0].strip
+    match = first_line.match(/^#\s*code:\s*([A-Za-z0-9_-]+)/)
+
+    unless match
+      puts "Missing language code in #{file_path}, skipping..."
+      next
+    end
+
+    lang_code = match[1]
+
+    output = []
+    output << "#{lang_code}:"
+
+    lines[1..].each do |line|
+      raw = line.chomp
+
+      # Preserve empty line
+      if raw.empty?
+        output << ""
+        next
+      end
+
+      # Missing translation
+      if raw.lstrip.start_with?("#- ")
+        content = raw.lstrip[3..] # remove "#- "
+        
+        key, rest = content.split(",", 2)
+      
+        if key
+          key = key # preserve spacing as-is
+          yaml_line = "  #{key}: "
+          output << yaml_line
+        else
+          output << raw # fallback safety
+        end
+      
+        next
+      end
+
+      # Comment
+      if raw.lstrip.start_with?("#")
+        output << raw
+        next
+      end
+
+      # Split ONLY first comma, preserve spaces
+      key, rest = raw.split(",", 2)
+
+      if rest.nil?
+        output << raw # fallback: keep as-is
+        next
+      end
+
+      value_part = rest
+
+      # Split inline comment safely (preserve spaces before #)
+      val, comment = value_part.split("#", 2)
+
+      value = val || ""
+
+      # Determine if quoting is needed
+      needs_quote =
+        value.start_with?(" ") ||
+        value.end_with?(" ") ||
+        value.include?(":") ||
+        value.include?("#") ||
+        value.include?('"') ||
+        value.include?("\n")
+
+      if needs_quote
+        escaped = value.gsub('"', '\"')
+        value = "\"#{escaped}\""
+      end
+
+      yaml_line = "  #{key}: #{value}"
+
+      if comment
+        yaml_line += "##{comment}"  # keep original spacing
+      end
+
+      output << yaml_line
+    end
+
+    output_file = File.join(
+      output_dir,
+      File.basename(file_path, ".csv") + ".yaml"
+    )
+
+    File.write(output_file, output.join("\n"), encoding: "utf-8")
+
+    puts "Converted: #{file_path} -> #{output_file}"
+  end
+end
+
+desc "Convert YAML i18n files back to CSV format"
+task "convert_locales_csv" do
+  input_dir  = "./MikuMikuWorld/Localization"
+  output_dir = "./MikuMikuWorld/res/i18n"
+
+  FileUtils.mkdir_p(output_dir)
+
+  Dir.glob(File.join(input_dir, "*.yaml"), File::FNM_DOTMATCH).each do |file_path|
+    is_template = File.basename(file_path).include?(".template")
+    lines = File.readlines(file_path, encoding: "utf-8")
+
+    if lines.empty?
+      puts "Skipping empty file: #{file_path}"
+      next
+    end
+
+    # Extract language code from first line (e.g. "en:")
+    first_line = lines[0].chomp
+    match = first_line.match(/^([A-Za-z0-9_-]+):$/)
+
+    unless match
+      puts "Invalid YAML root in #{file_path}, skipping..."
+      next
+    end
+
+    lang_code = match[1]
+
+    output = []
+    output << "# code: #{lang_code}"
+
+    lines[1..].each do |line|
+      raw = line.chomp
+
+      # Empty
+      if raw.strip.empty?
+        output << ""
+        next
+      end
+
+      # Comment
+      if raw.lstrip.start_with?("#")
+        output << raw
+        next
+      end
+
+      # Remove indentation ONLY (not inner spaces)
+      content = raw.sub(/^\s+/, '')
+
+      key, rest = content.split(": ", 2)
+
+      if rest.nil?
+        output << raw
+        next
+      end
+
+      value_part = rest
+
+      # Split inline comment
+      val, comment = value_part.split("#", 2)
+
+      value = val || ""
+
+      if value == "" && !is_template
+        csv_line = "#- #{key},"
+        output << csv_line
+        next
+      end
+
+      # Remove wrapping quotes ONLY if we added them
+      if value.start_with?('"') && value.end_with?('"')
+        inner = value[1..-2]
+        value = inner.gsub('\"', '"')
+      end
+
+      csv_line = "#{key},#{value}"
+
+      if comment
+        csv_line += "##{comment}"
+      end
+
+      output << csv_line
+    end
+
+    output_file = File.join(
+      output_dir,
+      File.basename(file_path, ".yaml") + ".csv"
+    )
+
+    File.write(output_file, output.join("\n"), encoding: "utf-8")
+
+    puts "Converted: #{file_path} -> #{output_file}"
+  end
+end
