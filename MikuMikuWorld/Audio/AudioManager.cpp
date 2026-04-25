@@ -233,7 +233,8 @@ namespace Audio
 		if (isMusicAtEnd())
 			return;
 
-		float time = musicOffset + manager.getAudioEngineAbsoluteTime() - currentTime;
+		float time =
+		    (musicOffset - currentTime) / playbackSpeed + manager.getAudioEngineAbsoluteTime();
 		ma_sound_set_start_time_in_milliseconds(&music, std::max(0.0f, time * 1000));
 		ma_sound_start(&music);
 	}
@@ -506,7 +507,7 @@ namespace Audio
 		sampleRateIn /= gcf;
 		sampleRateOut /= gcf;
 
-		ma_linear_resampler& resampler = music.engineNode.resampler;
+		ma_linear_resampler& resampler = music.engineNode.resampler.state.linear;
 		resampler.lpf.sampleRate = std::max(sampleRateIn, sampleRateOut);
 		resampler.inAdvanceInt = sampleRateIn / sampleRateOut;
 		resampler.inAdvanceFrac = sampleRateIn % sampleRateOut;
