@@ -99,20 +99,36 @@ namespace MikuMikuWorld
 		constexpr int eighthTicks = TICKS_PER_QUARTER / 2;
 		for (const auto& [id, hold] : score.holdNotes)
 		{
-			if (hold.isGuide() || hold.isDummy())
-				continue;
+			for (auto stepIt = hold.separators.begin(), endIt = std::next(stepIt); stepIt != endIt;)
+			{
+				const HoldNoteStep& holdStep = *stepIt;
+				if (holdStep.isGuide() || holdStep.isDummy())
+				{
+					stepIt = endIt;
+					if (endIt != hold.separators.end())
+						++endIt;
+					continue;
+				}
+				if (endIt != hold.separators.end() && (!endIt->isGuide() && !endIt->isDummy()))
+				{
+					++endIt;
+					continue;
+				}
+				id_t endID = endIt != hold.separators.end() ? endIt->ID : hold.steps.back();
 
-			int startTick = score.notes.at(hold.steps.front()).tick + eighthTicks;
-			if (startTick % eighthTicks)
-				startTick -= (startTick % eighthTicks);
-			int endTick = score.notes.at(hold.steps.back()).tick;
-			if (endTick % eighthTicks)
-				endTick += eighthTicks - (endTick % eighthTicks);
+				int startTick = score.notes.at(stepIt->ID).tick + eighthTicks;
+				if (startTick % eighthTicks)
+					startTick -= (startTick % eighthTicks);
+				int endTick = score.notes.at(endID).tick;
+				if (endTick % eighthTicks)
+					endTick += eighthTicks - (endTick % eighthTicks);
 
-			if (startTick >= endTick)
-				continue;
+				stepIt = endIt;
+				if (startTick >= endTick)
+					continue;
 
-			combo += (endTick - startTick) / eighthTicks;
+				combo += (endTick - startTick) / eighthTicks;
+			}
 		}
 	}
 }
