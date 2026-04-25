@@ -382,12 +382,14 @@
     <ClInclude Include="Localization.h">
       <Filter>UI\Include</Filter>
     </ClInclude>
-    <ClInclude Include="Text.h" />
     <ClInclude Include="InputConfiguration.h">
       <Filter>IO\Include</Filter>
     </ClInclude>
     <ClInclude Include="PlatformIO.h">
       <Filter>IO\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Text.h">
+      <Filter>UI\Include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

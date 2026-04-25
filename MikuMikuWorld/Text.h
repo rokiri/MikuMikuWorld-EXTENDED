@@ -229,6 +229,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(zoom);
 	MMW_TEXT(showStepOutlines, "show_step_outlines");
 	MMW_TEXT(drawWaveform, "draw_waveform");
+	MMW_TEXT(stopPlaybackAtMusicEnd, "stop_playback_at_music_end");
 	MMW_TEXT(editBpm, "edit_bpm");
 	MMW_TEXT(tick);
 	MMW_TEXT(remove);

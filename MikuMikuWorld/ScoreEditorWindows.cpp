@@ -1735,9 +1735,13 @@ namespace MikuMikuWorld
 				ImGui::EndDisabled();
 				UI::separatorRow();
 
+				UI::checkboxPropertyRow(Text::hideStepOutlinesInPlayback,
+				                        config.hideStepOutlinesInPlayback);
 				UI::checkboxPropertyRow(Text::drawWaveform, config.drawWaveform);
 				UI::checkboxPropertyRow(Text::returnToLastTick,
 				                        config.returnToLastSelectedTickOnPause);
+				UI::checkboxPropertyRow(Text::stopPlaybackAtMusicEnd,
+				                        config.stopPlaybackAtMusicEnd);
 				UI::checkboxPropertyRow(Text::cursorAutoScroll, config.followCursorInPlayback);
 				UI::percentSliderPropertyRow(Text::cursorAutoScrollAmount,
 				                             config.cursorPositionThreshold);

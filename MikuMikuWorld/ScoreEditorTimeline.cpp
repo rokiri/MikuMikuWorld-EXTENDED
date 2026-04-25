@@ -414,10 +414,12 @@ namespace MikuMikuWorld
 
 	bool ScoreEditorTimeline::isPlaying() const { return playing; }
 
-	void ScoreEditorTimeline::setPlaying(bool playing)
+	void ScoreEditorTimeline::setPlaying(bool playing, int returnToPrev)
 	{
 		if (this->playing == playing)
 			return;
+		if (returnToPrev < 0)
+			returnToPrev = getConfig().returnToLastSelectedTickOnPause;
 
 		this->playing = playing;
 		if (playing)
@@ -432,7 +434,7 @@ namespace MikuMikuWorld
 		}
 		else
 		{
-			if (getConfig().returnToLastSelectedTickOnPause)
+			if (returnToPrev)
 			{
 				curTime = prevTime;
 				scrollToCursor();
@@ -451,6 +453,22 @@ namespace MikuMikuWorld
 
 		context.audio->stopSoundEffects(false);
 		context.audio->stopMusic();
+	}
+
+	secs_t ScoreEditorTimeline::getStopTime() const
+	{
+		secs_t musicStop =
+		    context.audio->isMusicInitialized() ? context.audio->getMusicEndTime() : 0.0f;
+		measure_t stopMeasure = 1;
+		if (context.notesOrderedView.size())
+		{
+			stopMeasure = accumulateMeasures(context.notesOrderedView.rbegin()->first,
+			                                 context.score.timeSignatures);
+			stopMeasure += 1;
+		}
+		secs_t noteStop = accumulateDuration(
+		    accumulateTicks(stopMeasure, context.score.timeSignatures), context.score.tempoChanges);
+		return std::max(musicStop, noteStop);
 	}
 
 	float ScoreEditorTimeline::getPlaybackSpeed() const noexcept { return playbackSpeed; }
@@ -2273,6 +2291,13 @@ namespace MikuMikuWorld
 
 		lastFrameTime = curTime;
 		curTime += ImGui::GetIO().DeltaTime * playbackSpeed;
+
+		secs_t stopTime = getStopTime();
+		bool playedBeforeEnd = prevTime < stopTime;
+		if (getConfig().stopPlaybackAtMusicEnd && playedBeforeEnd && curTime >= stopTime)
+		{
+			setPlaying(false, false);
+		}
 		if (getConfig().followCursorInPlayback &&
 		    curTime > (timelinePos.y + timelineSize.y * getConfig().cursorPositionThreshold))
 		{

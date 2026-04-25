@@ -220,6 +220,7 @@ snap_mode_individual_absolute,单独绝对吸附
 zoom,缩放
 show_step_outlines,显示步骤轮廓
 draw_waveform,绘制波形
+#- stop_playback_at_music_end,
 edit_bpm,编辑BPM
 tick,刻度
 remove,移除

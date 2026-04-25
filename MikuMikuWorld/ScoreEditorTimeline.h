@@ -23,8 +23,9 @@ namespace MikuMikuWorld
 		float getLaneDivision() const noexcept;
 		void setLaneDivision(float division);
 		bool isPlaying() const;
-		void setPlaying(bool playing);
+		void setPlaying(bool playing, int returnToPrev = -1);
 		void stop();
+		secs_t getStopTime() const;
 		float getPlaybackSpeed() const noexcept;
 		void setPlaybackSpeed(float speed);
 		void jumpToPrevDivision();

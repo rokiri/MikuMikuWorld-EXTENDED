@@ -218,6 +218,7 @@ custom, personalizada
 zoom, Zoom
 show_step_outlines, Mostrar bordes de steps
 draw_waveform, Mostrar forma de Onda
+#- stop_playback_at_music_end,
 edit_bpm, Cambiar BPM
 tick, Tick
 remove, Remover

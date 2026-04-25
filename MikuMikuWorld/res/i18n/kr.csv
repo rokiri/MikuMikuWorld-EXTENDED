@@ -216,6 +216,7 @@ snap_mode_individual_absolute, 개별 절대 스냅
 zoom, 확대/축소
 show_step_outlines, 홀드 중간점 외곽선 표시
 draw_waveform, 파형 표시
+#- stop_playback_at_music_end,
 edit_bpm, BPM 편집
 tick, 틱 (Tick)
 remove, 제거

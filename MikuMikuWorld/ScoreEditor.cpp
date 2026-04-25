@@ -761,7 +761,8 @@ namespace MikuMikuWorld
 			ImGui::MenuItem(localize(Text::returnToLastTick), NULL,
 			                &config.returnToLastSelectedTickOnPause);
 			ImGui::MenuItem(localize(Text::drawWaveform), NULL, &config.drawWaveform);
-			if (ImGui::MenuItem(localize(Text::autoSave), NULL))
+			ImGui::MenuItem(localize(Text::stopPlaybackAtMusicEnd), NULL, &config.stopPlaybackAtMusicEnd);
+			if (ImGui::MenuItem(localize(Text::autoSave), localize(Text::openFile)))
 				openAutoSavePath();
 
 			ImGui::EndMenu();

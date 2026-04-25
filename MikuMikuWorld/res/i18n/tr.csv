@@ -216,6 +216,7 @@ snap_mode_individual_absolute, Bireysel Mutlak Snap
 zoom, Yakinlastir
 show_step_outlines, Basili Tutma Ortasi Çizgilerini Göster
 draw_waveform, Dalga Formunu Göster
+#- stop_playback_at_music_end,
 edit_bpm, BPM'i Düzenle
 tick, Tik
 remove, Kaldir

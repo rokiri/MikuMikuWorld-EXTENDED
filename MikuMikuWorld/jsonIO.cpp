@@ -128,6 +128,7 @@ namespace MikuMikuWorld
 			j_timeline["return_to_last_tick_on_pause"] = cfg.returnToLastSelectedTickOnPause;
 			j_timeline["cursor_position_threshold"] = cfg.cursorPositionThreshold;
 			j_timeline["show_tick_in_properties"] = cfg.showTickInProperties;
+			j_timeline["stop_at_end"] = cfg.stopPlaybackAtMusicEnd;
 		}
 		{
 			auto& j_theme = j_cfg["theme"];
@@ -211,6 +212,7 @@ namespace MikuMikuWorld
 			                cfg.returnToLastSelectedTickOnPause);
 			optional_get_to(j_timeline, "cursor_position_threshold", cfg.cursorPositionThreshold);
 			optional_get_to(j_timeline, "show_tick_in_properties", cfg.showTickInProperties);
+			optional_get_to(j_timeline, "stop_at_end", cfg.stopPlaybackAtMusicEnd);
 		}
 
 		if (keyExists(j_cfg, "theme"))
