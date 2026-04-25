@@ -307,7 +307,8 @@ namespace ImGui
 	bool IsAnyPressed(const MultiInputBinding& bindings, bool repeat)
 	{
 		for (int i = 0; i < bindings.count; ++i)
-			if (IsPressed(bindings.bindings[i], repeat))
+			if (bindings.bindings[i].keyCode != ImGuiKey_None &&
+			    IsPressed(bindings.bindings[i], repeat))
 				return true;
 
 		return false;

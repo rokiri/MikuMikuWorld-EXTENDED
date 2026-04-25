@@ -70,7 +70,7 @@ namespace MikuMikuWorld
 			return;
 		for (auto& [key, value] : j.items())
 		{
-			if (!value.is_array() || !value.empty())
+			if (!value.is_array() || value.empty())
 				continue;
 			for (const auto& pBinding : allInputBindings)
 			{
