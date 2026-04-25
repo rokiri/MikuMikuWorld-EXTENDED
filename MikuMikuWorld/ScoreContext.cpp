@@ -1134,7 +1134,12 @@ namespace MikuMikuWorld
 			return;
 		}
 		std::string clipboard{ clipboardSignature };
-		clipboard.append("\n").append(data.dump());
+#ifdef DEBUG
+		int indent = 2;
+#else
+		int indent = -1;
+#endif
+		clipboard.append("\n").append(data.dump(indent));
 
 		ImGui::SetClipboardText(clipboard.c_str());
 	}

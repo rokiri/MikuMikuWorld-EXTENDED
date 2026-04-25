@@ -607,7 +607,7 @@ namespace MikuMikuWorld
 
 	static void hold_note_step_to_json(json& data, const HoldNoteStep& step)
 	{
-		if (step.isGuide())
+		if (!step.isGuide())
 		{
 			data["critical"] = step.isCrit();
 			data["dummy"] = step.isDummy();
