@@ -98,4 +98,6 @@ namespace MikuMikuWorld
 		                              Text::skillEffectPerfect };
 
 	MMW_TEXT_TYPE holdLayerTexts[]{ Text::holdLayerTop, Text::holdLayerBottom };
+
+	MMW_TEXT_TYPE timeDivisionTypeTexts[] = { Text::beat, Text::measure };
 }

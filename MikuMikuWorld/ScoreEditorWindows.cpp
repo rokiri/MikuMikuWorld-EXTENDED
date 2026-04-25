@@ -1652,7 +1652,7 @@ namespace MikuMikuWorld
 					apply = ImGui::Button(txt, UI::btnNormal);
 					ImGui::PopID();
 
-					if (ImGui::GetContentRegionAvail().x > UI::btnNormal.x)
+					if (i != UI::accentColors.size() - 1)
 						ImGui::SameLine();
 
 					if (apply)
@@ -1733,7 +1733,7 @@ namespace MikuMikuWorld
 				                   ScoreEditorTimeline::MIN_NOTES_HEIGHT,
 				                   ScoreEditorTimeline::MAX_NOTES_HEIGHT);
 				ImGui::EndDisabled();
-				ImGui::Separator();
+				UI::separatorRow();
 
 				UI::checkboxPropertyRow(Text::drawWaveform, config.drawWaveform);
 				UI::checkboxPropertyRow(Text::returnToLastTick,
@@ -1741,6 +1741,14 @@ namespace MikuMikuWorld
 				UI::checkboxPropertyRow(Text::cursorAutoScroll, config.followCursorInPlayback);
 				UI::percentSliderPropertyRow(Text::cursorAutoScrollAmount,
 				                             config.cursorPositionThreshold);
+				UI::separatorRow();
+
+				config.divisionType = std::clamp(config.divisionType, 0,
+				                                 int(TimeDivisionType::DivisionTypeCount) - 1);
+				TimeDivisionType divisionType = static_cast<TimeDivisionType>(config.divisionType);
+				if (UI::selectPropertyRow(Text::divisonType, divisionType, timeDivisionTypeTexts))
+					config.divisionType = static_cast<int>(divisionType);
+
 				UI::endPropertyTable();
 			}
 
@@ -1752,7 +1760,7 @@ namespace MikuMikuWorld
 				                     0.1f, 100.0f);
 				UI::floatPropertyRow(Text::scrollSpeedShift, config.scrollSpeedShift, "%.1fx", 0.1f,
 				                     100.0f);
-				ImGui::Separator();
+				UI::separatorRow();
 
 				UI::checkboxPropertyRow(Text::useSmoothScroll, config.useSmoothScrolling);
 				UI::floatSliderPropertyRow(Text::smoothScrollTime, config.smoothScrollingTime,
@@ -1811,7 +1819,7 @@ namespace MikuMikuWorld
 
 				UI::percentSliderPropertyRow(Text::backgroundBrightness,
 				                             config.backgroundBrightness);
-				ImGui::Separator();
+				UI::separatorRow();
 
 				UI::percentSliderPropertyRow(Text::lanesOpacity, config.laneOpacity);
 				UI::endPropertyTable();

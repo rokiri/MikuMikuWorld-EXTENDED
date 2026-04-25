@@ -85,6 +85,7 @@ smooth_scroll_time,スムーズスクロールの時間
 return_to_last_tick, 元の位置に戻る
 cursor_auto_scroll, 自動スクロール
 cursor_auto_scroll_amount, 自動スクロール量
+#- division_type,
 background, 背景
 background_image,背景画像
 draw_background,背景画像を描く

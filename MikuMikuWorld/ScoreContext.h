@@ -12,6 +12,12 @@
 
 namespace MikuMikuWorld
 {
+	enum class TimeDivisionType : uint8_t
+	{
+		Quarter,
+		Measure,
+		DivisionTypeCount
+	};
 	enum class SnapMode : uint8_t
 	{
 		// Snap notes to their own division

@@ -10,7 +10,7 @@ namespace MikuMikuWorld
 
 	struct ApplicationConfiguration
 	{
-		constexpr static const char* CONFIG_VERSION{ "1.11.0" };
+		constexpr static const char* CONFIG_VERSION{ "1.12.0" };
 
 		std::string version;
 
@@ -24,6 +24,7 @@ namespace MikuMikuWorld
 		int accentColor;
 		Color userColor;
 		std::string language;
+		int divisionType;
 		int division;
 		float zoom;
 

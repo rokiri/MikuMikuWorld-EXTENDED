@@ -234,6 +234,7 @@ namespace MikuMikuWorld
 		constexpr static float HOLD_MID_PADDING = 5;
 
 		constexpr static int QUART_DIVISIONS[]{ 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 480 };
+		constexpr static int MEASURE_DIVISIONS[]{ 4, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 1920 };
 		constexpr static int LANE_DIVISIONS[]{ 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 96, 192 };
 
 		constexpr static float MIN_PLAYBACK_SPEED = 0.25f;

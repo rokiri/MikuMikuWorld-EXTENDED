@@ -85,6 +85,7 @@ smooth_scroll_time, Tempo de suavização
 return_to_last_tick, Voltar à posição original ao pausar
 cursor_auto_scroll, Scroll automático
 cursor_auto_scroll_amount, Porcentagem do scroll automático
+#- division_type,
 background, Fundo
 background_image, Imagem de fundo
 draw_background, Mostrar imagem de fundo

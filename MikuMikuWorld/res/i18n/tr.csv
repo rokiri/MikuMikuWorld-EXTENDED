@@ -85,6 +85,7 @@ smooth_scroll_time, Yumusak kaydirma süresi
 return_to_last_tick, Duraklatildiginda Son Tikiye Dön
 cursor_auto_scroll, Imleç Otomatik Kaydirma
 cursor_auto_scroll_amount, Imleç Otomatik Kaydirma Yüzdesi
+#- division_type,
 background, Arka plan
 background_image, Arka plan resmi
 draw_background, Arka plan resmini çiz

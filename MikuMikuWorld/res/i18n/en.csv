@@ -85,6 +85,7 @@ smooth_scroll_time,Smooth Scrolling Time
 return_to_last_tick,Return To Last Tick On Pause
 cursor_auto_scroll,Cursor Auto Scroll
 cursor_auto_scroll_amount,Cursor Auto Scroll Percentage From Timeline
+division_type, Display Division Type
 background,Background
 background_image,Background Image
 draw_background,Draw Background Image

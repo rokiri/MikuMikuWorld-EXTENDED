@@ -89,6 +89,7 @@ smooth_scroll_time,平滑滚动时间
 return_to_last_tick,返回上一个刻度
 cursor_auto_scroll,光标自动滚动
 cursor_auto_scroll_amount,光标自动滚动量
+#- division_type,
 background,背景
 background_image,背景图片
 draw_background,绘制背景

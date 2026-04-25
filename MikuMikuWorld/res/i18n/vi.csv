@@ -85,6 +85,7 @@ smooth_scroll_time,Thời gian cuộn mượt
 return_to_last_tick,Quay lại tick cuối khi dừng
 cursor_auto_scroll,Tự động cuộn theo con trỏ
 cursor_auto_scroll_amount,Phần trăm tự động cuộn theo con trỏ
+#- division_type,
 background,Nền
 background_image,Ảnh hình nền
 draw_background,Hiện ảnh hình nền

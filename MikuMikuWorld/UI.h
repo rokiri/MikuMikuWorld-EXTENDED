@@ -114,6 +114,7 @@ namespace MikuMikuWorld
 		static int mixedFloatPropertyRow(std::string_view text, bool mixed, float& val,
 		                                 const char* format = "%.3f", float lowerBound = 0,
 		                                 float higherBound = 0, float step = 1);
+		static void separatorRow();
 		static void tooltip(const char* label);
 		static bool divisionSelect(const char* label, int& value, const int* items, size_t count);
 		static bool zoomControl(const char* label, float& value, float min, float max, float width,

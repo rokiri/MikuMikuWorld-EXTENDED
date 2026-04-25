@@ -2026,6 +2026,7 @@ namespace MikuMikuWorld
 
 	void ScoreEditorTimeline::updateStatusBar()
 	{
+		const auto& config = getConfig();
 		ImGui::SetCursorScreenPos(toolbarScreenPos);
 
 		if (UI::transparentButton(ICON_FA_BACKWARD, UI::btnSmall, true, !playing && curTime > 0))
@@ -2047,12 +2048,23 @@ namespace MikuMikuWorld
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
 		ImGui::SameLine();
-		ImGui::TextUnformatted(localize(Text::beat));
+		if (config.divisionType == (int)TimeDivisionType::Quarter)
+			ImGui::TextUnformatted(localize(Text::beat));
+		else
+			ImGui::TextUnformatted(localize(Text::measure));
 
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(85);
-		UI::divisionSelect("quarterDivision", quarterDivision, QUART_DIVISIONS,
-		                   std::size(QUART_DIVISIONS));
+		if (config.divisionType == (int)TimeDivisionType::Quarter)
+			UI::divisionSelect("quarterDivision", quarterDivision, QUART_DIVISIONS,
+			                   std::size(QUART_DIVISIONS));
+		else
+		{
+			int measureDivision = quarterDivision * 4;
+			UI::divisionSelect("measureDivison", measureDivision, MEASURE_DIVISIONS,
+			                   std::size(MEASURE_DIVISIONS));
+			quarterDivision = measureDivision / 4;
+		}
 
 		ImGui::SameLine(0, 2);
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
@@ -3101,7 +3113,6 @@ namespace MikuMikuWorld
 						    (const char*)localize(guideColorAllTexts[(int)holdStep.guideColor]),
 						    note.guideAlpha,
 						    (const char*)localize(holdLayerTexts[(int)holdStep.layer]));
-						
 					}
 
 					ImGui::Text("-Fade Type: %s",

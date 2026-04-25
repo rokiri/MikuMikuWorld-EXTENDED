@@ -87,6 +87,7 @@ smooth_scroll_time, Время плавной прокрутки
 return_to_last_tick, Вернуться к последнему тику на паузе
 cursor_auto_scroll, Авто-прокрутка курсора
 cursor_auto_scroll_amount, Процент авто-прокрутки курсора с таймлайна
+#- division_type,
 background, Задний фон
 background_image, Фотография заднего фона
 draw_background, Нарисовать фотографию заднего фона

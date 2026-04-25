@@ -98,6 +98,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(returnToLastTick, "return_to_last_tick");
 	MMW_TEXT(cursorAutoScroll, "cursor_auto_scroll");
 	MMW_TEXT(cursorAutoScrollAmount, "cursor_auto_scroll_amount");
+	MMW_TEXT(divisonType, "division_type");
 	MMW_TEXT(background);
 	MMW_TEXT(backgroundImage, "background_image");
 	MMW_TEXT(drawBackground, "draw_background");

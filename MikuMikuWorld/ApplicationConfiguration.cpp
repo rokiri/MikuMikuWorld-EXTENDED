@@ -28,6 +28,7 @@ namespace MikuMikuWorld
 		notesSkin = "01";
 		matchNotesSizeToTimeline = true;
 		matchTimelineSizeToWindow = true;
+		divisionType = 0;
 		division = 2;
 		zoom = 2.0f;
 		laneOpacity = 0.6f;

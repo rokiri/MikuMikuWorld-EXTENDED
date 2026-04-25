@@ -85,6 +85,7 @@ smooth_scroll_time, 부드러운 스크롤 시간
 return_to_last_tick, 정지 시 마지막 틱으로 복귀
 cursor_auto_scroll, 커서 자동 스크롤
 cursor_auto_scroll_amount, 자동 스크롤 범위/비율
+#- division_type,
 background, 배경
 background_image, 배경 이미지
 draw_background, 배경 이미지 표시

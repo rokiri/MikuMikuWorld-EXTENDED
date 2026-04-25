@@ -378,6 +378,17 @@ namespace MikuMikuWorld
 		return edited;
 	}
 
+	void UI::separatorRow()
+	{
+		// Separator don't span the whole column any more
+		// We'll have to wait ImGui to fix the behavior
+		// For now just draw 2 separators
+		ImGui::TableNextColumn();
+		ImGui::Separator();
+		ImGui::TableNextColumn();
+		ImGui::Separator(); 
+	}
+
 	bool UI::fractionPropertyRow(std::string_view text, int& numerator, int& denominator)
 	{
 		labelPropertyColumn(localize(text));

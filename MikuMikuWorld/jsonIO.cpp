@@ -114,6 +114,7 @@ namespace MikuMikuWorld
 			j_timeline["match_notes_size_to_timeline"] = cfg.matchNotesSizeToTimeline;
 			j_timeline["match_timeline_size_to_window"] = cfg.matchTimelineSizeToWindow;
 			j_timeline["division"] = cfg.division;
+			j_timeline["divisionType"] = cfg.divisionType;
 			j_timeline["zoom"] = cfg.zoom;
 			j_timeline["lane_opacity"] = cfg.laneOpacity;
 			j_timeline["background_brightness"] = cfg.backgroundBrightness;
@@ -191,6 +192,10 @@ namespace MikuMikuWorld
 			                cfg.matchNotesSizeToTimeline);
 			optional_get_to(j_timeline, "match_timeline_size_to_window",
 			                cfg.matchTimelineSizeToWindow);
+			if (j_timeline.contains("divisionType"))
+				j_timeline["divisionType"].get_to(cfg.divisionType);
+			else
+				cfg.divisionType = static_cast<int>(TimeDivisionType::Measure);
 			optional_get_to(j_timeline, "division", cfg.division);
 			optional_get_to(j_timeline, "zoom", cfg.zoom);
 			optional_get_to(j_timeline, "lane_opacity", cfg.laneOpacity);
