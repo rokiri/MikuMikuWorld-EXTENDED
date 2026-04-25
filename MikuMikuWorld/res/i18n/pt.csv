@@ -111,6 +111,7 @@ critical, Crítico
 dummy, Falso
 hold_dummy, Hold Falso
 hold_critical, Hold Critical
+#- hold_separator,
 trace, Trace
 guide, Guia
 damage, Dano

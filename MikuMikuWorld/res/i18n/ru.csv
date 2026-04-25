@@ -113,6 +113,7 @@ critical, Критикал
 #- dummy,
 #- hold_dummy,
 #- hold_critical,
+#- hold_separator,
 trace, След
 guide, Гайд
 damage, Дамаг

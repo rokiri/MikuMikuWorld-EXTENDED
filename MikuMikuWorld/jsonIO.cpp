@@ -595,7 +595,6 @@ namespace MikuMikuWorld
 		optional_get_to(data, "alpha", note.guideAlpha);
 	}
 
-
 	static void hold_note_step_to_json(json& data, const HoldNoteStep& step)
 	{
 		if (step.isGuide())
@@ -711,8 +710,7 @@ namespace MikuMikuWorld
 			auto nextHoldStepIt =
 			    std::upper_bound(hold.separators.begin(), hold.separators.end(), *steps.front(),
 			                     HoldNote::HoldStepComparer(score.notes));
-			const HoldNoteStep* holdStep =
-			    nextHoldStepIt == hold.separators.begin() ? &hold : &*std::prev(nextHoldStepIt);
+			const HoldNoteStep* holdStep = &*std::prev(nextHoldStepIt);
 
 			json* holdData = &holds.emplace_back();
 			hold_note_step_to_json(*holdData, *holdStep);
@@ -741,8 +739,7 @@ namespace MikuMikuWorld
 				holdStart = &(*holdData)["start"];
 				start = *stepIt;
 
-				holdStep =
-				    nextHoldStepIt == hold.separators.begin() ? &hold : &*std::prev(nextHoldStepIt);
+				holdStep = &*std::prev(nextHoldStepIt);
 				hold_note_step_to_json(*holdData, *holdStep);
 				terminal_step_note_to_json(*holdStart, *start, *holdStep, -baseTick);
 
@@ -833,15 +830,16 @@ namespace MikuMikuWorld
 				const json* holdStepData = &entry;
 				const json* holdStart = &entry["start"];
 				HoldNote& hold = pasteData.holdNotes[nextHoldID];
-				HoldNoteStep* holdStep = &hold;
+				HoldNoteStep* holdStep = &hold.separators.emplace_back();
 				hold.ID = nextHoldID++;
 				hold_note_step_from_json(*holdStepData, *holdStep, *holdStart);
-				hold.fadeType = tryGetValue(data, "fade", FadeType::Out);
+				hold.fadeType = tryGetValue(entry, "fade", FadeType::Out);
 
 				Note* start = &pasteData.notes[nextNoteID];
 				start->ID = nextNoteID++;
 				start->holdID = hold.ID;
 				terminal_step_note_from_json(*holdStart, *start, *holdStepData, *holdStep);
+				holdStep->ID = start->ID;
 				hold.steps.push_back(start->ID);
 
 				if (arrayHasData(*holdStepData, "steps"))

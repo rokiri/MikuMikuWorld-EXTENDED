@@ -120,9 +120,10 @@ namespace MikuMikuWorld
 		SoundEffectType soundEffect;
 		HoldStepLayer holdLayer;
 		bool hideNotes;
+		bool holdSeparator;
 		bool mixedTick, mixedLane, mixedWidth, mixedCritical, mixedTrace, mixedFlick, mixedDummy;
-		bool mixedEase, mixedStep, mixedHoldCrit, mixedHoldDummy, mixedGuideCol, mixedFade,
-		    mixedAlpha, mixedSoundEffect, mixedHoldLayer;
+		bool mixedEase, mixedStep, mixedHoldCrit, mixedHoldDummy, mixedHoldSeparator, mixedGuideCol,
+		    mixedFade, mixedAlpha, mixedSoundEffect, mixedHoldLayer;
 		bool mixedLayer, mixedSpeed, mixedSkips, mixedhspdEase, mixedHideNotes;
 	};
 

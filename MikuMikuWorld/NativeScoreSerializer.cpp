@@ -428,6 +428,7 @@ namespace MikuMikuWorld
 		for (int i = 0; i < holdCount; ++i)
 		{
 			HoldNote hold;
+			HoldNoteStep holdStep;
 			hold.ID = nextHoldID;
 
 			unsigned int flags{};
@@ -436,11 +437,11 @@ namespace MikuMikuWorld
 
 			if (!version.supportExtendedNote())
 			{
-				hold.flag = setFlag(hold.flag, HoldNoteFlag::Guide, flags & HOLD_GUIDE);
-				hold.flag = setFlag(hold.flag, HoldNoteFlag::Dummy, flags & HOLD_DUMMY);
+				holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Guide, flags & HOLD_GUIDE);
+				holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Dummy, flags & HOLD_DUMMY);
 			}
 			else
-				hold.flag = static_cast<HoldNoteFlag>(flags);
+				holdStep.flag = static_cast<HoldNoteFlag>(flags);
 
 			Note start = readNote(LegacyNoteType::Hold, reader, version);
 			bool isStartCrit = hasFlag(start.flag, NoteFlag::Critical);
@@ -449,9 +450,9 @@ namespace MikuMikuWorld
 			if (!version.supportExtendedNote())
 			{
 				start.ease = static_cast<EaseType>(reader.readUInt32());
-				bool isHidden = (flags & HOLD_START_HIDDEN) || hold.isGuide();
+				bool isHidden = (flags & HOLD_START_HIDDEN) || holdStep.isGuide();
 				start.flag = setFlag(start.flag, NoteFlag::Hidden, isHidden);
-				hold.flag = setFlag(hold.flag, HoldNoteFlag::Critical, isStartCrit);
+				holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Critical, isStartCrit);
 			}
 
 			if (version.supportFadeType())
@@ -460,14 +461,14 @@ namespace MikuMikuWorld
 				hold.fadeType = metadata.isExtendedScore ? FadeType::Out : FadeType::Classic;
 
 			if (version.supportGuideColor())
-				hold.guideColor = static_cast<GuideColor>(reader.readUInt32());
+				holdStep.guideColor = static_cast<GuideColor>(reader.readUInt32());
 			else
-				hold.guideColor = isStartCrit ? GuideColor::Yellow : GuideColor::Green;
+				holdStep.guideColor = isStartCrit ? GuideColor::Yellow : GuideColor::Green;
 
 			if (version.supportHoldLayer())
-				hold.layer = static_cast<HoldStepLayer>(reader.readUInt32());
+				holdStep.layer = static_cast<HoldStepLayer>(reader.readUInt32());
 			else
-				hold.layer = version.getImplicitLayer(hold);
+				holdStep.layer = version.getImplicitLayer(holdStep);
 
 			score.notes[start.ID] = start;
 			hold.steps.push_back(start.ID);
@@ -503,16 +504,18 @@ namespace MikuMikuWorld
 			end.holdID = nextHoldID;
 			if (!version.supportExtendedNote())
 			{
-				bool isHidden = (flags & HOLD_END_HIDDEN) || hold.isGuide();
+				bool isHidden = (flags & HOLD_END_HIDDEN) || holdStep.isGuide();
 				end.flag = setFlag(end.flag, NoteFlag::Hidden, isHidden);
 			}
 			score.notes[end.ID] = end;
 			hold.steps.push_back(end.ID);
 
+			holdStep.ID = start.ID;
+			hold.separators.push_back(holdStep);
 			if (version.supportExtendedNote())
 			{
 				int separatorCount = reader.readUInt32();
-				hold.separators.reserve(separatorCount);
+				hold.separators.reserve(separatorCount + 1);
 				for (int i = 0; i < separatorCount; ++i)
 				{
 					HoldNoteStep step;
@@ -627,14 +630,15 @@ namespace MikuMikuWorld
 
 		for (const auto& [id, hold] : score.holdNotes)
 		{
-			writer.writeInt32((int)hold.flag);
+			const HoldNoteStep* holdStep = &hold.separators.front();
+			writer.writeInt32((int)holdStep->flag);
 
 			// note data
 			const Note& start = score.notes.at(hold.steps.front());
 			writeNote(start, writer);
 			writer.writeInt32((int)hold.fadeType);
-			writer.writeInt32((int)hold.guideColor);
-			writer.writeInt32((int)hold.layer);
+			writer.writeInt32((int)holdStep->guideColor);
+			writer.writeInt32((int)holdStep->layer);
 
 			// steps
 			int stepCount = hold.steps.size() - 2;
@@ -653,17 +657,19 @@ namespace MikuMikuWorld
 
 			// separators
 			auto begin = hold.steps.begin(), itStep = begin;
-			writer.writeInt32(hold.separators.size());
-			for (auto&& holdStep : hold.separators)
+			writer.writeInt32(hold.separators.size() - 1);
+			for (auto it = std::next(hold.separators.begin()), end = hold.separators.end();
+			     it != end; ++it)
 			{
-				itStep = std::find(itStep, hold.steps.end(), holdStep.ID);
+				holdStep = &*it;
+				itStep = std::find(itStep, hold.steps.end(), holdStep->ID);
 				size_t index = std::distance(begin, itStep);
 				if (index >= hold.steps.size())
 					break;
 				writer.writeInt32((int)index);
-				writer.writeInt32((int)holdStep.flag);
-				writer.writeInt32((int)holdStep.guideColor);
-				writer.writeInt32((int)holdStep.layer);
+				writer.writeInt32((int)holdStep->flag);
+				writer.writeInt32((int)holdStep->guideColor);
+				writer.writeInt32((int)holdStep->layer);
 			}
 		}
 
@@ -822,7 +828,7 @@ namespace MikuMikuWorld
 			const Note& start = score.notes.at(hold.steps.front());
 			const Note& end = score.notes.at(hold.steps.back());
 			unsigned int flags{};
-			if (hold.isGuide())
+			if (hold.separators.front().isGuide())
 				flags |= HOLD_GUIDE;
 			if (start.isHidden())
 				flags |= HOLD_START_HIDDEN;

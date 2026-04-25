@@ -113,6 +113,7 @@ critical, Critical
 dummy, Fake
 hold_dummy, Fake Hold
 #- hold_critical,
+#- hold_separator,
 trace, Trace
 guide, Guide
 damage, Damage

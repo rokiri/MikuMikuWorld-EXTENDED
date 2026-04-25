@@ -111,6 +111,7 @@ critical, Kritik
 #- dummy,
 #- hold_dummy,
 #- hold_critical,
+#- hold_separator,
 trace, Iz
 guide, Kilavuz
 damage, Hasar

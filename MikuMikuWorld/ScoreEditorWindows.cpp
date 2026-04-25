@@ -687,17 +687,30 @@ namespace MikuMikuWorld
 				                                  .holdStepAt(*v.second, context.score.notes)
 				                                  .isGuide();
 			};
-			auto canCritHold = [&](const value_type& v)
+			auto getCritHold = [&](const value_type& v)
 			{
 				return v.second->isHold() && context.score.holdNotes.at(v.second->holdID)
 				                                 .holdStepAt(*v.second, context.score.notes)
 				                                 .isCrit();
 			};
-			auto canDummyHold = [&](const value_type& v)
+			auto getDummyHold = [&](const value_type& v)
 			{
 				return v.second->isHold() && context.score.holdNotes.at(v.second->holdID)
 				                                 .holdStepAt(*v.second, context.score.notes)
 				                                 .isDummy();
+			};
+			auto getSeparatorHold = [&](const value_type& v)
+			{
+				return v.second->isHold() && context.score.holdNotes.at(v.second->holdID)
+				                                     .holdStepAt(*v.second, context.score.notes)
+				                                     .ID == v.first;
+			};
+			auto isHoldMid = [&](const value_type& v)
+			{
+				if (!v.second->isHold())
+					return false;
+				const HoldNote& hold = context.score.holdNotes.at(v.second->holdID);
+				return v.first != hold.steps.front() && v.first != hold.steps.back();
 			};
 			auto isGuideHold = [&](const value_type& v)
 			{
@@ -710,13 +723,13 @@ namespace MikuMikuWorld
 				if (!v.second->isHold())
 					return false;
 				const HoldNote& hold = context.score.holdNotes.at(v.second->holdID);
-				return hold.isGuide() || std::any_of(hold.separators.begin(), hold.separators.end(),
-				                                     [&](auto&& s) { return s.isGuide(); });
+				return std::any_of(hold.separators.begin(), hold.separators.end(),
+				                   [&](auto&& s) { return s.isGuide(); });
 			};
-			auto canSetAlpha = [&](const value_type& v)
+			auto canHaveAlpha = [&](const value_type& v)
 			{
 				return v.second->isHold() && context.score.holdNotes.at(v.second->holdID)
-				                                 .canSetGuideAlpha(*v.second, context.score.notes);
+				                                 .canGuideAlpha(*v.second, context.score.notes);
 			};
 			auto getGuideCol = [&](const value_type& v)
 			{
@@ -754,10 +767,13 @@ namespace MikuMikuWorld
 			mixedStep = checkMixState(stepType, context.selectedNotes, getType, isHold);
 			mixedHoldCrit =
 			    hasFlag(context.selectedFlag, SelectionFlag::HasHoldNote) &&
-			    checkMixState(isCritHold, context.selectedNotes, canCritHold, isNormalHold);
+			    checkMixState(isCritHold, context.selectedNotes, getCritHold, isNormalHold);
 			mixedHoldDummy =
 			    hasFlag(context.selectedFlag, SelectionFlag::HasHoldNote) &&
-			    checkMixState(isDummyHold, context.selectedNotes, canDummyHold, isNormalHold);
+			    checkMixState(isDummyHold, context.selectedNotes, getDummyHold, isNormalHold);
+			mixedHoldSeparator =
+			    hasFlag(context.selectedFlag, SelectionFlag::HasAnyHoldMid) &&
+			    checkMixState(holdSeparator, context.selectedNotes, getSeparatorHold, isHoldMid);
 			layer = -1;
 			mixedLayer = context.metadata.isExtendedScore &&
 			             checkMixState(layer, context.selectedNotes, getLayer, alwaysTrue);
@@ -767,7 +783,7 @@ namespace MikuMikuWorld
 			mixedFade =
 			    checkMixState(fadeType, context.selectedNotes, getFadeType, hasAnyGuideHold);
 			mixedHoldLayer = checkMixState(holdLayer, context.selectedNotes, getHoldLayer, isHold);
-			mixedAlpha = checkMixState(alpha, context.selectedNotes, getAlpha, canSetAlpha);
+			mixedAlpha = checkMixState(alpha, context.selectedNotes, getAlpha, canHaveAlpha);
 			noteFlag = setFlag(noteFlag, NoteFlag::Critical, isCrit);
 			noteFlag = setFlag(noteFlag, NoteFlag::Trace, isTrace);
 			noteFlag = setFlag(noteFlag, NoteFlag::Dummy, isDummy);
@@ -990,6 +1006,17 @@ namespace MikuMikuWorld
 				                                HoldNoteFlag::Critical, mixedHoldCrit))
 					context.setCriticalHold(hasFlag(holdFlag, HoldNoteFlag::Critical));
 
+				enum class SeperatorFlag : uint8_t
+				{
+					False,
+					True
+				} separatorState = holdSeparator ? SeperatorFlag::True : SeperatorFlag::False;
+				if (context.metadata.isExtendedScore &&
+				    hasFlag(context.selectedFlag, SelectionFlag::HasAnyHoldMid) &&
+				    UI::checkboxFlagPropertyRow(Text::holdSeparator, separatorState,
+				                                SeperatorFlag::True, mixedHoldSeparator))
+					context.setHoldSeparator(holdSeparator = separatorState == SeperatorFlag::True);
+
 				ImGui::BeginDisabled(!context.metadata.isExtendedScore);
 				if (UI::selectMixedPropertyRow(Text::layer, mixedHoldLayer, holdLayer,
 				                               Text::notePropertiesMixedValue, holdLayerTexts))
@@ -1013,7 +1040,9 @@ namespace MikuMikuWorld
 					                               Text::notePropertiesMixedValue, fadeTypeTexts))
 						context.setFadeType(fadeType);
 					ImGui::EndDisabled();
-					ImGui::BeginDisabled(mixedFade || fadeType != FadeType::Custom);
+					ImGui::BeginDisabled(
+					    mixedFade ||
+					    !hasFlag(context.selectedFlag, SelectionFlag::CanSetGuideAlphaNote));
 					alpha = std::abs(alpha);
 					float inpAlpha = alpha * 100;
 					if (UI::mixedFloatPropertyRow(Text::stepAlpha, mixedAlpha, inpAlpha, "%g %%", 0,
@@ -1049,7 +1078,8 @@ namespace MikuMikuWorld
 				                               Text::notePropertiesMixedValue, fadeTypeTexts))
 					context.setFadeType(fadeType);
 				ImGui::EndDisabled();
-				ImGui::BeginDisabled(mixedFade || fadeType != FadeType::Custom);
+				ImGui::BeginDisabled(mixedFade || !hasFlag(context.selectedFlag,
+				                                           SelectionFlag::CanSetGuideAlphaNote));
 				alpha = std::abs(alpha);
 				float inpAlpha = alpha * 100;
 				if (UI::mixedFloatPropertyRow(Text::stepAlpha, mixedAlpha, inpAlpha, "%g %%", 0,

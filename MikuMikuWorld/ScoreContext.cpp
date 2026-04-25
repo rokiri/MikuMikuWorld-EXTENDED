@@ -100,6 +100,7 @@ namespace MikuMikuWorld
 
 	bool EditArgs::isNoteInsertMode() const
 	{
+		static_assert(size_t(InsertMode::MakeDummy) + 1 == size_t(InsertMode::InsertBPM));
 		return insertMode >= InsertMode::InsertTap && insertMode <= InsertMode::MakeDummy;
 	}
 
@@ -240,7 +241,8 @@ namespace MikuMikuWorld
 				canFlick = hold.steps.back() == ID;
 
 				// Prevent critical hold end if the hold start is not critical
-				if (canFlick && note.isCrit() && !note.isTrace() && !hold.isCrit() &&
+				if (canFlick && note.isCrit() && !note.isTrace() &&
+				    !hold.separators.front().isCrit() &&
 				    cycleMode(note.flick, maxFlick()) == FlickType::None)
 				{
 					note.flag = setFlag(note.flag, NoteFlag::Critical, false);
@@ -497,21 +499,12 @@ namespace MikuMikuWorld
 			}
 			else
 			{
-				id_t startID = pstep == phold ? phold->steps.front() : pstep->ID;
-				auto stepIt = std::find(phold->steps.begin(), phold->steps.end(), startID);
-				HoldNoteStep* nextSeperator;
-				if (pstep == phold)
-					nextSeperator = phold->separators.size() ? &phold->separators.front() : nullptr;
-				else
-				{
-					auto nextSeperatorIt = std::next(std::find_if(
-					    phold->separators.begin(), phold->separators.end(),
-					    [ID = pstep->ID](const HoldNoteStep& s) { return s.ID == ID; }));
-					nextSeperator =
-					    nextSeperatorIt != phold->separators.end() ? &*nextSeperatorIt : nullptr;
-				}
-				auto endStepIt =
-				    std::find(stepIt, phold->steps.end(), nextSeperator ? nextSeperator->ID : -1);
+				id_t startID = pstep->ID, endID;
+				auto stepIt = std::find(phold->steps.begin(), phold->steps.end(), pstep->ID);
+				size_t nextSepIdx = std::distance(phold->separators.data(), pstep) + 1;
+				endID =
+				    nextSepIdx < phold->separators.size() ? phold->separators[nextSepIdx].ID : -1;
+				auto endStepIt = std::find(stepIt, phold->steps.end(), endID);
 				if (!metadata.isExtendedScore)
 				{
 					// if the hold start is critical, every note in the hold must be critical
@@ -618,12 +611,13 @@ namespace MikuMikuWorld
 				HoldNote& hold = score.holdNotes.at(note.holdID);
 
 				if (note.type == NoteType::Tap && note.isHidden() &&
-				    (metadata.isExtendedScore || !hold.isGuide()))
+				    (metadata.isExtendedScore || !hold.separators.front().isGuide()))
 					note.flag = setFlag(note.flag, NoteFlag::Hidden, false);
 
 				// Prevent critical hold end if the hold start is not critical
 				if (!metadata.isExtendedScore && note.isCrit() && note.isTrace() &&
-				    !note.isFlick() && note.ID == hold.steps.back() && !hold.isCrit())
+				    !note.isFlick() && note.ID == hold.steps.back() &&
+				    !hold.separators.front().isCrit())
 					note.flag = setFlag(note.flag, NoteFlag::Critical, false);
 			}
 
@@ -718,8 +712,16 @@ namespace MikuMikuWorld
 			const HoldNote& hold = score.holdNotes.at(note.holdID);
 			if (hold.fadeType != FadeType::Custom || !hold.canSetGuideAlpha(note, score.notes))
 				continue;
-			edit = pnote->guideAlpha != alpha;
+			edit |= pnote->guideAlpha != alpha;
 			pnote->guideAlpha = alpha;
+			holds.emplace(note.holdID);
+		}
+
+		for (id_t holdID : holds)
+		{
+			HoldNote& hold = score.holdNotes.at(holdID);
+			hold.updateFading(score.notes);
+			hold.updateLongs(score.notes);
 		}
 
 		if (edit)
@@ -731,7 +733,7 @@ namespace MikuMikuWorld
 
 	void ScoreContext::setHoldLayer(HoldStepLayer layer)
 	{
-		if (!hasAnyNoteSelected())
+		if (!hasAnyNoteSelected() || !metadata.isExtendedScore)
 			return;
 
 		bool edit = false;
@@ -754,6 +756,59 @@ namespace MikuMikuWorld
 		if (edit)
 		{
 			pushHistory("Change hold step layer");
+			updateSelectionFlag();
+		}
+	}
+
+	void ScoreContext::setHoldSeparator(int separator)
+	{
+		if (!hasAnyNoteSelected() || !metadata.isExtendedScore)
+			return;
+
+		bool (*setFunc)(bool) = separator < 0 ? flip : separator > 0 ? set : unset;
+		bool edit = false;
+		std::unordered_set<id_t> holds;
+		for (auto&& [_, pnote] : selectedNotes)
+		{
+			Note& note = *pnote;
+			if (!note.isHold())
+				continue;
+
+			HoldNote& hold = score.holdNotes.at(note.holdID);
+			auto it = std::upper_bound(hold.separators.begin(), hold.separators.end(), note,
+			                           HoldNote::HoldStepComparer(score.notes));
+			const HoldNoteStep& holdStep = *std::prev(it);
+			bool isSeparator = holdStep.ID == note.ID;
+			bool wantEdit = isSeparator != setFunc(isSeparator);
+			// First and last note cannot be set/unset as separator
+			bool cannotEdit =
+			    (std::prev(it) == hold.separators.begin() && setFunc(isSeparator) == false) ||
+			    (note.ID == hold.steps.back() && setFunc(isSeparator) == true);
+			if (!wantEdit || cannotEdit)
+				continue;
+
+			edit |= wantEdit;
+			if (!isSeparator)
+				hold.separators.insert(it, holdStep)->ID = note.ID;
+			else
+			{
+				note.flag = setFlag(note.flag, NoteFlag::LongNote, false);
+				hold.separators.erase(std::prev(it));
+			}
+			holds.emplace(note.holdID);
+		}
+
+		for (id_t holdID : holds)
+		{
+			HoldNote& hold = score.holdNotes.at(holdID);
+			hold.updateSeparators(score.notes);
+			hold.updateFading(score.notes);
+			hold.updateLongs(score.notes);
+		}
+
+		if (edit)
+		{
+			pushHistory("Set separator");
 			updateSelectionFlag();
 		}
 	}
@@ -787,10 +842,7 @@ namespace MikuMikuWorld
 			if (!nv.second->isHold())
 				return false;
 			const auto& hold = score.holdNotes.at(nv.second->holdID);
-			if (hold.steps.front() == nv.first)
-				return true;
-			const auto& step = hold.holdStepAt(*nv.second, score.notes);
-			return &step != &hold && step.ID == nv.first;
+			return nv.first == hold.holdStepAt(*nv.second, score.notes).ID;
 		};
 		auto isNormalHold = [this](const NoteViewCollection::value_type& nv)
 		{
@@ -804,7 +856,12 @@ namespace MikuMikuWorld
 			                                  .holdStepAt(*nv.second, score.notes)
 			                                  .isGuide();
 		};
-		auto hasCustomAlpha = [this](const NoteViewCollection::value_type& nv)
+		auto hasGuideAlpha = [this](const NoteViewCollection::value_type& nv)
+		{
+			return nv.second->isHold() &&
+			       score.holdNotes.at(nv.second->holdID).canGuideAlpha(*nv.second, score.notes);
+		};
+		auto canSetGuideAlpha = [this](const NoteViewCollection::value_type& nv)
 		{
 			return nv.second->isHold() &&
 			       score.holdNotes.at(nv.second->holdID).canSetGuideAlpha(*nv.second, score.notes);
@@ -854,7 +911,9 @@ namespace MikuMikuWorld
 		selectedFlag = setFlag(selectedFlag, SelectionFlag::HasGuideNote,
 		                       std::any_of(begin, end, isGuideHold));
 		selectedFlag = setFlag(selectedFlag, SelectionFlag::HasGuideAlphaNote,
-		                       std::any_of(begin, end, hasCustomAlpha));
+		                       std::any_of(begin, end, hasGuideAlpha));
+		selectedFlag = setFlag(selectedFlag, SelectionFlag::CanSetGuideAlphaNote,
+		                       std::any_of(begin, end, canSetGuideAlpha));
 		selectedFlag = setFlag(selectedFlag, SelectionFlag::CanConnectHold, canConnectHold());
 	}
 
@@ -990,9 +1049,9 @@ namespace MikuMikuWorld
 					}
 					hold.steps.erase(it);
 					// Erase the separator step
-					auto stepIt = std::find_if(hold.separators.begin(), hold.separators.end(),
-					                           [ID = note.ID](const HoldNoteStep& step)
-					                           { return step.ID == ID; });
+					auto stepIt = std::find_if(
+					    std::next(hold.separators.begin()), hold.separators.end(),
+					    [ID = note.ID](const HoldNoteStep& step) { return step.ID == ID; });
 					if (stepIt != hold.separators.end())
 						hold.separators.erase(stepIt);
 
@@ -1008,12 +1067,6 @@ namespace MikuMikuWorld
 				// Hold deleted after or doesn't exist
 				continue;
 			HoldNote& hold = holdIt->second;
-			if (hold.separators.size() && hold.separators.front().ID == hold.steps.front())
-			{
-				static_cast<HoldNoteStep&>(hold) = hold.separators.front();
-				hold.ID = ID;
-				hold.separators.erase(hold.separators.begin());
-			}
 			hold.sortSteps(score.notes, !metadata.isExtendedScore);
 		}
 		for (auto& [layer, tick] : selectedHiSpeedChanges)
@@ -1108,6 +1161,7 @@ namespace MikuMikuWorld
 				if (newNote)
 					selectedNotes.emplace(newNote->ID, newNote);
 			}
+			hold.updateSeparators(score.notes);
 			hold.updateJoints(score.notes);
 			hold.updateLongs(score.notes);
 			hold.updateFading(score.notes);
@@ -1158,16 +1212,15 @@ namespace MikuMikuWorld
 				}
 				if (metadata.isExtendedScore)
 				{
-					for (const auto& separator : hold.separators)
+					for (auto it = std::next(hold.separators.begin()), end = hold.separators.end();
+					     it != end; ++it)
 					{
+						const auto& separator = *it;
 						auto newIt = remappedID.find(separator.ID);
 						if (newIt == remappedID.end())
 							continue;
 						auto& newSeparator = newHold.separators.emplace_back(separator);
 						newSeparator.ID = newIt->second;
-						// Mark separator LongNote
-						Note& sepNote = score.notes.at(newSeparator.ID);
-						sepNote.flag = setFlag(sepNote.flag, NoteFlag::LongNote);
 					}
 				}
 				newHold.updateJoints(score.notes);
@@ -1735,7 +1788,7 @@ namespace MikuMikuWorld
 
 			const HoldNote& hold = score.holdNotes.at(note->holdID);
 			const HoldNoteStep& step = hold.holdStepAt(*note, score.notes);
-			if (hold.steps.front() != note->ID && (&step == &hold || step.ID != note->ID))
+			if (note->ID != step.ID)
 				continue;
 			updatingHoldSteps.emplace(&step, hold.ID);
 		}
@@ -1744,20 +1797,11 @@ namespace MikuMikuWorld
 		for (auto&& [pstep, holdID] : updatingHoldSteps)
 		{
 			HoldNote& hold = score.holdNotes.at(holdID);
-			id_t startID, endID;
-			if (&hold == pstep)
-			{
-				startID = hold.steps.front();
-				endID = hold.separators.size() ? hold.separators.front().ID : hold.steps.back();
-			}
-			else
-			{
-				startID = pstep->ID;
-				auto nextIt =
-				    std::next(std::find_if(hold.separators.begin(), hold.separators.end(),
-				                           [&](const HoldNoteStep& s) { return &s == pstep; }));
-				endID = nextIt != hold.separators.end() ? nextIt->ID : hold.steps.back();
-			}
+			const HoldNote& constHold = hold;
+			size_t nextSepIdx = std::distance(constHold.separators.data(), pstep) + 1;
+			id_t startID = pstep->ID;
+			id_t endID = nextSepIdx < constHold.separators.size() ? hold.separators[nextSepIdx].ID
+			                                                      : hold.steps.back();
 			const Note& holdStart = score.notes.at(startID);
 			const Note& holdEnd = score.notes.at(endID);
 			auto compare = HoldNote::StepIdComparer(score.notes);
@@ -1818,9 +1862,9 @@ namespace MikuMikuWorld
 
 			if (deleteHold)
 			{
-				if (hold.separators.empty())
+				if (hold.separators.size() <= 1)
 					eraseHold(hold, false);
-				else if (&hold == pstep)
+				else if (hold.separators.data() == pstep)
 				{
 					size_t index = std::distance(
 					    hold.steps.begin(), std::find(hold.steps.begin(), hold.steps.end(), endID));
@@ -1914,7 +1958,7 @@ namespace MikuMikuWorld
 
 			HoldNote& hold = score.holdNotes.at(note->holdID);
 			HoldNoteStep& step = hold.holdStepAt(*note, score.notes);
-			if (hold.steps.front() != note->ID && (&step == &hold || step.ID != note->ID))
+			if (step.ID != note->ID)
 				continue;
 			updatingHoldSteps.emplace(&step, hold.ID);
 		}
@@ -1934,7 +1978,7 @@ namespace MikuMikuWorld
 					Note& note = score.notes.at(stepID);
 					note.flag = setFlag(note.flag, NoteFlag::Hidden);
 				}
-				hold.layer = HoldStepLayer::Bottom;
+				hold.separators.front().layer = HoldStepLayer::Bottom;
 			}
 			hold.updateJoints(score.notes);
 			hold.updateLongs(score.notes);
@@ -1962,7 +2006,7 @@ namespace MikuMikuWorld
 
 			HoldNote& hold = score.holdNotes.at(note->holdID);
 			HoldNoteStep& step = hold.holdStepAt(*note, score.notes);
-			if (hold.steps.front() != note->ID && (&step == &hold || step.ID != note->ID))
+			if (step.ID != note->ID)
 				continue;
 			updatingHoldSteps.emplace(&step, hold.ID);
 		}
@@ -1982,7 +2026,7 @@ namespace MikuMikuWorld
 					Note& note = score.notes.at(stepID);
 					note.flag = setFlag(note.flag, NoteFlag::Critical, critical);
 				}
-				hold.layer = HoldStepLayer::Top;
+				hold.separators.front().layer = HoldStepLayer::Top;
 			}
 		}
 
@@ -2006,7 +2050,7 @@ namespace MikuMikuWorld
 
 			const HoldNote& hold = score.holdNotes.at(note->holdID);
 			const HoldNoteStep& step = hold.holdStepAt(*note, score.notes);
-			if (hold.steps.front() != note->ID && (&step == &hold || step.ID != note->ID))
+			if (step.ID != note->ID)
 				continue;
 			updatingHoldSteps.emplace(&step, hold.ID);
 		}
@@ -2018,13 +2062,13 @@ namespace MikuMikuWorld
 			bool eraseStart = false, eraseEnd = false;
 			HoldNote& hold = score.holdNotes.at(holdID);
 			// Split the hold from it's current chain (if exist)
-			if (hold.separators.size())
+			if (hold.separators.size() > 1)
 			{
-				if (&hold == pstep)
+				if (hold.separators.data() == pstep)
 				{
-					size_t index = std::distance(hold.steps.begin(),
-					                             std::find(hold.steps.begin(), hold.steps.end(),
-					                                       hold.separators.front().ID));
+					size_t index = std::distance(
+					    hold.steps.begin(),
+					    std::find(hold.steps.begin(), hold.steps.end(), hold.separators[1].ID));
 					id_t otherID = splitHoldAt(hold, index, false).second;
 					eraseEnd = true;
 					HoldNote& otherHold = score.holdNotes.at(otherID);
@@ -2033,10 +2077,11 @@ namespace MikuMikuWorld
 				}
 				else
 				{
-					auto nextIt =
-					    std::next(std::find_if(hold.separators.begin(), hold.separators.end(),
-					                           [&](const HoldNoteStep& s) { return &s == pstep; }));
-					id_t endID = nextIt != hold.separators.end() ? nextIt->ID : hold.steps.back();
+					size_t nextSepIdx =
+					    std::distance<const HoldNoteStep*>(hold.separators.data(), pstep) + 1;
+					id_t endID = nextSepIdx < hold.separators.size()
+					                 ? hold.separators[nextSepIdx].ID
+					                 : hold.steps.back();
 
 					id_t otherID;
 					size_t index = std::distance(
@@ -2183,7 +2228,7 @@ namespace MikuMikuWorld
 		if (holdID >= 0)
 		{
 			HoldNote& hold = score.holdNotes.at(holdID);
-			if (hold.isGuide() && !metadata.isExtendedScore)
+			if (!metadata.isExtendedScore && hold.separators.front().isGuide())
 				newNote.flag = setFlag(newNote.flag, NoteFlag::Hidden);
 			hold.insertStep(newNote, score.notes, !metadata.isExtendedScore, update);
 		}
@@ -2239,7 +2284,7 @@ namespace MikuMikuWorld
 			holdStart.flag = setFlag(holdStart.flag, NoteFlag::Dummy, false);
 			holdStart.flick = FlickType::None;
 			holdStart.type = NoteType::Tap;
-			if (hold.isGuide())
+			if (hold.separators.front().isGuide())
 				holdStart.flag = setFlag(holdStart.flag, NoteFlag::Hidden);
 		}
 
@@ -2261,7 +2306,7 @@ namespace MikuMikuWorld
 		{
 			holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Dummy, false);
 			holdEnd.type = NoteType::Tap;
-			if (hold.isGuide())
+			if (hold.separators.front().isGuide())
 				holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Hidden);
 		}
 
@@ -2270,9 +2315,6 @@ namespace MikuMikuWorld
 
 		HoldNote& newHold = score.holdNotes[nextIDH];
 		newHold.fadeType = hold.fadeType;
-		newHold.flag = hold.flag;
-		newHold.guideColor = hold.guideColor;
-		newHold.layer = hold.layer;
 		newHold.ID = nextIDH;
 		newHold.steps.clear();
 		newHold.joints.clear();
@@ -2281,13 +2323,17 @@ namespace MikuMikuWorld
 		newHold.steps.push_back(holdEnd.ID);
 		newHold.joints.push_back(holdStart.ID);
 		newHold.joints.push_back(holdEnd.ID);
+		newHold.separators.push_back(hold.separators.front());
+
+		HoldNoteStep& holdStep = newHold.separators.front();
+		holdStep.ID = newHold.steps.front();
 		if (!metadata.isExtendedScore)
 		{
-			newHold.flag = setFlag(newHold.flag, HoldNoteFlag::Dummy, false);
+			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Dummy, false);
 			newHold.fadeType = FadeType::Classic;
-			if (newHold.guideColor != GuideColor::Yellow)
-				newHold.guideColor = GuideColor::Green;
-			newHold.layer = newHold.isGuide() ? HoldStepLayer::Bottom : HoldStepLayer::Top;
+			if (holdStep.guideColor != GuideColor::Yellow)
+				holdStep.guideColor = GuideColor::Green;
+			holdStep.layer = holdStep.isGuide() ? HoldStepLayer::Bottom : HoldStepLayer::Top;
 		}
 
 		if (update)
@@ -2315,11 +2361,10 @@ namespace MikuMikuWorld
 	{
 		HoldNote& currHold = score.holdNotes.at(currHoldID);
 		HoldNote& nextHold = score.holdNotes.at(nextHoldID);
-		const HoldNoteStep& currStep =
-		    currHold.separators.size() ? currHold.separators.front() : currHold;
+		const HoldNoteStep& currStep = currHold.separators.back();
+		const HoldNoteStep& laterStep = nextHold.separators.front();
 
-		Note& earlierStartNote = score.notes.at(
-		    currHold.separators.size() ? currHold.separators.front().ID : currHold.steps.front());
+		Note& earlierStartNote = score.notes.at(currHold.separators.back().ID);
 		Note& earlierNote = score.notes.at(currHold.steps.back());
 		Note& laterNote = score.notes.at(nextHold.steps.front());
 		assert(earlierNote.tick <= laterNote.tick);
@@ -2329,11 +2374,11 @@ namespace MikuMikuWorld
 		                 earlierNote.width == laterNote.width;
 
 		bool mergeHold = !metadata.isExtendedScore;
-		if (currStep.isGuide() == false && nextHold.isGuide() == false)
-			mergeHold |=
-			    currStep.isCrit() == nextHold.isCrit() && currStep.isDummy() == nextHold.isDummy();
-		else if (currStep.isGuide() == true && nextHold.isGuide() == true)
-			mergeHold |= currStep.guideColor == nextHold.guideColor;
+		if (currStep.isGuide() == false && laterStep.isGuide() == false)
+			mergeHold |= currStep.isCrit() == laterStep.isCrit() &&
+			             currStep.isDummy() == laterStep.isDummy();
+		else if (currStep.isGuide() == true && laterStep.isGuide() == true)
+			mergeHold |= currStep.guideColor == laterStep.guideColor;
 
 		if (mergeNote)
 		{
@@ -2367,10 +2412,8 @@ namespace MikuMikuWorld
 		laterNote.flag = setFlag(laterNote.flag, NoteFlag::LongNote | NoteFlag::NonAttached, false);
 		if (!mergeNote)
 		{
-			earlierNote.flag = setFlag(earlierNote.flag, NoteFlag::NonAttached, false);
-			earlierNote.flag = setFlag(earlierNote.flag, NoteFlag::LongNote,
-			                           currHold.separators.size() &&
-			                               currHold.separators.back().ID == earlierNote.ID);
+			earlierNote.flag =
+			    setFlag(earlierNote.flag, NoteFlag::LongNote | NoteFlag::NonAttached, false);
 			if (!metadata.isExtendedScore)
 			{
 				earlierNote.type = NoteType::Tick;
@@ -2388,22 +2431,18 @@ namespace MikuMikuWorld
 				swapNoteProperties(earlierNote, laterNote);
 			}
 		}
-		else if (currHold.separators.size() &&
-		         std::find(currHold.steps.begin(), currHold.steps.end(),
-		                   currHold.separators.back().ID) == currHold.steps.end())
+		else if (currHold.separators.back().ID == currHold.steps.back())
 		{
 			// The last step that merged was a separator, we need to delete the separator
 			currHold.separators.pop_back();
 		}
-		if (!mergeHold)
-		{
-			nextHold.ID = laterNote.ID;
-			currHold.separators.insert(currHold.separators.end(), nextHold);
-			laterNote.flag = setFlag(laterNote.flag, NoteFlag::LongNote);
-		}
-		currHold.separators.insert(currHold.separators.end(), nextHold.separators.begin(),
+		auto sepStartIt = nextHold.separators.begin();
+		if (nextHold.separators.size() > 1 && nextHold.separators[1].ID == sepStartIt->ID)
+			++sepStartIt;
+		currHold.separators.insert(currHold.separators.end(), sepStartIt,
 		                           nextHold.separators.end());
 		score.holdNotes.erase(nextHoldID);
+		currHold.updateSeparators(score.notes);
 		currHold.updateJoints(score.notes);
 		currHold.updateLongs(score.notes);
 		currHold.updateFading(score.notes);
@@ -2422,12 +2461,12 @@ namespace MikuMikuWorld
 		assert(index > 0 && index < hold.steps.size() - 1);
 		Note& holdEnd = score.notes.at(hold.steps[index]);
 
-		auto separatorNextIt = std::upper_bound(hold.separators.begin(), hold.separators.end(),
-		                                        holdEnd, HoldNote::HoldStepComparer(score.notes));
-		HoldNoteStep& holdStep =
-		    separatorNextIt == hold.separators.begin() ? hold : *std::prev(separatorNextIt);
+		auto separatorIt =
+		    std::prev(std::upper_bound(hold.separators.begin(), hold.separators.end(), holdEnd,
+		                               HoldNote::HoldStepComparer(score.notes)));
+		HoldNoteStep& holdStep = *separatorIt;
 		HoldNote& newHold = score.holdNotes[nextHoldID];
-		static_cast<HoldNoteStep&>(newHold) = holdStep;
+		newHold.fadeType = hold.fadeType;
 		newHold.ID = nextHoldID++;
 		newHold.steps.clear();
 		newHold.joints.clear();
@@ -2435,17 +2474,18 @@ namespace MikuMikuWorld
 
 		if (!metadata.isExtendedScore)
 		{
-			newHold.flag = setFlag(newHold.flag, HoldNoteFlag::Dummy, false);
+			HoldNoteStep& holdStep = newHold.separators.front();
+			holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Dummy, false);
 			newHold.fadeType = FadeType::Classic;
-			if (newHold.guideColor != GuideColor::Yellow)
-				newHold.guideColor = GuideColor::Green;
+			if (holdStep.guideColor != GuideColor::Yellow)
+				holdStep.guideColor = GuideColor::Green;
 
 			holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Dummy, false);
 			holdEnd.flick = FlickType::None;
 			holdEnd.type = NoteType::Tap;
 			holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Critical,
-			                       hasFlag(newHold.flag, HoldNoteFlag::Critical));
-			if (newHold.isGuide())
+			                       hasFlag(holdStep.flag, HoldNoteFlag::Critical));
+			if (holdStep.isGuide())
 				holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::Hidden);
 		}
 		holdEnd.flag = setFlag(holdEnd.flag, NoteFlag::LongNote);
@@ -2465,13 +2505,16 @@ namespace MikuMikuWorld
 			newHold.steps.push_back(stepNote.ID);
 		}
 		hold.steps.erase(hold.steps.begin() + index + 1, hold.steps.end());
-		std::copy(separatorNextIt, hold.separators.end(), std::back_inserter(newHold.separators));
-		bool erasePrev = separatorNextIt != hold.separators.begin() && holdStep.ID == holdEnd.ID;
-		hold.separators.erase(separatorNextIt - erasePrev, hold.separators.end());
+		newHold.separators.insert(newHold.separators.end(), separatorIt, hold.separators.end());
+		bool erasePrev = separatorIt != hold.separators.begin() && holdStep.ID == holdEnd.ID;
+		hold.separators.erase(erasePrev ? separatorIt : std::next(separatorIt),
+		                      hold.separators.end());
 
+		hold.updateSeparators(score.notes);
 		hold.updateJoints(score.notes);
 		hold.updateLongs(score.notes);
 		hold.updateFading(score.notes);
+		newHold.updateSeparators(score.notes);
 		newHold.updateJoints(score.notes);
 		newHold.updateLongs(score.notes);
 		newHold.updateFading(score.notes);
@@ -2656,18 +2699,19 @@ namespace MikuMikuWorld
 			}
 			for (auto&& [_, hold] : score.holdNotes)
 			{
-				hold.separators.erase(hold.separators.begin(), hold.separators.end());
-				hold.flag = setFlag(hold.flag, HoldNoteFlag::Dummy, false);
+				hold.separators.erase(std::next(hold.separators.begin()), hold.separators.end());
+				HoldNoteStep& holdStep = hold.separators.front();
+				holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Dummy, false);
 				hold.fadeType = FadeType::Classic;
-				hold.guideColor =
-				    hold.guideColor != GuideColor::Yellow ? GuideColor::Green : hold.guideColor;
-				hold.layer = hold.isGuide() ? HoldStepLayer::Bottom : HoldStepLayer::Top;
+				if (holdStep.guideColor != GuideColor::Yellow)
+					holdStep.guideColor = GuideColor::Green;
+				holdStep.layer = holdStep.isGuide() ? HoldStepLayer::Bottom : HoldStepLayer::Top;
 
 				Note& startNote = score.notes.at(hold.steps.front());
 				Note& endNote = score.notes.at(hold.steps.back());
-				if (hold.isGuide())
+				if (holdStep.isGuide())
 				{
-					hold.flag = setFlag(hold.flag, HoldNoteFlag::Critical, false);
+					holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Critical, false);
 					if (startNote.type == NoteType::Tap && !startNote.isHidden())
 					{
 						newNotes.emplace_back(startNote).holdID = -1;
@@ -2683,7 +2727,7 @@ namespace MikuMikuWorld
 					endNote.flag = setFlag(endNote.flag, NoteFlag::Hidden);
 
 					startNote.flag = setFlag(startNote.flag, NoteFlag::Critical,
-					                         hold.guideColor == GuideColor::Yellow);
+					                         holdStep.guideColor == GuideColor::Yellow);
 					endNote.flag = setFlag(endNote.flag, NoteFlag::Critical, startNote.flag);
 
 					for (size_t i = 1; i < hold.steps.size() - 1; ++i)
@@ -2721,8 +2765,8 @@ namespace MikuMikuWorld
 				}
 				else
 				{
-					hold.flag = setFlag(hold.flag, HoldNoteFlag::Critical,
-					                    hasFlag(startNote.flag, NoteFlag::Critical));
+					holdStep.flag = setFlag(holdStep.flag, HoldNoteFlag::Critical,
+					                        hasFlag(startNote.flag, NoteFlag::Critical));
 					if (!startNote.isHidden() && startNote.isFlick())
 					{
 						newNotes.emplace_back(startNote).holdID = -1;

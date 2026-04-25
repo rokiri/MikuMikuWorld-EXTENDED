@@ -98,21 +98,22 @@ namespace MikuMikuWorld
 		constexpr inline bool isDummy() const { return hasFlag(flag, HoldNoteFlag::Dummy); }
 	};
 
-	class HoldNote : public HoldNoteStep
+	class HoldNote
 	{
 	  public:
+		id_t ID;
 		FadeType fadeType{ FadeType::Out };
 		// Steps are all the notes in the holds
 		// A hold must always has atleast 2 steps (Begin, End)
 		// These must always be ordered by the sort predicate
 		std::vector<id_t> steps;
+		// Seperators are steps that change the hold note look and function
+		// HoldNote always has at minimum 1 separator
+		std::vector<HoldNoteStep> separators;
 		// Joints are steps that isn't a attached to the hold
 		// The first and last step of a hold must be a joint
 		// These are generate from note data and thus must be kept in sync with them
 		std::vector<id_t> joints;
-		// Seperators are steps that change the hold note look and function
-		// HoldNote has a default step
-		std::vector<HoldNoteStep> separators;
 
 		template <typename C = std::less<>> struct StepComparer
 		{
@@ -173,10 +174,13 @@ namespace MikuMikuWorld
 			}
 		};
 
+		// Can be affected when guideAlpha change
+		bool canGuideAlpha(const Note& step, const NoteCollection& notes) const;
 		bool canSetGuideAlpha(const Note& step, const NoteCollection& notes) const;
 
 		void insertStep(Note& note, NoteCollection& notes, bool swaps = false, bool update = true);
 		void sortSteps(NoteCollection& notes, bool swaps = false);
+		void updateSeparators(NoteCollection& notes);
 		void updateJoints(NoteCollection& notes);
 		void updateLongs(NoteCollection& notes);
 		void updateFading(NoteCollection& notes);

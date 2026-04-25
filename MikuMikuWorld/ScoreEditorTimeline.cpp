@@ -1187,8 +1187,7 @@ namespace MikuMikuWorld
 
 		auto nextStepIt =
 		    std::upper_bound(hold.separators.begin(), hold.separators.end(), *itJoint, stepCmp);
-		const HoldNoteStep* holdStep =
-		    nextStepIt == hold.separators.begin() ? &hold : &*std::prev(nextStepIt);
+		const HoldNoteStep* holdStep = &*std::prev(nextStepIt);
 		for (auto nextJoint = std::next(itJoint); itJoint != endJoint && nextJoint != jntEndIt;
 		     itJoint = nextJoint++)
 		{
@@ -2217,49 +2216,46 @@ namespace MikuMikuWorld
 
 		for (const auto& [_, hold] : context.score.holdNotes)
 		{
-			if (hold.separators.empty())
+			const Note& front = context.score.notes.at(hold.steps.front());
+			const Note& back = context.score.notes.at(hold.steps.back());
+			if (front.tick > endTick || back.tick < startTick)
+				continue;
+			for (auto separatorIt = hold.separators.begin(), nextIt = std::next(separatorIt);
+			     separatorIt != nextIt;)
 			{
-				if (hold.isDummy() || hold.isGuide())
+				const HoldNoteStep& step = *separatorIt;
+				id_t endID;
+				if (step.isDummy() || step.isGuide())
+				{
+					separatorIt = nextIt;
+					if (nextIt != hold.separators.end())
+						++nextIt;
 					continue;
-				const Note& front = context.score.notes.at(hold.steps.front());
-				const Note& back = context.score.notes.at(hold.steps.back());
-				if (front.tick > endTick || back.tick < startTick)
+				}
+				else if (nextIt == hold.separators.end())
+				{
+					endID = hold.steps.back();
+					separatorIt = nextIt;
+				}
+				else if (nextIt->isDummy() || nextIt->isGuide())
+				{
+					endID = nextIt->ID;
+					separatorIt = nextIt;
+				}
+				else
+				{
+					++nextIt;
 					continue;
-				secs_t startTime = accumulateDuration(front.tick, context.score.tempoChanges);
-				secs_t endTime = accumulateDuration(back.tick, context.score.tempoChanges);
-				context.audio->playSoundEffect(hold.isCrit() ? SE_CRITICAL_CONNECT : SE_CONNECT,
+				}
+				const Note& start = context.score.notes.at(step.ID);
+				const Note& end = context.score.notes.at(endID);
+				if (start.tick > endTick || end.tick < startTick)
+					continue;
+				secs_t startTime = accumulateDuration(start.tick, context.score.tempoChanges);
+				secs_t endTime = accumulateDuration(end.tick, context.score.tempoChanges);
+				context.audio->playSoundEffect(step.isCrit() ? SE_CRITICAL_CONNECT : SE_CONNECT,
 				                               startTime - AUDIO_CORRECTION_OFFSET,
 				                               endTime - AUDIO_CORRECTION_OFFSET, curTime);
-			}
-			else
-			{
-				auto nextSeparatorIt = hold.separators.begin();
-				for (size_t frontIdx = 0, endIdx = 0; endIdx != hold.steps.size() - 1;
-				     frontIdx = endIdx)
-				{
-					const HoldNoteStep& step =
-					    nextSeparatorIt == hold.separators.begin() ? hold : *prev(nextSeparatorIt);
-					if (nextSeparatorIt == hold.separators.end())
-						endIdx = hold.steps.size() - 1;
-					else
-					{
-						auto endStepIt = std::find(hold.steps.begin() + frontIdx, hold.steps.end(),
-						                           nextSeparatorIt->ID);
-						endIdx = std::distance(hold.steps.begin(), endStepIt);
-						++nextSeparatorIt;
-					}
-					if (step.isDummy() || step.isGuide())
-						continue;
-					const Note& front = context.score.notes.at(hold.steps[frontIdx]);
-					const Note& back = context.score.notes.at(hold.steps[endIdx]);
-					if (front.tick > endTick || back.tick < startTick)
-						continue;
-					secs_t startTime = accumulateDuration(front.tick, context.score.tempoChanges);
-					secs_t endTime = accumulateDuration(back.tick, context.score.tempoChanges);
-					context.audio->playSoundEffect(step.isCrit() ? SE_CRITICAL_CONNECT : SE_CONNECT,
-					                               startTime - AUDIO_CORRECTION_OFFSET,
-					                               endTime - AUDIO_CORRECTION_OFFSET, curTime);
-				}
 			}
 		}
 
@@ -2412,7 +2408,7 @@ namespace MikuMikuWorld
 					if (!isInsertingHold)
 						break;
 					drawNote(drawList, end, tint, Channel_Hover, previewNotes);
-					drawHoldCurve(drawList, start, end, hold, 0, 1,
+					drawHoldCurve(drawList, start, end, hold.separators.front(), 0, 1,
 					              hoverTint.scaleAlpha(start.guideAlpha),
 					              hoverTint.scaleAlpha(end.guideAlpha), Channel_Hover);
 				}
@@ -2526,6 +2522,7 @@ namespace MikuMikuWorld
 			previewHold.steps.push_back(2);
 			previewHold.joints.push_back(1);
 			previewHold.joints.push_back(2);
+			previewHold.separators.push_back(HoldNoteStep{ 1 });
 		}
 		Note& previewNote = previewNotes.notes[0];
 		previewNote.type = NoteType::Tap;
@@ -2537,11 +2534,14 @@ namespace MikuMikuWorld
 		switch (edit.insertMode)
 		{
 		case InsertMode::InsertLong:
+		{
+			HoldNoteStep& holdStep = previewHold.separators.front();
+			holdStep.flag = HoldNoteFlag::Normal;
+			holdStep.guideColor = GuideColor::Green;
+			holdStep.layer = edit.holdLayer;
+		}
 			inputNoteID = !isInsertingHold ? 1 : 2;
-			previewHold.flag = HoldNoteFlag::Normal;
 			previewHold.fadeType = FadeType::Out;
-			previewHold.guideColor = GuideColor::Green;
-			previewHold.layer = edit.holdLayer;
 			noteStart.flag = noteEnd.flag = NoteFlag::LongNote;
 			noteStart.ease = edit.easeType, noteEnd.ease = EaseType::Linear;
 			noteStart.guideAlpha = noteEnd.guideAlpha = 1;
@@ -2592,14 +2592,15 @@ namespace MikuMikuWorld
 			break;
 		case InsertMode::InsertGuide:
 		{
+			HoldNoteStep& holdStep = previewHold.separators.front();
 			inputNoteID = !isInsertingHold ? 1 : 2;
-			previewHold.flag |= HoldNoteFlag::Guide;
+			holdStep.flag |= HoldNoteFlag::Guide;
 			previewHold.fadeType = edit.fadeType;
-			previewHold.guideColor =
+			holdStep.guideColor =
 			    context.metadata.isExtendedScore || edit.colorType == GuideColor::Yellow
 			        ? edit.colorType
 			        : GuideColor::Green;
-			previewHold.layer = edit.holdLayer;
+			holdStep.layer = edit.holdLayer;
 			noteStart.flag = noteEnd.flag = NoteFlag::LongNote | NoteFlag::Hidden;
 			noteStart.ease = edit.easeType, noteEnd.ease = EaseType::Linear;
 			switch (previewHold.fadeType)
@@ -2666,6 +2667,7 @@ namespace MikuMikuWorld
 		{
 			std::swap(previewHold.steps.front(), previewHold.steps.back());
 			std::swap(previewHold.joints.front(), previewHold.joints.back());
+			previewHold.separators.front().ID = previewHold.steps.front();
 		}
 
 		if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && isInsertingNote)
@@ -3066,33 +3068,44 @@ namespace MikuMikuWorld
 					const HoldNote& hold = context.score.holdNotes.at(note.holdID);
 					ImGui::Text("Hold: %d\n-Steps: %zd\n-Joints: %zd\n-Seperators: %zd", hold.ID,
 					            hold.steps.size(), hold.joints.size(), hold.separators.size());
-					if ((int)hold.flag)
+
+					for (size_t i = 0; i < hold.separators.size(); ++i)
 					{
-						ImGui::Text("-Flags:");
-						if (hasFlag(hold.flag, HoldNoteFlag::Critical))
+						const HoldNoteStep& holdStep = hold.separators[i];
+						ImGui::SeparatorText(IO::formatString("[%zd]", i).c_str());
+						ImGui::Text("-ID: %d", i, holdStep.ID);
+						if ((int)holdStep.flag)
 						{
-							ImGui::SameLine();
-							ImGui::TextColored(ImVec4(1, 1, 0, 1), "| Crit");
+							ImGui::Text("-Flags:");
+							if (hasFlag(holdStep.flag, HoldNoteFlag::Critical))
+							{
+								ImGui::SameLine();
+								ImGui::TextColored(ImVec4(1, 1, 0, 1), "| Crit");
+							}
+							if (hasFlag(holdStep.flag, HoldNoteFlag::Dummy))
+							{
+								ImGui::SameLine();
+								ImGui::TextColored(ImVec4(1, 0, 0, 1), "| Dummy");
+							}
+							if (hasFlag(holdStep.flag, HoldNoteFlag::Guide))
+							{
+								ImGui::SameLine();
+								ImGui::Text("| Guide");
+							}
 						}
-						if (hasFlag(hold.flag, HoldNoteFlag::Dummy))
-						{
-							ImGui::SameLine();
-							ImGui::TextColored(ImVec4(1, 0, 0, 1), "| Dummy");
-						}
-						if (hasFlag(hold.flag, HoldNoteFlag::Guide))
-						{
-							ImGui::SameLine();
-							ImGui::Text("| Guide");
-						}
+						else
+							ImGui::Text("-Flags: None");
+
+						ImGui::Text(
+						    "-Guide Color: %s\n-Alpha: %.2f\n-Layer: %s",
+						    (const char*)localize(guideColorAllTexts[(int)holdStep.guideColor]),
+						    note.guideAlpha,
+						    (const char*)localize(holdLayerTexts[(int)holdStep.layer]));
+						
 					}
-					else
-						ImGui::Text("-Flags: None");
 
-					ImGui::Text("-Guide Color: %s\n-Fade Type: %s\n-Alpha: %.2f",
-					            (const char*)localize(guideColorAllTexts[(int)hold.guideColor]),
-					            (const char*)localize(fadeTypeTexts[(int)hold.fadeType]),
-					            note.guideAlpha);
-
+					ImGui::Text("-Fade Type: %s",
+					            (const char*)localize(fadeTypeTexts[(int)hold.fadeType]));
 					if (!note.isAttached())
 						ImGui::Text("-Ease: %s",
 						            (const char*)localize(easeTypeTexts[(int)note.ease]));
@@ -3102,7 +3115,7 @@ namespace MikuMikuWorld
 					ImGui::Separator();
 					ImGui::Text("Hold: --\n-Steps: --\n-Joints: --\n-Prev: --\n-Next: __\n");
 					ImGui::Text("-Flags: --");
-					ImGui::Text("-No Guide!\n-No Fade!\n-No Alpha!");
+					ImGui::Text("-No Guide!\n-No Alpha!\n-No Layer\n-No Fade!");
 				}
 			}
 			else

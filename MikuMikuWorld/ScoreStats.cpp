@@ -37,13 +37,12 @@ namespace MikuMikuWorld
 			return !hasFlag(step.flag, HoldNoteFlag::Guide) &&
 			       !hasFlag(step.flag, HoldNoteFlag::Dummy);
 		};
-		return isNormalHoldStep(hold) + getCount(hold.separators, isNormalHoldStep);
+		return getCount(hold.separators, isNormalHoldStep);
 	}
 
 	static int getGuideHoldNoteCount(const HoldNote& hold)
 	{
-		return hold.isGuide() +
-		       getCount(hold.separators, [](const HoldNoteStep& step) { return step.isGuide(); });
+		return getCount(hold.separators, [](const HoldNoteStep& step) { return step.isGuide(); });
 	}
 
 	template <typename TMapContainer, typename TFunc>

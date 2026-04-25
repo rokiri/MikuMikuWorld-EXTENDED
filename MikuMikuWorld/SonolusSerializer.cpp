@@ -266,10 +266,11 @@ namespace MikuMikuWorld
 			const HoldNote& hold = *phold;
 			stepEntities.clear();
 
-			bool isActive = !hold.isGuide(), isActiveCombo = !hold.isGuide() && !hold.isDummy(),
+			const HoldNoteStep* holdStep = &hold.separators.front();
+			bool isActive = !holdStep->isGuide(),
+			     isActiveCombo = !holdStep->isGuide() && !holdStep->isDummy(),
 			     isActiveHead = isActive, isActiveTail = false, isSeparator = true;
-			const HoldNoteStep* holdStep = &hold;
-			auto nextSeparator = hold.separators.begin();
+			auto nextSeparator = std::next(hold.separators.begin());
 			size_t lastEntityIndex = 0, lastJointIndex = 0, lastSeparator = 0, lastActiveHead = 0;
 			for (auto&& stepID : hold.steps)
 			{
@@ -602,7 +603,7 @@ namespace MikuMikuWorld
 				}
 				if (isSeparator)
 				{
-					holdStep = holdStep ? &hold.separators.emplace_back() : &hold;
+					holdStep = &hold.separators.emplace_back();
 					holdStep->ID = holdNotes.size() - 1; // using step index as temporary ids
 					int kind = 0;
 					if (noteEntity.tryGetDataValue("segmentKind", kind))
@@ -741,9 +742,9 @@ namespace MikuMikuWorld
 		bool isSeparator = false;
 		if (holdStep && hold)
 		{
-			isSeparator = (hold != holdStep && holdStep->ID == note.ID) ||
+			isSeparator = (holdStep->ID == note.ID) ||
 			              (holdStep->isGuide() && hold->fadeType == FadeType::Classic &&
-			               hold->steps.back() != note.ID);
+			               hold->steps.back() != note.ID && hold->steps.front() != note.ID);
 			stepLayer = holdStep->layer;
 		}
 		return { archetype,

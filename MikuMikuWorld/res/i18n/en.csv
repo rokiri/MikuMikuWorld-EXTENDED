@@ -111,6 +111,7 @@ critical,Critical
 dummy,Fake
 hold_dummy,Fake Hold
 hold_critical,Critical Hold
+hold_separator,Hold Separator
 trace,Trace
 guide,Guide
 damage,Damage

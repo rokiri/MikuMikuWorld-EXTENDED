@@ -111,6 +111,7 @@ critical, 크리티컬 (Critical)
 dummy, 가 (Fake) 노트
 hold_dummy, 가 (Fake) 홀드
 hold_critical, 크리티컬 홀드
+#- hold_separator,
 trace, 트레이스
 guide, 가이드
 damage, 데미지

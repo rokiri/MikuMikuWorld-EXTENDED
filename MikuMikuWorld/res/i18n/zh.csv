@@ -115,6 +115,7 @@ critical,关键
 #- dummy,
 #- hold_dummy,
 #- hold_critical,
+#- hold_separator,
 trace,轨迹
 guide,引导
 damage,伤害

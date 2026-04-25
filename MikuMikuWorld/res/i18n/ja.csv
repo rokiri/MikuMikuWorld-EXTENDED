@@ -111,6 +111,7 @@ critical, クリティカル
 dummy, フェイク
 hold_dummy, フェイクスライド
 hold_critical, クリティカルスライド
+#- hold_separator,
 trace, トレース
 guide, ガイド
 damage, ダメージ

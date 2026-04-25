@@ -6,18 +6,38 @@
 
 namespace MikuMikuWorld
 {
+	static std::vector<HoldNoteStep>::iterator holdStepIteratorAt(const Note& step,
+	                                                              std::vector<HoldNoteStep>& steps,
+	                                                              const NoteCollection& notes)
+	{
+		return std::prev(
+		    std::upper_bound(steps.begin(), steps.end(), step, HoldNote::HoldStepComparer(notes)));
+	}
+
+	static std::vector<HoldNoteStep>::const_iterator
+	holdStepIteratorAt(const Note& step, const std::vector<HoldNoteStep>& steps,
+	                   const NoteCollection& notes)
+	{
+		return std::prev(
+		    std::upper_bound(steps.begin(), steps.end(), step, HoldNote::HoldStepComparer(notes)));
+	}
+
+	bool HoldNote::canGuideAlpha(const Note& step, const NoteCollection& notes) const
+	{
+		auto it = holdStepIteratorAt(step, separators, notes);
+		return it->isGuide() || (it != separators.begin() && std::prev(it)->isGuide());
+	}
+
 	bool HoldNote::canSetGuideAlpha(const Note& step, const NoteCollection& notes) const
 	{
-		auto it =
-		    std::upper_bound(separators.begin(), separators.end(), step, HoldStepComparer(notes));
-		if (it == separators.begin())
-			return this->isGuide();
-		else if (std::prev(it)->isGuide())
-			return true;
-		else if (std::prev(it)->ID == step.ID)
-			return std::prev(it) == separators.begin() ? this->isGuide()
-			                                           : std::prev(it, 2)->isGuide();
-		return false;
+		// Only if fade type is custom
+		if (fadeType != FadeType::Custom)
+			return false;
+		auto it = holdStepIteratorAt(step, separators, notes);
+		// Only separator notes can have custom alpha
+		if (step.ID != it->ID && step.ID != steps.back())
+			return false;
+		return it->isGuide() || (it != separators.begin() && std::prev(it)->isGuide());
 	}
 
 	void HoldNote::insertStep(Note& note, NoteCollection& notes, bool swaps, bool update)
@@ -88,10 +108,16 @@ namespace MikuMikuWorld
 		if (hasFlag(end.flag, NoteFlag::Attached))
 			end.flag = setFlag(end.flag, NoteFlag::NonAttached);
 
-		std::sort(separators.begin(), separators.end(), HoldStepComparer(notes));
+		updateSeparators(notes);
 		updateLongs(notes);
 		updateJoints(notes);
 		updateFading(notes);
+	}
+
+	void HoldNote::updateSeparators(NoteCollection& notes)
+	{
+		separators.front().ID = steps.front();
+		std::sort(std::next(separators.begin()), separators.end(), HoldStepComparer(notes));
 	}
 
 	void HoldNote::updateJoints(NoteCollection& notes)
@@ -104,9 +130,10 @@ namespace MikuMikuWorld
 
 	void HoldNote::updateLongs(NoteCollection& notes)
 	{
-		HoldNoteStep* prevStep = this;
-		for (auto&& holdStep : separators)
+		HoldNoteStep* prevStep = &separators.front();
+		for (auto it = std::next(separators.begin()); it != separators.end(); ++it)
 		{
+			HoldNoteStep& holdStep = *it;
 			Note& step = notes.at(holdStep.ID);
 			step.flag = setFlag(step.flag, NoteFlag::LongNote,
 			                    holdStep.isGuide() != prevStep->isGuide() || step.isHidden());
@@ -114,18 +141,23 @@ namespace MikuMikuWorld
 		}
 		Note& start = notes.at(steps.front());
 		Note& end = notes.at(steps.back());
-		start.flag = setFlag(start.flag, NoteFlag::LongNote, !isGuide() || start.isHidden());
+		start.flag = setFlag(start.flag, NoteFlag::LongNote,
+		                     !separators.front().isGuide() || start.isHidden());
 		end.flag = setFlag(end.flag, NoteFlag::LongNote, !prevStep->isGuide() || end.isHidden());
 	}
 
 	void HoldNote::updateFading(NoteCollection& notes)
 	{
+		static_assert(size_t(FadeType::FadeTypeCount) == 5 && "Update this");
 		Note& startStep = notes.at(steps.front());
 		Note& endStep = notes.at(steps.back());
 		size_t endIdx = steps.size() - 1;
 		auto nextSeparatorIt = separators.begin();
-		const HoldNoteStep* holdStep =
-		    nextSeparatorIt == separators.begin() ? this : &*prev(nextSeparatorIt);
+		const HoldNoteStep* holdStep = &*nextSeparatorIt;
+		++nextSeparatorIt;
+		Note* startHoldStep = &notes.at(holdStep->ID);
+		Note* endHoldStep =
+		    nextSeparatorIt != separators.end() ? &notes.at(nextSeparatorIt->ID) : &endStep;
 		for (size_t idx = 0; idx <= endIdx; idx++)
 		{
 			bool wasGuide = holdStep->isGuide();
@@ -133,6 +165,9 @@ namespace MikuMikuWorld
 			{
 				holdStep = &(*nextSeparatorIt);
 				++nextSeparatorIt;
+				startHoldStep = endHoldStep;
+				endHoldStep =
+				    nextSeparatorIt != separators.end() ? &notes.at(nextSeparatorIt->ID) : &endStep;
 			}
 			if (!holdStep->isGuide() && !wasGuide)
 				continue;
@@ -154,7 +189,13 @@ namespace MikuMikuWorld
 				break;
 			default:
 			case FadeType::Custom:
+			{
+				if (step.ID == startHoldStep->ID || step.ID == endHoldStep->ID)
+					break;
+				float ratio = unlerp(startHoldStep->tick, endHoldStep->tick, step.tick, 0.5f);
+				step.guideAlpha = lerp(startHoldStep->guideAlpha, endHoldStep->guideAlpha, ratio);
 				break;
+			}
 			}
 		}
 	}
@@ -185,22 +226,12 @@ namespace MikuMikuWorld
 
 	HoldNoteStep& HoldNote::holdStepAt(const Note& step, const NoteCollection& notes)
 	{
-		auto it =
-		    std::upper_bound(separators.begin(), separators.end(), step, HoldStepComparer(notes));
-		if (it == separators.begin())
-			return *this;
-		else
-			return *std::prev(it);
+		return *holdStepIteratorAt(step, separators, notes);
 	}
 
 	const HoldNoteStep& HoldNote::holdStepAt(const Note& step, const NoteCollection& notes) const
 	{
-		auto it =
-		    std::upper_bound(separators.begin(), separators.end(), step, HoldStepComparer(notes));
-		if (it == separators.begin())
-			return *this;
-		else
-			return *std::prev(it);
+		return *holdStepIteratorAt(step, separators, notes);
 	}
 
 	void setNotePosition(Note& n1, const Note& n2)

@@ -124,6 +124,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(dummy);
 	MMW_TEXT(holdDummy, "hold_dummy");
 	MMW_TEXT(holdCritical, "hold_critical");
+	MMW_TEXT(holdSeparator, "hold_separator");
 	MMW_TEXT(trace);
 	MMW_TEXT(guide);
 	MMW_TEXT(damage);

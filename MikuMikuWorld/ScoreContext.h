@@ -89,18 +89,30 @@ namespace MikuMikuWorld
 	enum class SelectionFlag : uint16_t
 	{
 		None,
+		// Has any notes that can be set trace
 		CanTrace = 1 << 0,
+		// Has any notes that can be set critical
 		CanCritical = 1 << 1,
+		// Has any notes that have Flick Type
 		CanFlick = 1 << 2,
+		// Has any notes that can be set dummy
 		CanDummy = 1 << 3,
+		// Has any notes inside a active hold note
 		HasHoldNote = 1 << 4,
+		// Has any notes inside a guide note
 		HasGuideNote = 1 << 5,
+		// Has any notes between the hold start and end notes
 		HasAnyHoldMid = 1 << 6,
+		// Has any notes where HoldNoteStep.ID == note.ID
 		HasAnyHoldNoteStep = 1 << 7,
-		CanEase = 1 << 8, // Any hold start + hold mid not attached
+		// Has any hold start + hold mid not attached
+		CanEase = 1 << 8,
+		// Has any notes that have guide alpha property enabled
 		HasGuideAlphaNote = 1 << 9,
-		CanConnectHold = 1 << 10,
-		CanSoundEffect = 1 << 11,
+		// Has any notes that can set guide alpha property
+		CanSetGuideAlphaNote = 1 << 10,
+		CanConnectHold = 1 << 11,
+		CanSoundEffect = 1 << 12,
 		// Flag for properties window
 		DirtyProperty = 1 << 15,
 
@@ -161,6 +173,7 @@ namespace MikuMikuWorld
 		void setDummyHold(int dummy = true);
 		void setGuideAlpha(float alpha);
 		void setHoldLayer(HoldStepLayer layer);
+		void setHoldSeparator(int separator = true);
 
 		void updateSelectionFlag();
 
