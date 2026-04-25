@@ -1643,6 +1643,9 @@ namespace MikuMikuWorld
 				--it;
 			const Note& startNote = context.score.notes.at(*std::prev(it));
 			const Note& endNote = context.score.notes.at(*it);
+			if (!context.isLayerInteractive(startNote.layer) &&
+			    !context.isLayerInteractive(endNote.layer))
+				continue;
 			float ratio = unlerp(startNote.tick, endNote.tick, mouseTick, 0.5f);
 			EaseFunction easeFunc = getEaseFunction(startNote.ease);
 			float X1 = easeFunc(startNote.lane, endNote.lane, ratio);
