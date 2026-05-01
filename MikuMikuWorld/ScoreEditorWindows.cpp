@@ -1505,60 +1505,70 @@ namespace MikuMikuWorld
 
 				const int rowHeight = ImGui::GetFrameHeight() + 5;
 
-				if (ImGui::BeginTable("##sound_test_table", 3, tableFlags, { -1, 200 }))
+				auto soundProfile = audio.getCurrentSoundEffectsProfile();
+				if (soundProfile)
 				{
-					ImGui::TableSetupScrollFreeze(0, 1);
-					ImGui::TableSetupColumn("Name");
-					ImGui::TableSetupColumn("Duration (sec)", ImGuiTableColumnFlags_WidthFixed);
-					ImGui::TableSetupColumn("Play/Stop", ImGuiTableColumnFlags_WidthFixed);
-					ImGui::TableHeadersRow();
-
-					for (size_t i = 0; i < std::size(SE_NAMES) * Audio::soundEffectsProfileCount;
-					     i++)
+					ImGui::Text("Current profile '%s'", soundProfile->name.c_str());
+					if (ImGui::BeginTable("##sound_test_table", 3, tableFlags, { -1, 200 }))
 					{
-						Audio::SoundInstance& sound = audio.baseSounds[i];
 
-						ImGui::PushID(i);
-						ImGui::TableNextRow(0, rowHeight);
-						ImGui::TableNextColumn();
+						ImGui::TableSetupScrollFreeze(0, 1);
+						ImGui::TableSetupColumn("Name");
+						ImGui::TableSetupColumn("Duration (sec)", ImGuiTableColumnFlags_WidthFixed);
+						ImGui::TableSetupColumn("Play/Stop", ImGuiTableColumnFlags_WidthFixed);
+						ImGui::TableHeadersRow();
 
-						float ratio =
-						    sound.getCurrentFrame() / static_cast<float>(sound.getLengthInFrames());
-						if (!sound.isPlaying())
-							ratio = 0.0f;
-
-						ImGui::ProgressBar(
-						    ratio, { -1, 0 },
-						    IO::formatString("%s_%02d", SE_NAMES[i % std::size(SE_NAMES)].data(),
-						                     i / std::size(SE_NAMES) + 1)
-						        .c_str());
-
-						float durationSec,
-						    durationMs = std::modf(sound.getDuration(), &durationSec);
-						float timeSec,
-						    timeMs = std::modf(sound.isPlaying() ? sound.getCurrentTime() : 0.0f,
-						                       &timeSec);
-						ImGui::TableNextColumn();
-						ImGui::Text("%02.f.%02.f/%02.f.%02.f", timeSec, timeMs * 100, durationSec,
-						            durationMs * 100);
-
-						ImGui::TableNextColumn();
-						if (UI::transparentButton(ICON_FA_PLAY, UI::btnSmall))
+						for (size_t i = 0; i < soundProfile->baseSounds.size(); i++)
 						{
-							sound.seek(0);
-							sound.play();
+							Audio::SoundInstance& sound = soundProfile->baseSounds[i];
+
+							ImGui::PushID(i);
+							ImGui::TableNextRow(0, rowHeight);
+							ImGui::TableNextColumn();
+
+							float ratio = sound.getCurrentFrame() /
+							              static_cast<float>(sound.getLengthInFrames());
+							if (!sound.isPlaying())
+								ratio = 0.0f;
+
+							ImGui::ProgressBar(
+							    ratio, { -1, 0 },
+							    IO::formatString("%s_%02d",
+							                     SE_NAMES[i % std::size(SE_NAMES)].data(),
+							                     i / std::size(SE_NAMES) + 1)
+							        .c_str());
+
+							float durationSec,
+							    durationMs = std::modf(sound.getDuration(), &durationSec);
+							float timeSec,
+							    timeMs = std::modf(
+							        sound.isPlaying() ? sound.getCurrentTime() : 0.0f, &timeSec);
+							ImGui::TableNextColumn();
+							ImGui::Text("%02.f.%02.f/%02.f.%02.f", timeSec, timeMs * 100,
+							            durationSec, durationMs * 100);
+
+							ImGui::TableNextColumn();
+							if (UI::transparentButton(ICON_FA_PLAY, UI::btnSmall))
+							{
+								sound.seek(0);
+								sound.play();
+							}
+
+							ImGui::SameLine();
+							ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+							ImGui::SameLine();
+							if (UI::transparentButton(ICON_FA_STOP, UI::btnSmall))
+								sound.stop();
+
+							ImGui::PopID();
 						}
 
-						ImGui::SameLine();
-						ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-						ImGui::SameLine();
-						if (UI::transparentButton(ICON_FA_STOP, UI::btnSmall))
-							sound.stop();
-
-						ImGui::PopID();
+						ImGui::EndTable();
 					}
-
-					ImGui::EndTable();
+				}
+				else
+				{
+					ImGui::Text("Sound effects not initialized!");
 				}
 			}
 
@@ -1673,7 +1683,7 @@ namespace MikuMikuWorld
 				if (UI::beginPropertyTable())
 				{
 					int mode = static_cast<int>(displayMode);
-					int modes[] = { 0, 1, 2 };
+					std::array<int, 3> modes = { 0, 1, 2 };
 					if (UI::selectPropertyRow(Text::displayMode, mode, modes, 3, colorDisplayStr))
 						displayMode = static_cast<ColorDisplay>(mode);
 
@@ -1709,7 +1719,7 @@ namespace MikuMikuWorld
 		}
 	}
 
-	void SettingsWindow::updateTimelineTab()
+	void SettingsWindow::updateTimelineTab(Audio::AudioManager& audio)
 	{
 		auto& config = getConfig();
 		auto& style = ImGui::GetStyle();
@@ -1786,11 +1796,17 @@ namespace MikuMikuWorld
 			if (ImGui::CollapsingHeader(localize(Text::audio), ImGuiTreeNodeFlags_DefaultOpen) &&
 			    UI::beginPropertyTable())
 			{
-				int seProfiles[] = { 0, 1, 2 };
-				static_assert(std::size(seProfiles) == std::size(Audio::soundEffectsProfileNames));
-				UI::selectPropertyRow(Text::notesSE, config.seProfileIndex, seProfiles,
-				                      std::size(seProfiles),
-				                      std::begin(Audio::soundEffectsProfileNames));
+				auto& profiles = audio.getSoundEffectsProfileNames();
+				auto getPath = [](const auto& p) -> const std::string& { return p.first; };
+				auto getName = [](const auto& p) -> const char* { return p.second.c_str(); };
+				UI::selectPropertyRow(Text::notesSE, config.seProfilePath, profiles.begin(),
+				                      profiles.end(), getPath, profiles.begin(), getName);
+				auto profile = audio.getCurrentSoundEffectsProfile();
+				if (profile && profile->credits.size() && ImGui::BeginItemTooltip())
+				{
+					ImGui::Text("%s", profile->credits.c_str());
+					ImGui::EndTooltip();
+				}
 				UI::endPropertyTable();
 			}
 
@@ -2032,7 +2048,7 @@ namespace MikuMikuWorld
 		}
 	}
 
-	DialogResult SettingsWindow::update()
+	DialogResult SettingsWindow::update(Audio::AudioManager& audio)
 	{
 		auto fetchName = []() { return UI::modalTitle(Text::settings); };
 		auto& windowName = localizeOrInsert("__settings_window", fetchName);
@@ -2057,7 +2073,7 @@ namespace MikuMikuWorld
 				if (ImGui::BeginTabBar("##settings_tabs"))
 				{
 					updateGenericTab();
-					updateTimelineTab();
+					updateTimelineTab(audio);
 					updateKeyConfigTab();
 					ImGui::EndTabBar();
 				}

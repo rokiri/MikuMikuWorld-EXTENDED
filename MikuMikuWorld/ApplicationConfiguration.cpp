@@ -51,7 +51,7 @@ namespace MikuMikuWorld
 		autoSaveInterval = 5;
 		autoSaveMaxCount = 100;
 
-		seProfileIndex = 0;
+		seProfilePath = "01";
 		masterVolume = 1.0f;
 		bgmVolume = 1.0f;
 		seVolume = 1.0f;

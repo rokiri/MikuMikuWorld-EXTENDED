@@ -267,7 +267,7 @@ namespace MikuMikuWorld
 			case SoundEffectType::None:
 				return "";
 			case SoundEffectType::TapPerfect:
-				return SE_PERFECT;
+				return SE_TAP;
 			case SoundEffectType::Flick:
 				return SE_FLICK;
 			case SoundEffectType::Trace:
@@ -288,7 +288,6 @@ namespace MikuMikuWorld
 		}
 		if (note.isHidden())
 			return "";
-		bool usingTaikoSFX = getConfig().seProfileIndex == 2;
 		switch (note.type)
 		{
 		case NoteType::Tap:
@@ -296,9 +295,10 @@ namespace MikuMikuWorld
 				return note.isCrit() ? SE_CRITICAL_FLICK : SE_FLICK;
 			else if (note.isTrace())
 				return note.isCrit() ? SE_CRITICAL_FRICTION : SE_FRICTION;
+			else if (note.isHold())
+				return note.isCrit() ? SE_CRITICAL_LONG_TAP : SE_LONG_TAP;
 			else
-				return note.isCrit() && (!note.isHold() || usingTaikoSFX) ? SE_CRITICAL_TAP
-				                                                          : SE_PERFECT;
+				return note.isCrit() ? SE_CRITICAL_TAP : SE_TAP;
 		case NoteType::Tick:
 			return note.isCrit() ? SE_CRITICAL_TICK : SE_TICK;
 		case NoteType::Damage:

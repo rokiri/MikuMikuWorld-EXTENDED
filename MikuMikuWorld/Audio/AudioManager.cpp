@@ -16,6 +16,7 @@
 namespace Audio
 {
 	namespace mmw = MikuMikuWorld;
+	namespace fs = std::filesystem;
 
 	void AudioManager::initializeAudioEngine()
 	{
@@ -65,27 +66,31 @@ namespace Audio
 
 	void AudioManager::loadSoundEffects()
 	{
-		constexpr size_t soundEffectsCount = std::size(mmw::SE_NAMES);
-
-		baseSounds.reserve(soundEffectsCount * soundEffectsProfileCount);
-
-		for (size_t profile = 0; profile < soundEffectsProfileCount; profile++)
+		soundEffectsProfileNames.clear();
+		auto soundPath = mmw::Application::getInstance().getResourcePath("sound");
+		for (auto& entry : fs::directory_iterator(soundPath))
 		{
-			auto path = mmw::Application::getInstance().getResourcePath(
-			    "sound", IO::formatString("%02d\\", profile + 1));
-			for (size_t i = 0; i < soundEffectsCount; ++i)
-			{
-				SoundInstance& debugSound = baseSounds.emplace_back();
-				auto filename = (path / mmw::SE_NAMES[i]).wstring();
-				filename.append(L".mp3");
-				if (!IO::File::exists(IO::stringToPath(filename)))
-					continue;
-				ma_sound_init_from_file_w(&engine, filename.c_str(), maSoundFlagsDecodeAsync,
-				                          &soundEffectsGroup, nullptr, &debugSound.source);
-			}
-		}
+			if (!entry.is_directory())
+				continue;
+			auto path = IO::toString(entry.path().filename());
+			auto configPath = entry.path() / "config.json";
+			if (!fs::exists(configPath))
+				continue;
+			IO::File configFile(configPath, IO::FileMode::Read);
 
-		initializeCurrentSoundProfile();
+			auto jconfig = nlohmann::json::parse(configFile.readAllText(), nullptr, false);
+			if (jconfig.is_discarded())
+				continue;
+
+			std::string name = jsonIO::tryGetValue<std::string>(jconfig, "profile_name");
+			if (name.empty())
+			{
+				std::printf("No profile name found for entry '%s'!\n",
+				            IO::toString(configPath).c_str());
+				continue;
+			}
+			soundEffectsProfileNames[path] = name;
+		}
 	}
 
 	void AudioManager::initializeMusic(ma_sound* music, ma_audio_buffer* buffer)
@@ -150,45 +155,85 @@ namespace Audio
 		return static_cast<float>(ma_engine_get_time_in_milliseconds(&engine)) / 1000.0f;
 	}
 
-	void Audio::AudioManager::setAudioEngineAbsoluteTime(float time)
+	void AudioManager::setAudioEngineAbsoluteTime(float time)
 	{
 		ma_engine_set_time_in_milliseconds(&engine, time * 1000.0f);
 	}
 
 	uint32_t AudioManager::getAudioEngineSampleRate() const { return engine.sampleRate; }
 
-	int AudioManager::getSoundEffectsProfileIndex() const { return soundEffectsProfileIndex; }
-
-	void AudioManager::setSoundEffectsProfileIndex(int index)
+	const std::string& AudioManager::getCurrentProfilePath() const
 	{
-		if (soundEffectsProfileIndex == index)
-			return;
-		soundEffectsProfileIndex = index;
-		uninitializeSoundProfile();
-		initializeCurrentSoundProfile();
+		return soundEffectsProfilePath;
 	}
 
-	void AudioManager::initializeCurrentSoundProfile()
+	void AudioManager::setSoundEffectsProfilePath(const std::string& path)
 	{
-		const size_t soundEffectsCount = std::size(mmw::SE_NAMES);
-		sounds = std::make_shared<SoundEffectProfile>();
-		sounds->pool.reserve(soundEffectsCount);
-		constexpr float soundEffectsVolumes[] = { 0.75f, 0.75f, 0.90f, 0.80f, 0.70f, 0.75f,
-			                                      0.80f, 0.92f, 0.82f, 0.70f, 0.25f };
-		static_assert(std::size(soundEffectsVolumes) == soundEffectsCount);
+		if (soundEffectsProfilePath == path)
+			return;
+		if (sounds)
+			uninitializeSoundProfile();
+		initializeSoundProfile(path);
+		soundEffectsProfilePath = path;
+	}
 
+	const std::unordered_map<std::string, std::string>&
+	AudioManager::getSoundEffectsProfileNames() const
+	{
+		return soundEffectsProfileNames;
+	}
+
+	void AudioManager::initializeSoundProfile(const std::string& path)
+	{
+		sounds = std::make_shared<SoundEffectProfile>();
+		auto soundIt =
+		    path.empty() ? soundEffectsProfileNames.begin() : soundEffectsProfileNames.find(path);
+		if (soundIt == soundEffectsProfileNames.end())
+		{
+			std::fprintf(stderr, "The sound profile path '%s' is invalid or doesn't exist!\n",
+			             path.c_str());
+			return;
+		}
+
+		auto profilePath = mmw::Application::getInstance().getResourcePath("sound", soundIt->first);
+		IO::File configFile(profilePath / "config.json", IO::FileMode::Read);
+		auto jconfig = nlohmann::json::parse(configFile.readAllText());
+
+		sounds->name = soundIt->second;
+		jsonIO::optional_get_to(jconfig, "credits", sounds->credits);
+		if (!jsonIO::keyExists(jconfig, "sound_effects", nlohmann::detail::value_t::object))
+			return;
+
+		auto& jSoundEffects = jconfig["sound_effects"];
+		auto& jSoundVolumes = jconfig["sound_effects_volumes"];
+
+		const size_t soundEffectsCount = std::size(mmw::SE_NAMES);
+		auto& baseSounds = sounds->baseSounds;
+		baseSounds.reserve(soundEffectsCount);
 		for (size_t i = 0; i < soundEffectsCount; ++i)
 		{
+			SoundInstance& debugSound = baseSounds.emplace_back();
+			std::string effectName =
+			    jsonIO::tryGetValue<std::string>(jSoundEffects, mmw::SE_NAMES[i].data());
+			if (effectName.empty() || !fs::exists(profilePath / effectName))
+				continue;
+			auto filename = IO::toWString(profilePath / effectName);
+			ma_sound_init_from_file_w(&engine, filename.c_str(), maSoundFlagsDecodeAsync,
+			                          &soundEffectsGroup, nullptr, &debugSound.source);
+		}
+
+		sounds->pool.reserve(soundEffectsCount);
+		for (size_t i = 0; i < soundEffectsCount; ++i)
+		{
+			float volume = jsonIO::tryGetValue(jSoundVolumes, mmw::SE_NAMES[i].data(), 1.0f);
 			bool isConnectSound =
 			    mmw::SE_NAMES[i] == mmw::SE_CONNECT || mmw::SE_NAMES[i] == mmw::SE_CRITICAL_CONNECT;
 			SoundFlags flags =
 			    isConnectSound ? SoundFlags::LOOP | SoundFlags::EXTENDABLE : SoundFlags::NONE;
-
 			auto&& [it, _] = sounds->pool.emplace(mmw::SE_NAMES[i], std::make_unique<SoundPool>());
 			auto& pool = it->second;
-			pool->initialize(&baseSounds[i + soundEffectsProfileIndex * soundEffectsCount].source,
-			                 &engine, &soundEffectsGroup, flags);
-			pool->setVolume(soundEffectsVolumes[i]);
+			pool->initialize(&baseSounds[i].source, &engine, &soundEffectsGroup, flags);
+			pool->setVolume(volume);
 
 			if (isConnectSound)
 			{
@@ -207,12 +252,17 @@ namespace Audio
 			pool->dispose();
 		}
 		sounds->pool.clear();
+		for (auto&& sound : sounds->baseSounds)
+		{
+			sound.stop();
+			ma_sound_uninit(&sound.source);
+		}
+		sounds->baseSounds.clear();
 		sounds.reset();
 	}
 
 	AudioContext::AudioContext(AudioManager& manager) : manager(manager), music()
 	{
-		soundEffectsProfileIndex = manager.getSoundEffectsProfileIndex();
 		soundEffects = manager.getCurrentSoundEffectsProfile();
 	}
 
@@ -543,9 +593,8 @@ namespace Audio
 
 	void AudioContext::syncSoundEffectsProfile()
 	{
-		if (soundEffectsProfileIndex == manager.getSoundEffectsProfileIndex())
+		if (soundEffects == manager.getCurrentSoundEffectsProfile())
 			return;
-		soundEffectsProfileIndex = manager.getSoundEffectsProfileIndex();
 		soundEffects = manager.getCurrentSoundEffectsProfile();
 	}
 }

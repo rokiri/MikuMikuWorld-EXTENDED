@@ -12,24 +12,33 @@
 
 namespace MikuMikuWorld
 {
-	constexpr std::string_view SE_PERFECT = "perfect";
+	constexpr std::string_view SE_TAP = "tap";
 	constexpr std::string_view SE_FLICK = "flick";
 	constexpr std::string_view SE_TICK = "tick";
 	constexpr std::string_view SE_FRICTION = "friction";
+	constexpr std::string_view SE_LONG_TAP = "long_tap";
 	constexpr std::string_view SE_CONNECT = "connect";
 	constexpr std::string_view SE_CRITICAL_TAP = "critical_tap";
 	constexpr std::string_view SE_CRITICAL_FLICK = "critical_flick";
 	constexpr std::string_view SE_CRITICAL_TICK = "critical_tick";
 	constexpr std::string_view SE_CRITICAL_FRICTION = "critical_friction";
+	constexpr std::string_view SE_CRITICAL_LONG_TAP = "critical_long_tap";
 	constexpr std::string_view SE_CRITICAL_CONNECT = "critical_connect";
 	constexpr std::string_view SE_DAMAGE = "damage";
 
-	constexpr std::string_view SE_NAMES[] = {
-		SE_PERFECT,          SE_FLICK,         SE_TICK,
-		SE_FRICTION,         SE_CONNECT,       SE_CRITICAL_TAP,
-		SE_CRITICAL_FLICK,   SE_CRITICAL_TICK, SE_CRITICAL_FRICTION,
-		SE_CRITICAL_CONNECT, SE_DAMAGE
-	};
+	constexpr std::string_view SE_NAMES[] = { SE_TAP,
+		                                      SE_FLICK,
+		                                      SE_TICK,
+		                                      SE_FRICTION,
+		                                      SE_LONG_TAP,
+		                                      SE_CONNECT,
+		                                      SE_CRITICAL_TAP,
+		                                      SE_CRITICAL_FLICK,
+		                                      SE_CRITICAL_TICK,
+		                                      SE_CRITICAL_FRICTION,
+		                                      SE_CRITICAL_LONG_TAP,
+		                                      SE_CRITICAL_CONNECT,
+		                                      SE_DAMAGE };
 
 	struct Note
 	{

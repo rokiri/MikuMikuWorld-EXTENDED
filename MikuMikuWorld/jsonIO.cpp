@@ -145,7 +145,7 @@ namespace MikuMikuWorld
 		}
 		{
 			auto& j_audio = j_cfg["audio"];
-			j_audio["se_profile"] = cfg.seProfileIndex;
+			j_audio["se_profile_path"] = cfg.seProfilePath;
 			j_audio["master_volume"] = cfg.masterVolume;
 			j_audio["bgm_volume"] = cfg.bgmVolume;
 			j_audio["se_volume"] = cfg.seVolume;
@@ -240,7 +240,10 @@ namespace MikuMikuWorld
 		if (keyExists(j_cfg, "audio"))
 		{
 			const json& j_audio = j_cfg["audio"];
-			optional_get_to(j_audio, "se_profile", cfg.seProfileIndex);
+			if (keyExists(j_audio, "se_profile_path", detail::value_t::string))
+				cfg.seProfilePath = tryGetValue<std::string>(j_audio, "se_profile_path");
+			else
+				cfg.seProfilePath = IO::formatString("%02d", tryGetValue(j_audio, "se_profile", 0) + 1);
 			optional_get_to(j_audio, "master_volume", cfg.masterVolume);
 			optional_get_to(j_audio, "bgm_volume", cfg.bgmVolume);
 			optional_get_to(j_audio, "se_volume", cfg.seVolume);

@@ -167,25 +167,27 @@ namespace MikuMikuWorld
 			return edited;
 		}
 
-		template <typename T, typename TList, typename InputIt, typename F>
-		static auto selectPropertyRow(std::string_view text, T& value, TList values, size_t size,
-		                              InputIt first, F cstrCast) ->
-		    typename std::enable_if_t<std::is_same_v<decltype(values[0] == value), bool>, bool>
+		template <typename T, typename ValueIt, typename InputIt, typename FValue, typename F>
+		static auto selectPropertyRow(std::string_view text, T& value, ValueIt valueBegin,
+		                              ValueIt valueEnd, FValue valueCast, InputIt first, F cstrCast)
+		    -> typename std::enable_if_t<
+		        std::is_same_v<decltype(valueCast(*valueBegin) == value), bool>, bool>
 		{
 			labelPropertyColumn(localize(text));
 
 			bool edited = false;
 
 			const char* preview = "";
-			size_t iselected = 0;
-			while (iselected < size)
+			InputIt selectedIt = std::next(first, std::distance(valueBegin, valueEnd));
+			InputIt keyIt = first;
+			for (auto valIt = valueBegin; valIt != valueEnd; ++valIt, ++keyIt)
 			{
-				if (values[iselected] == value)
+				if (valueCast(*valIt) == value)
 				{
-					preview = cstrCast(*(first + iselected));
+					preview = cstrCast(*keyIt);
+					selectedIt = keyIt;
 					break;
 				}
-				iselected++;
 			}
 
 			ImGui::TableNextColumn();
@@ -193,13 +195,14 @@ namespace MikuMikuWorld
 			ImGui::PushID(text.data(), text.data() + text.size());
 			if (ImGui::BeginCombo("", preview))
 			{
-				for (size_t i = 0; i < size; i++)
+				keyIt = first;
+				for (auto valIt = valueBegin; valIt != valueEnd; ++valIt, ++keyIt)
 				{
-					const bool selected = (iselected == i);
+					const bool selected = (keyIt == selectedIt);
 
-					if (ImGui::Selectable(cstrCast(*(first + i)), selected))
+					if (ImGui::Selectable(cstrCast(*keyIt), selected))
 					{
-						value = values[i];
+						value = valueCast(*valIt);
 						edited = true;
 					}
 					if (selected)
@@ -211,6 +214,16 @@ namespace MikuMikuWorld
 			ImGui::PopID();
 
 			return edited;
+		}
+
+		template <typename T, typename TList, typename InputIt, typename F>
+		static auto selectPropertyRow(std::string_view text, T& value, TList values, size_t size,
+		                              InputIt first, F cstrCast) ->
+		    typename std::enable_if_t<std::is_same_v<decltype(values[0] == value), bool>, bool>
+		{
+			return selectPropertyRow(
+			    text, value, std::begin(values), std::begin(values) + size,
+			    [](auto&& v) -> const T& { return v; }, first, cstrCast);
 		}
 
 		template <typename T, typename TList, typename InputIt>

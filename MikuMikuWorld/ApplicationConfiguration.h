@@ -10,7 +10,7 @@ namespace MikuMikuWorld
 
 	struct ApplicationConfiguration
 	{
-		constexpr static const char* CONFIG_VERSION{ "1.12.0" };
+		constexpr static const char* CONFIG_VERSION{ "1.13.0" };
 
 		std::string version;
 
@@ -56,9 +56,9 @@ namespace MikuMikuWorld
 		float masterVolume;
 		float bgmVolume;
 		float seVolume;
-		int seProfileIndex;
 		std::string backgroundImage;
 		std::string notesSkin;
+		std::string seProfilePath;
 
 		// Miscellaneous
 		std::chrono::system_clock::time_point lastUpdateCheck;

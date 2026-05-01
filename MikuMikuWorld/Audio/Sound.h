@@ -15,10 +15,6 @@
 
 namespace Audio
 {
-	constexpr size_t soundEffectsProfileCount = 3;
-
-	constexpr const char* soundEffectsProfileNames[]{ "SE 01", "SE 02", "Taiko" };
-
 	enum class SoundFlags : uint8_t
 	{
 		NONE = 0,
@@ -148,6 +144,8 @@ namespace Audio
 	struct SoundEffectProfile
 	{
 		std::string name;
+		std::string credits;
+		std::vector<SoundInstance> baseSounds;
 		std::unordered_map<std::string_view, std::unique_ptr<SoundPool>> pool;
 	};
 }

@@ -19,11 +19,10 @@ namespace Audio
 		float musicVolume{ 1.0f };
 		float soundEffectsVolume{ 1.0f };
 
-		int soundEffectsProfileIndex{ 0 };
+		std::string soundEffectsProfilePath;
+		std::unordered_map<std::string, std::string> soundEffectsProfileNames;
 
 	  public:
-		std::vector<SoundInstance> baseSounds;
-
 		void initializeAudioEngine();
 		void uninitializeAudioEngine();
 		void startEngine();
@@ -51,11 +50,12 @@ namespace Audio
 		void setSoundEffectsVolume(float volume);
 		float getSoundEffectsVolume() const;
 
-		int getSoundEffectsProfileIndex() const;
-		void setSoundEffectsProfileIndex(int index);
+		const std::string& getCurrentProfilePath() const;
+		void setSoundEffectsProfilePath(const std::string& path);
+		const std::unordered_map<std::string, std::string>& getSoundEffectsProfileNames() const;
 
 	  private:
-		void initializeCurrentSoundProfile();
+		void initializeSoundProfile(const std::string& path);
 		void uninitializeSoundProfile();
 	};
 
@@ -70,7 +70,6 @@ namespace Audio
 		float musicOffset{ 0.0f };
 
 		float playbackSpeed{ 1.0f };
-		int soundEffectsProfileIndex{ 0 };
 
 		float absoluteStartTime{};
 		float startTime{};

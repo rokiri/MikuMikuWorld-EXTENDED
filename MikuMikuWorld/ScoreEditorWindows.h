@@ -163,13 +163,13 @@ namespace MikuMikuWorld
 		int selectedBindingIndex = 0;
 
 		void updateGenericTab();
-		void updateTimelineTab();
+		void updateTimelineTab(Audio::AudioManager& audio);
 		void updateKeyConfigTab();
 
 	  public:
 		bool isBackgroundChangePending = false;
 		void open();
-		DialogResult update();
+		DialogResult update(Audio::AudioManager& audio);
 	};
 
 	class UnsavedChangesDialog

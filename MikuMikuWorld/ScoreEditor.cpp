@@ -29,7 +29,7 @@ namespace MikuMikuWorld
 		audio.setMusicVolume(config.bgmVolume);
 		audio.setSoundEffectsVolume(config.seVolume);
 		audio.loadSoundEffects();
-		audio.setSoundEffectsProfileIndex(config.seProfileIndex);
+		audio.setSoundEffectsProfilePath(config.seProfilePath);
 
 		autoSavePath = Application::getInstance().getConfigPath("auto_save");
 		autoSaveTimer.reset();
@@ -143,10 +143,10 @@ namespace MikuMikuWorld
 			settingsWindow.isBackgroundChangePending = false;
 		}
 
-		if (config.seProfileIndex != audio.getSoundEffectsProfileIndex())
+		if (config.seProfilePath != audio.getCurrentProfilePath())
 		{
 			// audio.stopSoundEffects(false);
-			audio.setSoundEffectsProfileIndex(config.seProfileIndex);
+			audio.setSoundEffectsProfilePath(config.seProfilePath);
 		}
 
 		if (config.autoSaveEnabled && autoSaveTimer.elapsedMinutes() >= config.autoSaveInterval)
@@ -155,7 +155,7 @@ namespace MikuMikuWorld
 			autoSaveTimer.reset();
 		}
 
-		settingsWindow.update();
+		settingsWindow.update(audio);
 		dialog.update();
 		serializeWindow.update(*this);
 		if (getConfig().debugEnabled)
@@ -757,12 +757,14 @@ namespace MikuMikuWorld
 		if (ImGui::BeginMenu(localize(Text::view)))
 		{
 			ImGui::MenuItem(localize(Text::showStepOutlines), NULL, &edit.drawHoldStepOutlines);
-			ImGui::MenuItem(localize(Text::hideStepOutlinesInPlayback), NULL, &config.hideStepOutlinesInPlayback);
+			ImGui::MenuItem(localize(Text::hideStepOutlinesInPlayback), NULL,
+			                &config.hideStepOutlinesInPlayback);
 			ImGui::MenuItem(localize(Text::cursorAutoScroll), NULL, &config.followCursorInPlayback);
 			ImGui::MenuItem(localize(Text::returnToLastTick), NULL,
 			                &config.returnToLastSelectedTickOnPause);
 			ImGui::MenuItem(localize(Text::drawWaveform), NULL, &config.drawWaveform);
-			ImGui::MenuItem(localize(Text::stopPlaybackAtMusicEnd), NULL, &config.stopPlaybackAtMusicEnd);
+			ImGui::MenuItem(localize(Text::stopPlaybackAtMusicEnd), NULL,
+			                &config.stopPlaybackAtMusicEnd);
 			if (ImGui::MenuItem(localize(Text::autoSave), localize(Text::openFile)))
 				openAutoSavePath();
 
