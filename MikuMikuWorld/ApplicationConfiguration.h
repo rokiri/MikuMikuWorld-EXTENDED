@@ -51,6 +51,7 @@ namespace MikuMikuWorld
 		float cursorPositionThreshold;
 		float scrollSpeedNormal;
 		float scrollSpeedShift;
+		float zoomSensitivity;
 		int autoSaveInterval;
 		int autoSaveMaxCount;
 		float masterVolume;

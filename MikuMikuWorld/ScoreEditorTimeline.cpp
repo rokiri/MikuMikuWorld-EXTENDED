@@ -142,8 +142,9 @@ namespace MikuMikuWorld
 		{
 			if (io.KeyCtrl)
 			{
-				float zoom = std::clamp(zoomY * std::exp(io.MouseWheel * WHEEL_FACTOR), ZOOM_Y_MIN,
-				                        ZOOM_Y_WHEEL_MAX);
+				float zoom = std::clamp(
+				    zoomY * std::exp(io.MouseWheel * WHEEL_FACTOR * config.zoomSensitivity),
+				    ZOOM_Y_MIN, ZOOM_Y_WHEEL_MAX);
 				setZoomY(zoom, 1.0 + (timelineScreenPos.y - absMousePos.y) / timelineScreenSize.y);
 			}
 			else

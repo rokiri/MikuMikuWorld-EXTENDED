@@ -214,6 +214,7 @@ snap_mode_relative,相對吸附
 snap_mode_absolute,絕對吸附
 snap_mode_individual_absolute,單獨絕對吸附
 zoom,縮放
+#- zoom_sensitivity,
 show_step_outlines,顯示長按中繼點輪廓
 #- hide_step_outlines_during_playback,
 draw_waveform,顯示波形

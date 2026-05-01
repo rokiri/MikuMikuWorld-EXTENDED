@@ -31,6 +31,7 @@ namespace MikuMikuWorld
 		divisionType = 0;
 		division = 2;
 		zoom = 2.0f;
+		zoomSensitivity = 1.0f;
 		laneOpacity = 0.6f;
 		backgroundBrightness = 0.5f;
 		drawBackground = true;

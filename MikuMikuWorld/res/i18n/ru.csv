@@ -215,6 +215,7 @@ snap_mode_relative, Похожий Snap
 snap_mode_absolute, Абсолютный Snap
 snap_mode_individual_absolute, Индивидуальный Абсолютный Snap
 zoom, Приблизить
+#- zoom_sensitivity,
 show_step_outlines, Показать контуры шагов
 #- hide_step_outlines_during_playback,
 draw_waveform, Показать форму волны

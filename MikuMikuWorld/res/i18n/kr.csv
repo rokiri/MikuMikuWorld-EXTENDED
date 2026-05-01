@@ -214,6 +214,7 @@ snap_mode_relative, 상대 스냅
 snap_mode_absolute, 절대 스냅
 snap_mode_individual_absolute, 개별 절대 스냅
 zoom, 확대/축소
+#- zoom_sensitivity,
 show_step_outlines, 홀드 중간점 외곽선 표시
 #- hide_step_outlines_during_playback,
 draw_waveform, 파형 표시

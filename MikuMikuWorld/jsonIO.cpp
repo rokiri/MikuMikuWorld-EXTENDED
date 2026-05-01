@@ -116,6 +116,7 @@ namespace MikuMikuWorld
 			j_timeline["division"] = cfg.division;
 			j_timeline["divisionType"] = cfg.divisionType;
 			j_timeline["zoom"] = cfg.zoom;
+			j_timeline["zoom_sensitivity"] = cfg.zoomSensitivity;
 			j_timeline["lane_opacity"] = cfg.laneOpacity;
 			j_timeline["background_brightness"] = cfg.backgroundBrightness;
 			j_timeline["draw_background"] = cfg.drawBackground;
@@ -200,6 +201,7 @@ namespace MikuMikuWorld
 				cfg.divisionType = static_cast<int>(TimeDivisionType::Measure);
 			optional_get_to(j_timeline, "division", cfg.division);
 			optional_get_to(j_timeline, "zoom", cfg.zoom);
+			optional_get_to(j_timeline, "zoom_sensitivity", cfg.zoomSensitivity);
 			optional_get_to(j_timeline, "lane_opacity", cfg.laneOpacity);
 			optional_get_to(j_timeline, "background_brightness", cfg.backgroundBrightness);
 			optional_get_to(j_timeline, "draw_background", cfg.drawBackground);
@@ -243,7 +245,8 @@ namespace MikuMikuWorld
 			if (keyExists(j_audio, "se_profile_path", detail::value_t::string))
 				cfg.seProfilePath = tryGetValue<std::string>(j_audio, "se_profile_path");
 			else
-				cfg.seProfilePath = IO::formatString("%02d", tryGetValue(j_audio, "se_profile", 0) + 1);
+				cfg.seProfilePath =
+				    IO::formatString("%02d", tryGetValue(j_audio, "se_profile", 0) + 1);
 			optional_get_to(j_audio, "master_volume", cfg.masterVolume);
 			optional_get_to(j_audio, "bgm_volume", cfg.bgmVolume);
 			optional_get_to(j_audio, "se_volume", cfg.seVolume);

@@ -218,6 +218,7 @@ snap_mode_relative,相对吸附
 snap_mode_absolute,绝对吸附
 snap_mode_individual_absolute,单独绝对吸附
 zoom,缩放
+#- zoom_sensitivity,
 show_step_outlines,显示步骤轮廓
 #- hide_step_outlines_during_playback,
 draw_waveform,绘制波形

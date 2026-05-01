@@ -1743,6 +1743,20 @@ namespace MikuMikuWorld
 				                   ScoreEditorTimeline::MIN_NOTES_HEIGHT,
 				                   ScoreEditorTimeline::MAX_NOTES_HEIGHT);
 				ImGui::EndDisabled();
+				{
+					UI::labelPropertyColumn(localize(Text::zoomSensitivity));
+
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+					ImGui::PushID(Text::zoomSensitivity.data());
+					float scaledSensitivity = config.zoomSensitivity * 100;
+					if (ImGui::SliderFloat("", &scaledSensitivity, 25, 400, "%.0f%%",
+					                       ImGuiSliderFlags_AlwaysClamp |
+					                           ImGuiSliderFlags_Logarithmic))
+						config.zoomSensitivity = std::round(scaledSensitivity) / 100;
+					ImGui::PopID();
+				}
+
 				UI::separatorRow();
 
 				UI::checkboxPropertyRow(Text::hideStepOutlinesInPlayback,
