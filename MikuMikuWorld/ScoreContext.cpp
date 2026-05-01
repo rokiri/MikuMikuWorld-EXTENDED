@@ -1410,7 +1410,7 @@ namespace MikuMikuWorld
 
 	void ScoreContext::setPosNoteSelection(tick_t tick, float lane, bool update)
 	{
-		bool setTick = tick != MAX_TICK, setLane = isfinite(lane);
+		bool setTick = tick < MAX_TICK, setLane = isfinite(lane);
 		if (!setTick && !setLane)
 			return;
 		std::vector<NoteOrderedCollection::node_type> updatingNodes;
@@ -1433,7 +1433,7 @@ namespace MikuMikuWorld
 			if (setTick)
 				pnote->tick = tick;
 			if (setLane)
-				pnote->lane = lane;
+				pnote->lane = std::clamp(lane, minLane(), maxLane(pnote->width));
 			if (pnote->isHold())
 				updatingHolds.emplace(pnote->holdID);
 		}

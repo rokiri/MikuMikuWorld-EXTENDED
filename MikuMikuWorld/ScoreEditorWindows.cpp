@@ -857,6 +857,13 @@ namespace MikuMikuWorld
 					{
 						context.moveNoteSelection(offset, 1, l, 12, SnapMode::Relative,
 						                          ImGui::IsItemDeactivated());
+						tick += offset;
+					}
+					else
+					{
+						quarter = ticksToQuarters(tick);
+						if (ImGui::IsItemDeactivated())
+							context.pushHistory("Move note");
 					}
 				}
 				else if (state > 0)
@@ -879,6 +886,12 @@ namespace MikuMikuWorld
 							context.moveNoteSelection(offset, 1, l, 12, SnapMode::Relative,
 							                          ImGui::IsItemDeactivated());
 							quarter = static_cast<qnote_t>(tick) / TICKS_PER_QUARTER;
+						}
+						else
+						{
+							tick = oldTick;
+							if (ImGui::IsItemDeactivated())
+								context.pushHistory("Move note");
 						}
 					}
 					else if (state > 0)
@@ -917,6 +930,12 @@ namespace MikuMikuWorld
 					{
 						context.moveNoteSelection(t, 1, offset, 12, SnapMode::Relative,
 						                          ImGui::IsItemDeactivated());
+					}
+					else
+					{
+						lane = oldLane;
+						if (ImGui::IsItemDeactivated())
+							context.pushHistory("Move note");
 					}
 				}
 				else if (state > 0)
