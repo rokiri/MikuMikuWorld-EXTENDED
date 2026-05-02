@@ -1,0 +1,18 @@
+{
+  "sprites": [
+    {
+      "name": "2dmode_stage",
+      "x": 0,
+      "y": 0,
+      "w": 2048,
+      "h": 1176
+    },
+    {
+      "name": "mask_2dmode_floor_grd",
+      "x": 0,
+      "y": 1176,
+      "w": 2048,
+      "h": 390
+    }
+  ]
+}

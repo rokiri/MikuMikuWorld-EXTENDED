@@ -10,7 +10,9 @@ struct InputBinding
 	int keyCode{};
 	int keyModifiers{};
 
-	InputBinding(ImGuiKey key = ImGuiKey_None, ImGuiModFlags_ mods = ImGuiModFlags_None)
+	InputBinding(int key, int mods) : keyCode(key), keyModifiers(mods) {}
+
+	InputBinding(ImGuiKey key = ImGuiKey_None, ImGuiKey mods = ImGuiMod_None)
 	    : keyCode{ key }, keyModifiers{ mods }
 	{
 	}
@@ -21,29 +23,28 @@ struct InputBinding
 	}
 
 	constexpr bool operator!=(const InputBinding& other) const { return !(*this == other); }
+
+	constexpr inline explicit operator ImGuiKeyChord() const { return keyCode | keyModifiers; }
 };
 
-DECLARE_ENUM_FLAG_OPERATORS(ImGuiKey);
-DECLARE_ENUM_FLAG_OPERATORS(ImGuiModFlags_);
+// DECLARE_ENUM_FLAG_OPERATORS(ImGuiKey);
 
 struct MultiInputBinding
 {
-	int count = 0;
-	const char* name;
+	int count;
+	std::string_view name;
 	std::array<InputBinding, 4> bindings;
 
-	MultiInputBinding(const char* name) { this->name = name; }
+	MultiInputBinding(std::string_view name) : name(name), count(0) {}
 
-	MultiInputBinding(const char* name, InputBinding binding)
+	MultiInputBinding(std::string_view name, InputBinding binding)
+	    : name(name), count(binding.keyCode != 0), bindings{ binding }
 	{
-		this->name = name;
-		if (binding.keyCode != 0)
-			bindings[count++] = binding;
 	}
 
-	MultiInputBinding(const char* name, InputBinding b1, InputBinding b2)
+	MultiInputBinding(std::string_view name, InputBinding b1, InputBinding b2)
+	    : name(name), count(0)
 	{
-		this->name = name;
 		if (b1.keyCode != 0)
 			bindings[count++] = b1;
 
@@ -53,7 +54,7 @@ struct MultiInputBinding
 
 	void moveUp(int index)
 	{
-		if (index < 1)
+		if (index <= 0 || index >= count)
 			return;
 
 		std::swap(bindings[index - 1], bindings[index]);
@@ -61,7 +62,7 @@ struct MultiInputBinding
 
 	void moveDown(int index)
 	{
-		if (index > 2 || count <= index + 1)
+		if (index < 0 || index + 1 >= count)
 			return;
 
 		std::swap(bindings[index + 1], bindings[index]);
@@ -69,28 +70,27 @@ struct MultiInputBinding
 
 	void addBinding(InputBinding binding)
 	{
-		if (count == bindings.size())
+		if (count == bindings.size() || binding.keyCode != 0)
 			return;
 
-		bindings[count++] = binding;
+		bindings.at(count++) = binding;
 	}
 
 	void removeAt(int index)
 	{
-		if (index < 0 || index >= bindings.size())
+		if (index < 0 || index >= count)
 			return;
 
 		// shift elements to the left
-		for (int i = index; i < count - 1; ++i)
-			bindings[i] = bindings[i + 1];
-
+		std::rotate(bindings.begin() + index, bindings.begin() + index + 1,
+		            bindings.begin() + count);
 		--count;
 	}
 };
 
 const char* ToShortcutString(const MultiInputBinding& binding);
 const char* ToShortcutString(const InputBinding& binding);
-const char* ToShortcutString(ImGuiKey key, ImGuiModFlags_ mods);
+const char* ToShortcutString(ImGuiKey key, ImGuiKey mods);
 const char* ToShortcutString(ImGuiKey key);
 
 std::string ToFullShortcutsString(const MultiInputBinding& binding);
@@ -99,11 +99,15 @@ InputBinding FromSerializedString(std::string string);
 
 namespace ImGui
 {
-	bool TestModifiers(ImGuiModFlags_ mods);
+	bool TestModifiers(ImGuiKey mods);
 
 	bool IsDown(const InputBinding& binding);
 	bool IsPressed(const InputBinding& binding, bool repeat = false);
 
 	bool IsAnyDown(const MultiInputBinding& binding);
 	bool IsAnyPressed(const MultiInputBinding& binding, bool repeat = false);
+
+	bool Shortcut(const InputBinding& binding, ImGuiInputFlags flags = ImGuiInputFlags_None);
+	bool AnyShortcut(const MultiInputBinding& bindings,
+	                 ImGuiInputFlags flags = ImGuiInputFlags_None);
 }

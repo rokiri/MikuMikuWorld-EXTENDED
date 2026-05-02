@@ -1,3 +1,4 @@
+#ifdef COMPILE_ME
 #include "SUS.h"
 #include "SusExporter.h"
 #include "IO.h"
@@ -428,3 +429,5 @@ namespace MikuMikuWorld
 		susfile.close();
 	}
 }
+
+#endif

@@ -52,6 +52,7 @@ error_load_score_file,An error occurred while reading the score file
 error_save_score_file,An error occurred while saving the score file
 error_load_music_file,Cannot open music file
 score_partially_missing,Some of part of the score the might be missing!
+export_format_not_avail_extended,This format is not available for extended score
 cancel,Cancel
 general,General
 key_config,Key Config
@@ -72,6 +73,7 @@ theme_light,Light
 theme_dark,Dark
 custom_color,Custom Color
 timeline,Timeline
+match_timeline_size_to_window,Match timeline width to the window's width
 match_notes_size_to_timeline,Match notes size to timeline width
 lane_width,Lane Width
 notes_height,Notes Height
@@ -83,14 +85,18 @@ smooth_scroll_time,Smooth Scrolling Time
 return_to_last_tick,Return To Last Tick On Pause
 cursor_auto_scroll,Cursor Auto Scroll
 cursor_auto_scroll_amount,Cursor Auto Scroll Percentage From Timeline
+division_type,Display Division Type
 background,Background
 background_image,Background Image
 draw_background,Draw Background Image
-background_brightnes,Background Brightness
+background_brightness,Background Brightness
 lanes_opacity,Lanes Opacity
 video,Video
+visuals,Visuals
+notes_skin,Notes Skin
 notes_se,Notes SE
-show_tick_in_properties, Show Tick in Note Properties Window
+show_tick_in_properties,Show Tick in Note Properties Window
+warn_score_extension_disable,Disabling extended features will remove associated data. Do you want to continue?
 
 # score editor
 options,Options
@@ -105,6 +111,8 @@ flick,Flick
 critical,Critical
 dummy,Fake
 hold_dummy,Fake Hold
+hold_critical,Critical Hold
+hold_separator,Hold Separator
 trace,Trace
 guide,Guide
 damage,Damage
@@ -125,6 +133,22 @@ ease_in,Ease In
 ease_out,Ease Out
 ease_in_out,Ease In Out
 ease_out_in,Ease Out In
+ease_none,Ease None
+sound_effect,SFX
+sfx_default,Default
+sfx_none,None
+sfx_tap,Tap
+sfx_flick,Flick
+sfx_trace,Trace
+sfx_tick,Tick
+sfx_crit_tap,Critical Tap
+sfx_crit_flick,Critical Flick
+sfx_crit_trace,Critical Trace
+sfx_crit_tick,Critical Tick
+sfx_damage,Damage
+hold_layer_top,Top
+hold_layer_bottom,Bottom
+hold_layer_tooltip,Guide Note is on top of Hold Note by default. Change this property to switch the order.
 delete,Delete
 copy,Copy
 cut,Cut
@@ -134,6 +158,7 @@ duplicate,Duplicate
 flip_duplicate,Flip Duplicate
 flip,Flip
 note_width,Note Width
+note_align,Note Alignment
 shrink_down,Shrink Down
 shrink_up,Shrink Up
 compress_selection,Compress Selection
@@ -146,26 +171,30 @@ convert_hold_to_traces,Convert Hold to Traces
 convert_guide_hold,Convert Hold-Guide
 convert_guide_to_hold,Convert Guide to Hold
 convert_hold_to_guide,Convert Hold to Guide
+convert_hold_to_none,Convert to None
 lerp_hispeeds,Interpolate Hi-Speeds
 step_type,Hold Mid Type
+step_alpha,Guide Alpha
 ease_type,Ease Type
 flick_type,Flick Type
 hold_type,Hold Type
 fade_type,Fade Type
-hold_start_type, Hold Start Type
-hold_end_type, Hold End Type
+hold_start_type,Hold Start Type
+hold_end_type,Hold End Type
 metadata,Metadata
 title,Title
 designer,Designer
 artist,Artist
 jacket,Jacket
 lane_extension,Lane Extension
+life_point,Life Point
 audio,Audio
 music_file,Music File
 music_offset,Music Offset
 volume_master,Master Volume
 volume_bgm,BGM Volume
 volume_se,SE Volume
+playback_speed,Playback Speed
 statistics,Statistics
 hispeeds,Hi-Speeds
 taps,Taps
@@ -179,21 +208,28 @@ combo,Combo
 goto_measure,Go To Measure
 division,%d Division
 division_affix,%d Division
-custom, Custom
-custom_division,Custom Division
+custom,Custom
 snap_mode,Snapping
 snap_mode_relative,Relative Snap
 snap_mode_absolute,Absolute Snap
 snap_mode_individual_absolute,Individual Absolute Snap
 zoom,Zoom
+zoom_sensitivity,Zoom Sensitivity
 show_step_outlines,Show Hold Mid Outlines
+hide_step_outlines_during_playback,Hide Hold Mid Outlines during playback
 draw_waveform,Show Waveform
+stop_playback_at_music_end,Stop playback at music end
 edit_bpm,Edit Tempo
 tick,Tick
 remove,Remove
 edit_time_signature,Edit Time Signature
 measure,Measure
 skill,Skill
+skill_effect,Effect
+skill_effect_score,Score Boost
+skill_effect_heal,Heal
+skill_effect_perfect,Perfect Lock
+skill_level,Level
 increase_note_size,Increase Note Size
 decrease_note_size,Decrease Note Size
 hi_speed,Hi-Speed
@@ -207,6 +243,8 @@ hi_speed_hide_notes,Hide notes
 fade_none,No Fade
 fade_in,Fade In
 fade_out,Fade Out
+fade_custom,Fade Custom
+fade_classic,Fade Classic
 guide_color,Guide Color
 guide_neutral,Neutral
 guide_red,Red
@@ -230,9 +268,12 @@ note_properties_hi_speed,Hi-Speed Properties
 note_properties_hold_note,Hold Note Properties
 note_properties_guide,Guide Properties
 note_properties_not_selected,No notes or hi-speeds are selected
-note_properties_many_hold_notes,More than one hold note is selected
+note_properties_mixed_value,--Mixed--
 translated_by,Translated by: %s
 zoom_tooltip,Ctrl-click to edit value
+timeline_context_not_selected,No timeline openned or selected
+extended_score,Extended Score
+note_select_tool_tip,Ctrl to select or Alt to deselect
 
 # preset manager
 presets,Presets
@@ -247,7 +288,6 @@ confirm,Confirm
 layers,Layers
 layer_name,Name
 create_layer,Create Layer
-confirm,Confirm
 show_all_layers,Show All Layers
 layer_rename,Layer Rename
 layer_up,Move Up
@@ -256,12 +296,18 @@ layer_merge,Merge Layer
 layer_delete,Delete Layer
 layer_hide,Hide Layer
 layer_show,Show Layer
+layer_change_order,Change Layer Order
+layer_order_tooltip,Drag to reorder
+layer_merge_warning,There are hispeeds overlaps, they'll be deleted. Do you want to merge anyways?
 
 # waypoint manager
 waypoints,Waypoints
 create_waypoint,Create Waypoint
 edit_waypoint,Edit Waypoint
 waypoint_name,Name
+insert_skill,Insert Skill
+set_fever_start,Set Fever Start
+set_fever_end,Set Fever End
 
 # commands
 action,Action

@@ -1,28 +1,28 @@
 #include "UI.h"
 #include "Utilities.h"
 #include "Colors.h"
+#include "Text.h"
 #include "Tempo.h"
-#include "ResourceManager.h"
-#include "TimelineMode.h"
+#include "ApplicationResource.h"
 #include <string>
 #include <algorithm>
-#include <GLFW/glfw3.h>
 
 namespace MikuMikuWorld
 {
 	const ImVec2 UI::_btnNormal{ 24, 24 };
 	const ImVec2 UI::_btnSmall{ 19, 19 };
 	const ImVec2 UI::_toolbarBtnSize{ 22, 22 };
-	const ImVec2 UI::_toolbarBtnImgSize{ 19, 19 };
+	const ImVec2 UI::_toolbarBtnImgSize{ 20, 20 };
 
 	ImVec2 UI::btnNormal{ UI::_btnNormal };
 	ImVec2 UI::btnSmall{ UI::_btnSmall };
 	ImVec2 UI::toolbarBtnSize{ UI::_toolbarBtnSize };
 	ImVec2 UI::toolbarBtnImgSize{ UI::_toolbarBtnImgSize };
-	char UI::idStr[256];
+	float uiScale = 1.f;
 
-	std::vector<ImVec4> UI::accentColors{
+	std::array<ImVec4, 9> UI::accentColors{
 		ImVec4{ 0.10f, 0.10f, 0.10f, 1.00f }, // User
+		ImVec4{ 0.45f, 0.29f, 0.75f, 1.00f }, // Default : Untilted Charts
 		ImVec4{ 0.51f, 0.80f, 0.82f, 1.00f }, // Default : Chart Cyanvas
 		ImVec4{ 0.16f, 0.44f, 0.75f, 1.00f }, // Default : Original MMW
 		ImVec4{ 0.30f, 0.31f, 0.86f, 1.00f }, // Light Music
@@ -32,25 +32,23 @@ namespace MikuMikuWorld
 		ImVec4{ 0.50f, 0.25f, 0.55f, 1.00f }, // School Refusal
 	};
 
-	const char* UI::labelID(const char* label)
-	{
-		strcpy(idStr, "##");
-		strcpy(idStr + 2, label);
-		return idStr;
-	}
+	float UI::scale(float value) { return std::floor(value * uiScale); }
+
+	ImVec2 UI::scale(const ImVec2& size) { return floor(size * uiScale); }
 
 	bool UI::transparentButton(const char* txt, ImVec2 size, bool repeat, bool enabled)
 	{
-		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, !enabled);
-		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1 - (0.5f * !enabled));
+		ImGui::BeginDisabled(!enabled);
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, scale({ 2.5f, 2 }));
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+		ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, repeat);
 
-		bool pressed = ImGui::ButtonEx(txt, size, (repeat ? ImGuiButtonFlags_Repeat : 0));
+		bool pressed = ImGui::Button(txt, size);
 
+		ImGui::PopItemFlag();
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
-		ImGui::PopItemFlag();
-
+		ImGui::EndDisabled();
 		return pressed;
 	}
 
@@ -59,26 +57,44 @@ namespace MikuMikuWorld
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.6f, 0.6f, 0.6f, 0.4f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0.3f, 0.4f));
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scale(3.0f));
 
 		ImGui::SetCursorScreenPos(pos);
-		bool pressed = ImGui::Button(labelID(txt), size);
+		ImGui::PushID(txt);
+		bool pressed = ImGui::Button("", size);
+		ImGui::PopID();
 
 		ImGui::PopStyleColor(3);
 		ImGui::PopStyleVar();
 		return pressed;
 	}
 
+	bool UI::togglableButton(const char* txt, ImVec2 size, bool& selected)
+	{
+		const auto& colors = ImGui::GetStyle().Colors;
+		if (selected)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, colors[ImGuiCol_ButtonActive]);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors[ImGuiCol_ButtonActive]);
+		}
+		bool pressed = ImGui::Button(txt, size);
+		if (selected)
+			ImGui::PopStyleColor(2);
+		if (pressed)
+			selected = !selected;
+		return pressed;
+	}
+
 	bool UI::coloredButton(const char* txt, ImVec2 pos, ImVec2 size, ImU32 col, bool enabled)
 	{
-		ImVec4 col4 = ImGui::ColorConvertU32ToFloat4(col);
-		ImVec4 colh = generateHighlightColor(col4);
+		ImVec4 colb = ImGui::ColorConvertU32ToFloat4(col);
+		ImVec4 colh = generateHighlightColor(colb);
 		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, !enabled);
-		ImGui::PushStyleColor(ImGuiCol_Button, col4);
+		ImGui::PushStyleColor(ImGuiCol_Button, colb);
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colh);
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, colh);
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.15f, 0.15f, 0.15f, 1.0));
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scale(1.5f));
 
 		ImGui::SetCursorScreenPos(pos);
 		ImVec2 sz = size;
@@ -92,245 +108,382 @@ namespace MikuMikuWorld
 
 		bool pressed = ImGui::Button(txt, sz);
 
-		ImGui::PopStyleColor(4);
 		ImGui::PopStyleVar(1);
+		ImGui::PopStyleColor(4);
 		ImGui::PopItemFlag();
 		return pressed;
 	}
 
 	bool UI::isAnyPopupOpen()
 	{
-		return ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+		return ImGui::IsPopupOpen(ImGuiID(0),
+		                          ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
 	}
 
-	void UI::beginPropertyColumns() { ImGui::Columns(2); }
-
-	void UI::endPropertyColumns() { ImGui::Columns(1); }
-
-	void UI::propertyLabel(const char* label)
+	bool UI::beginPropertyTable(const char* id, int columns, ImGuiTableFlags flags)
 	{
-		ImGui::Text("%s", label);
-		ImGui::NextColumn();
-		ImGui::SetNextItemWidth(-1);
+		return ImGui::BeginTable(id, columns, flags);
 	}
 
-	void UI::addStringProperty(const char* label, std::string& val)
+	void UI::endPropertyTable() { ImGui::EndTable(); }
+
+	void UI::labelPropertyColumn(const char* label)
 	{
-		propertyLabel(label);
-
-		ImGui::InputText(labelID(label), &val);
-		ImGui::NextColumn();
+		ImGui::TableNextColumn();
+		ImGui::TextUnformatted(label);
 	}
 
-	bool UI::addIntProperty(const char* label, int& val, int lowerBound, int higherBound)
+	void UI::labelPropertyRow(const char* label, std::string_view value)
 	{
-		return addIntProperty(label, val, "%d", lowerBound, higherBound);
+		labelPropertyColumn(label);
+
+		ImGui::TableNextColumn();
+		ImGui::TextUnformatted(value.data(), value.data() + value.size());
 	}
 
-	bool UI::addIntProperty(const char* label, int& val, const char* format, int lowerBound,
+	bool UI::intPropertyRow(std::string_view text, int& val, const char* format, int lowerBound,
 	                        int higherBound)
 	{
-		propertyLabel(label);
+		labelPropertyColumn(localize(text));
 
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 		int step = 1;
-		bool edited =
-		    ImGui::InputScalar(labelID(label), ImGuiDataType_S32, &val, &step, &step, format);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		bool edited = ImGui::InputScalar("", ImGuiDataType_S32, &val, &step, &step, format);
+		ImGui::PopID();
 		if (edited && lowerBound != higherBound)
 			val = std::clamp(val, lowerBound, higherBound);
-		ImGui::NextColumn();
 
 		return edited;
 	}
 
-	bool UI::addFloatProperty(const char* label, float& val, const char* format, float lowerBound,
-	                          float higherBound)
+	bool UI::floatPropertyRow(std::string_view text, float& val, const char* format,
+	                          float lowerBound, float higherBound)
 	{
-		propertyLabel(label);
+		labelPropertyColumn(localize(text));
 
-		bool edited = ImGui::InputFloat(labelID(label), &val, 1.0f, 10.f, format);
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		bool edited = ImGui::InputFloat("", &val, 1.0f, 10.f, format);
+		ImGui::PopID();
 		if (edited && lowerBound != higherBound)
 			val = std::clamp(val, lowerBound, higherBound);
-		ImGui::NextColumn();
 
 		return edited;
 	}
 
-	bool UI::addDoubleProperty(const char* label, double& val, const char* format,
+	bool UI::doublePropertyRow(std::string_view text, double& val, const char* format,
 	                           double lowerBound, double higherBound)
 	{
-		propertyLabel(label);
+		labelPropertyColumn(localize(text));
 
-		bool edited = ImGui::InputDouble(labelID(label), &val, 1.0, 10.0, format);
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		bool edited = ImGui::InputDouble("", &val, 1.0, 10.0, format);
+		ImGui::PopID();
 		if (edited && lowerBound != higherBound)
 			val = std::clamp(val, lowerBound, higherBound);
-		ImGui::NextColumn();
 
 		return edited;
 	}
 
-	void UI::addDragFloatProperty(const char* label, float& val, const char* format)
+	bool UI::dragFloatPropertyRow(std::string_view text, float& val, const char* format)
 	{
-		propertyLabel(label);
+		labelPropertyColumn(localize(text));
 
-		ImGui::DragFloat(labelID(label), &val, 1.0f, 0.0f, 0.0f, format,
-		                 ImGuiSliderFlags_NoRoundToFormat);
-		ImGui::NextColumn();
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		bool active =
+		    ImGui::DragFloat("", &val, 1.0f, 0.0f, 0.0f, format, ImGuiSliderFlags_NoRoundToFormat);
+		ImGui::PopID();
+
+		return active;
 	}
 
-	void UI::addSliderProperty(const char* label, int& val, int min, int max, const char* format)
+	bool UI::intSliderPropertyRow(std::string_view text, int& val, int min, int max,
+	                              const char* format)
 	{
-		propertyLabel(label);
+		labelPropertyColumn(localize(text));
 
-		ImGui::SliderInt(labelID(label), &val, min, max, format, ImGuiSliderFlags_AlwaysClamp);
-		ImGui::NextColumn();
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		bool active = ImGui::SliderInt("", &val, min, max, format, ImGuiSliderFlags_AlwaysClamp);
+		ImGui::PopID();
+
+		return active;
 	}
 
-	void UI::addSliderProperty(const char* label, float& val, float min, float max,
-	                           const char* format)
+	bool UI::floatSliderPropertyRow(std::string_view text, float& val, float min, float max,
+	                                const char* format)
 	{
-		propertyLabel(label);
+		labelPropertyColumn(localize(text));
 
-		ImGui::SliderFloat(labelID(label), &val, min, max, format, ImGuiSliderFlags_AlwaysClamp);
-		ImGui::NextColumn();
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		bool active = ImGui::SliderFloat("", &val, min, max, format, ImGuiSliderFlags_AlwaysClamp);
+		ImGui::PopID();
+
+		return active;
 	}
 
-	void UI::addPercentSliderProperty(const char* label, float& val)
+	void UI::percentSliderPropertyRow(std::string_view text, float& val)
 	{
-		propertyLabel(label);
-
 		float scaled = val * 100;
-		ImGui::SliderFloat(labelID(label), &scaled, 0, 100, "%.0f%%", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::NextColumn();
-
-		val = scaled / 100.0f;
+		if (floatSliderPropertyRow(text, scaled, 0, 100, "%.0f%%"))
+			val = scaled / 100.0f;
 	}
 
-	int UI::addFileProperty(const char* label, std::string& val)
+	bool UI::stringPropertyRow(std::string_view text, std::string& val)
 	{
-		propertyLabel(label);
+		labelPropertyColumn(localize(text));
+
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		bool active = ImGui::InputText("", &val);
+		ImGui::PopID();
+
+		return active;
+	}
+
+	int UI::filePropertyRow(std::string_view text, std::string& val, const char* hint)
+	{
+		labelPropertyColumn(localize(text));
 
 		int result = 0;
-
-		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - UI::btnSmall.x -
-		                        ImGui::GetStyle().ItemSpacing.x);
-		if (ImGui::InputTextWithHint(labelID(label), "n/a", &val,
-		                             ImGuiInputTextFlags_EnterReturnsTrue))
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		ImGui::SetNextItemWidth(-UI::btnSmall.x - ImGui::GetStyle().ItemSpacing.x);
+		if (ImGui::InputTextWithHint("", hint, &val, ImGuiInputTextFlags_EnterReturnsTrue))
 			result = 1;
 		ImGui::SameLine();
 
-		ImGui::PushID(label);
 		if (ImGui::Button("...", UI::btnSmall))
-			result = 2;
+			result = -1;
 
 		ImGui::PopID();
-		ImGui::NextColumn();
 
 		return result;
 	}
 
-	bool UI::addFractionProperty(const char* label, int& numerator, int& denominator)
+	void UI::statPropertyColumn(std::string_view text, int mode, ImVec2 size)
 	{
-		propertyLabel(label);
-
-		const char* id = labelID(label);
-		std::string idNumerator{ id };
-		std::string idDenominator{ id };
-		idNumerator.append("_numerator");
-		idDenominator.append("_denominator");
-
-		float controlWidth =
-		    (ImGui::GetContentRegionAvail().x / 2.0f) - (ImGui::CalcTextSize("/").x);
-		bool edit = false;
-
-		ImGui::SetNextItemWidth(controlWidth);
-		ImGui::InputInt(idNumerator.c_str(), &numerator, 0, 0);
-
-		edit |= ImGui::IsItemDeactivatedAfterEdit();
-
-		ImGui::SameLine();
-		ImGui::Text("/");
-		ImGui::SameLine();
-		ImGui::SetNextItemWidth(controlWidth);
-		ImGui::InputInt(idDenominator.c_str(), &denominator, 0, 0);
-
-		edit |= ImGui::IsItemDeactivatedAfterEdit();
-		ImGui::NextColumn();
-
-		return edit;
+		auto& resource = getResources().timelineResources;
+		const Texture* texture = resource.getToolbarTexture();
+		const Sprite* sprite = resource.getScoreStatsSprite(InsertMode(mode));
+		if (texture && sprite)
+		{
+			ImGui::TableNextColumn();
+			auto&& [uv0, uv1] = texture->getCoords(*sprite);
+			ImGui::Image(texture->getID(), size, uv0, uv1);
+		}
+		else
+		{
+			labelPropertyColumn(localize(text));
+		}
 	}
 
-	bool UI::addCheckboxProperty(const char* label, bool& val)
+	template <typename T>
+	static int mixedScalarInput(bool mixed, T& value, const char* format, T step)
 	{
-		propertyLabel(label);
+		int value_changed = 0;
+		const ImGuiStyle& style = ImGui::GetStyle();
+		const float button_size = ImGui::GetFrameHeight();
+		char buf[64];
+		ImGuiDataType dataType;
+		if constexpr (std::is_same_v<T, int>)
+			dataType = ImGuiDataType_S32;
+		else if constexpr (std::is_same_v<T, float>)
+			dataType = ImGuiDataType_Float;
+		else
+			static_assert(false && "DataType not supported!");
+		if (!mixed)
+			ImGui::DataTypeFormatString(buf, IM_ARRAYSIZE(buf), dataType, &value, format);
+		else
+		{
+			buf[0] = '\0';
+			std::strcpy(buf, "—");
+		}
+		ImGui::BeginGroup();
+		ImGui::SetNextItemWidth(
+		    std::max(1.0f, ImGui::CalcItemWidth() - (button_size + style.ItemInnerSpacing.x) * 2));
+		if (ImGui::InputText("", buf, IM_ARRAYSIZE(buf),
+		                     ImGuiInputTextFlags_AutoSelectAll |
+		                         ImGuiInputTextFlags_EnterReturnsTrue))
+			value_changed =
+			    mixed || ImGui::DataTypeApplyFromText(buf, dataType, &value, format, NULL);
 
-		bool edited = ImGui::Checkbox(labelID(label), &val);
-		ImGui::NextColumn();
+		// Step buttons
+		ImGui::PushStyleVarX(ImGuiStyleVar_FramePadding, style.FramePadding.y);
+		ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
+		ImGui::SameLine(0, style.ItemInnerSpacing.x);
+		if (ImGui::ButtonEx("-", { button_size, button_size }))
+		{
+			value -= step;
+			value_changed = -1;
+		}
+		if (ImGui::IsItemDeactivated())
+			value_changed = -1;
+		ImGui::SameLine(0, style.ItemInnerSpacing.x);
+		if (ImGui::ButtonEx("+", { button_size, button_size }))
+		{
+			value += step;
+			value_changed = -1;
+		}
+		if (ImGui::IsItemDeactivated())
+			value_changed = -1;
+		ImGui::PopItemFlag();
+		ImGui::PopStyleVar();
+		ImGui::EndGroup();
+		return value_changed;
+	}
+
+	int UI::mixedIntPropertyRow(std::string_view text, bool mixed, int& val, const char* format,
+	                            int lowerBound, int higherBound, int step)
+	{
+		labelPropertyColumn(localize(text));
+
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		int edited = mixedScalarInput(mixed, val, format, step);
+		ImGui::PopID();
+
+		if (edited && lowerBound != higherBound)
+			val = std::clamp(val, lowerBound, higherBound);
 
 		return edited;
 	}
 
-	void UI::addMultilineString(const char* label, std::string& val)
+	int UI::mixedFloatPropertyRow(std::string_view text, bool mixed, float& val, const char* format,
+	                              float lowerBound, float higherBound, float step)
 	{
-		propertyLabel(label);
+		labelPropertyColumn(localize(text));
 
-		ImGui::InputTextMultiline(labelID(label), &val, ImVec2(-1, 50));
-		ImGui::NextColumn();
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		int edited = mixedScalarInput(mixed, val, format, step);
+		ImGui::PopID();
+		if (edited && lowerBound != higherBound)
+			val = std::clamp(val, lowerBound, higherBound);
+
+		return edited;
+	}
+
+	void UI::separatorRow()
+	{
+		// Separator don't span the whole column any more
+		// We'll have to wait ImGui to fix the behavior
+		// For now just draw 2 separators
+		ImGui::TableNextColumn();
+		ImGui::Separator();
+		ImGui::TableNextColumn();
+		ImGui::Separator(); 
+	}
+
+	bool UI::fractionPropertyRow(std::string_view text, int& numerator, int& denominator)
+	{
+		labelPropertyColumn(localize(text));
+
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+
+		float controlWidth = ImGui::GetContentRegionAvail().x / 2.0f - ImGui::CalcTextSize("/").x -
+		                     ImGui::GetStyle().ItemSpacing.x * 2;
+		bool edit = false;
+
+		ImGui::PushID("numerator");
+		ImGui::SetNextItemWidth(controlWidth);
+		ImGui::InputInt("", &numerator, 0, 0);
+		edit |= ImGui::IsItemDeactivatedAfterEdit();
+		ImGui::PopID();
+
+		ImGui::SameLine();
+		ImGui::Text("/");
+		ImGui::SameLine();
+
+		ImGui::PushID("denominator");
+		ImGui::SetNextItemWidth(controlWidth);
+		ImGui::InputInt("", &denominator, 0, 0);
+		edit |= ImGui::IsItemDeactivatedAfterEdit();
+
+		ImGui::PopID();
+
+		return edit;
+	}
+
+	bool UI::checkboxPropertyRow(std::string_view text, bool& val)
+	{
+		labelPropertyColumn(localize(text));
+
+		ImGui::TableNextColumn();
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+		ImGui::PushID(text.data(), text.data() + text.size());
+		bool edited = ImGui::Checkbox("", &val);
+		ImGui::PopID();
+
+		return edited;
 	}
 
 	void UI::tooltip(const char* label)
 	{
-		if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 0.5f)
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip))
 		{
 			float txtWidth = ImGui::CalcTextSize(label).x + (ImGui::GetStyle().WindowPadding.x * 2);
 			ImGui::SetNextWindowSize(ImVec2(std::min(txtWidth, 250.0f), -1));
-			ImGui::BeginTooltipEx(ImGuiTooltipFlags_OverridePreviousTooltip,
-			                      ImGuiWindowFlags_NoResize);
-			ImGui::TextWrapped("%s", label);
-			ImGui::EndTooltip();
+			if (ImGui::BeginTooltipEx(ImGuiTooltipFlags_OverridePrevious,
+			                          ImGuiWindowFlags_NoResize))
+			{
+				ImGui::TextWrapped("%s", label);
+				ImGui::EndTooltip();
+			}
 		}
 	}
 
 	bool UI::divisionSelect(const char* label, int& value, const int* items, size_t count)
 	{
-		const char* id = labelID(label);
-		ImGui::PushID(id);
+		ImGui::PushID(label);
 
-		bool act = false;
-		ImGui::SetNextItemWidth(100);
-		// very low float value used to disable dragging
-		if (ImGui::DragInt("##custom_input", &value, 0.00000001f, 0, 0,
-		                   getString("division_affix")))
-		{
-			value = std::clamp(value, 4, 1920);
-			act = true;
-		}
+		const char* popupWindow = "##division_combo";
+		ImVec2 popupPos = ImGui::GetCursorScreenPos();
+		bool activate = false;
+		if (ImGui::InputScalar("##division_input", ImGuiDataType_S32, &value, NULL, NULL,
+		                       localize(Text::divisionAffix),
+		                       ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_CharsNoBlank))
+			value = std::clamp(value, items[0], items[count - 1]);
+		ImVec2 popupSize = ImGui::GetItemRectSize();
+		activate = ImGui::IsItemDeactivatedAfterEdit();
 
 		// enable right-click
-		ImGui::OpenPopupOnItemClick("combobox");
-		ImVec2 pos = ImGui::GetItemRectMin();
-		ImVec2 size = ImGui::GetItemRectSize();
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+		    ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+			ImGui::OpenPopup(popupWindow);
 
 		ImGui::SameLine(0, 0);
 		if (ImGui::ArrowButton("##open_combo", ImGuiDir_Down))
-			ImGui::OpenPopup("combobox");
+			ImGui::OpenPopup(popupWindow);
+		popupSize.x += ImGui::GetItemRectSize().x;
 
-		// enable right-click
-		ImGui::OpenPopupOnItemClick("combobox");
-
-		size.x += ImGui::GetItemRectSize().x;
-		size.y += size.y * 6;
-		pos.y -= size.y;
-		ImGui::SetNextWindowPos(pos);
-		ImGui::SetNextWindowSize(size);
-		if (ImGui::BeginPopup("combobox", ImGuiWindowFlags_NoMove))
+		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Always, { 0, 1 });
+		ImGui::SetNextWindowSizeConstraints(popupSize, { FLT_MAX, FLT_MAX });
+		if (ImGui::BeginPopupContextItem(popupWindow))
 		{
-			for (int i = 0; i < count; ++i)
+			for (size_t i = 0; i < count; ++i)
 			{
-				if (ImGui::Selectable(Utilities::getDivisionString(items[i]).c_str(),
-				                      value == items[i]))
+				std::string divStr = IO::formatString(localize(Text::division), items[i]);
+				if (ImGui::Selectable(divStr.c_str(), value == items[i]))
 				{
 					value = items[i];
-					act = true;
+					activate = true;
 				}
 			}
 
@@ -338,79 +491,47 @@ namespace MikuMikuWorld
 		}
 
 		ImGui::PopID();
-		return act;
+		return activate;
 	}
 
-	bool UI::inlineSelect(const char* label, int& value, const char* const* items, size_t count)
+	bool UI::zoomControl(const char* label, float& value, float min, float max, float width,
+	                     float factor)
 	{
-		const char* id = labelID(label);
-		ImGui::PushID(id);
-
-		std::string curr = getString(items[value]);
-		if (!curr.size())
-			curr = items[value];
-		if (ImGui::BeginCombo(id, curr.c_str()))
-		{
-			bool act = false;
-			for (int i = 0; i < count; ++i)
-			{
-				const bool selected = value == i;
-				std::string str = getString(items[i]);
-				if (!str.size())
-					str = items[i];
-
-				if (ImGui::Selectable(str.c_str(), selected))
-				{
-					value = i;
-					act = true;
-				}
-			}
-
-			ImGui::EndCombo();
-			ImGui::NextColumn();
-			ImGui::PopID();
-			return act;
-		}
-
-		ImGui::NextColumn();
-		ImGui::PopID();
-		return false;
-	}
-
-	bool UI::zoomControl(const char* label, float& value, float min, float max, float width)
-	{
-		ImGui::PushButtonRepeat(true);
+		ImGui::PushID(label);
+		ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
 
 		bool act = false;
 		if (UI::transparentButton(ICON_FA_SEARCH_MINUS, UI::btnSmall, true, value > min))
 		{
-			value -= 0.25f;
+			value = std::max(min, value / factor);
 			act = true;
 		}
 
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(width);
 
-		act |= ImGui::SliderFloat(labelID(label), &value, min, max, "%.2fx");
-		tooltip(getString("zoom_tooltip"));
+		act |= ImGui::SliderFloat("", &value, min, max, "%.2fx", ImGuiSliderFlags_Logarithmic);
+		tooltip(localize(Text::zoomTooltip));
 		ImGui::SameLine();
 
 		if (UI::transparentButton(ICON_FA_SEARCH_PLUS, UI::btnSmall, true, value < max))
 		{
-			value += 0.25f;
+			value = std::min(max, value * factor);
 			act = true;
 		}
-		ImGui::PopButtonRepeat();
+		ImGui::PopItemFlag();
+		ImGui::PopID();
 
 		return act;
 	}
 
 	bool UI::timeSignatureSelect(int& numerator, int& denominator)
 	{
-		propertyLabel(getString("time_signature"));
+		labelPropertyColumn(localize(Text::timeSignature));
 
-		float controlWidth =
-		    (ImGui::GetContentRegionAvail().x / 2.0f) - (ImGui::CalcTextSize("/").x);
+		ImGui::TableNextColumn();
+		float controlWidth = (ImGui::GetContentRegionAvail().x / 2.0f) -
+		                     ImGui::CalcTextSize("/").x - ImGui::GetStyle().ItemSpacing.x * 2;
 		bool edit = false;
 
 		ImGui::SetNextItemWidth(controlWidth);
@@ -423,6 +544,8 @@ namespace MikuMikuWorld
 					edit = numerator != i;
 					numerator = i;
 				}
+				if (numerator == i)
+					ImGui::SetItemDefaultFocus();
 			}
 
 			ImGui::EndCombo();
@@ -435,147 +558,131 @@ namespace MikuMikuWorld
 
 		if (ImGui::BeginCombo("##ts_denom", std::to_string(denominator).c_str()))
 		{
-			for (int i = 0; i < sizeof(timeSignatureDenominators) / sizeof(int); ++i)
+			for (int i = 1; i <= 6; ++i)
 			{
-				if (ImGui::Selectable(std::to_string(timeSignatureDenominators[i]).c_str()))
+				int denom = std::pow(2, i);
+				if (ImGui::Selectable(std::to_string(denom).c_str()))
 				{
-					edit = denominator != timeSignatureDenominators[i];
-					denominator = timeSignatureDenominators[i];
+					edit = denominator != denom;
+					denominator = denom;
 				}
+				if (denominator == denom)
+					ImGui::SetItemDefaultFocus();
 			}
 
 			ImGui::EndCombo();
 		}
 
-		ImGui::NextColumn();
 		return edit;
 	}
 
-	void UI::setWindowTitle(std::string title)
+	void UI::updateUIScaling(float scale)
 	{
-		GLFWwindow* window = glfwGetCurrentContext();
-		if (!window)
+		uiScale = scale;
+		btnNormal = floor(_btnNormal * scale);
+		btnSmall = floor(_btnSmall * scale);
+		toolbarBtnSize = floor(_toolbarBtnSize * scale);
+		toolbarBtnImgSize = floor(_toolbarBtnImgSize * scale);
+	}
+
+	void UI::centeredText(const std::string& str) { UI::centeredText(str.c_str()); }
+
+	void UI::centeredText(const char* str)
+	{
+		ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(str).x) / 2);
+		ImGui::TextUnformatted(str);
+	}
+
+	void UI::drawShadedText(ImDrawList* drawList, ImVec2 textPos, float fontSize, ImU32 fontColor,
+	                        const char* text)
+	{
+		if (!drawList)
 			return;
 
-		glfwSetWindowTitle(window, IO::formatString("%s - %s", APP_NAME, title.c_str()).c_str());
+		drawList->AddText(ImGui::GetFont(), fontSize, textPos + ImVec2{ 0.75f, 1.0f }, 0xff111111,
+		                  text);
+		drawList->AddText(ImGui::GetFont(), fontSize, textPos, fontColor, text);
 	}
+}
 
-	void UI::updateBtnSizesDpiScaling(float scale)
-	{
-		btnNormal = _btnNormal * scale;
-		btnSmall = _btnSmall * scale;
-		toolbarBtnSize = _toolbarBtnSize * scale;
-		toolbarBtnImgSize = _toolbarBtnImgSize * scale;
-	}
+void ImGui::AddQuadMultiColor(ImDrawList* drawList, const ImVec2& p1, const ImVec2& p2,
+                              const ImVec2& p3, const ImVec2& p4, ImU32 col1, ImU32 col2,
+                              ImU32 col3, ImU32 col4)
+{
+	if (!drawList)
+		return;
+	if (((col1 | col2 | col3 | col4) & IM_COL32_A_MASK) == 0)
+		return;
 
-	bool UI::toolbarButton(const char* icon, const char* label, const char* shortcut, bool enabled,
-	                       bool selected)
-	{
-		if (!enabled)
-		{
-			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1 - (0.5f * true));
-		}
+	const ImVec2 uv = drawList->_Data->TexUvWhitePixel;
+	drawList->PrimReserve(6, 4);
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 1));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 2));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 2));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 3));
+	drawList->PrimWriteVtx(p1, uv, col1);
+	drawList->PrimWriteVtx(p2, uv, col2);
+	drawList->PrimWriteVtx(p3, uv, col3);
+	drawList->PrimWriteVtx(p4, uv, col4);
+}
 
-		if (selected)
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_TabActive]);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-			                      ImGui::GetStyle().Colors[ImGuiCol_TabActive]);
-		}
+void ImGui::AddImageMultiColor(ImDrawList* drawList, ImTextureRef texture_ref, const ImVec2& p_min,
+                               const ImVec2& p_max, const ImVec2& uv_min, const ImVec2& uv_max,
+                               ImU32 col_upr_left, ImU32 col_upr_right, ImU32 col_bot_right,
+                               ImU32 col_bot_left)
+{
+	if (!drawList)
+		return;
+	if (((col_upr_left | col_upr_right | col_bot_right | col_bot_left) & IM_COL32_A_MASK) == 0)
+		return;
+	const bool push_texture_id = texture_ref != drawList->_CmdHeader.TexRef;
+	if (push_texture_id)
+		drawList->PushTexture(texture_ref);
 
-		bool activated = ImGui::Button(icon, UI::toolbarBtnSize);
+	drawList->PrimReserve(6, 4);
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 1));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 2));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 2));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 3));
+	drawList->PrimWriteVtx(p_min, uv_min, col_upr_left);
+	drawList->PrimWriteVtx({ p_max.x, p_min.y }, { uv_max.x, uv_min.y }, col_upr_right);
+	drawList->PrimWriteVtx(p_max, uv_max, col_bot_right);
+	drawList->PrimWriteVtx({ p_min.x, p_max.y }, { uv_min.x, uv_max.y }, col_bot_left);
 
-		std::string tooltipLabel = label;
-		if (shortcut && strlen(shortcut))
-			tooltipLabel.append(" (").append(shortcut).append(")");
+	if (push_texture_id)
+		drawList->PopTexture();
+}
 
-		if (tooltipLabel.size())
-			tooltip(tooltipLabel.c_str());
+void ImGui::AddImageQuadMultiColor(ImDrawList* drawList, ImTextureRef tex_ref, const ImVec2& p1,
+                                   const ImVec2& p2, const ImVec2& p3, const ImVec2& p4,
+                                   const ImVec2& uv1, const ImVec2& uv2, const ImVec2& uv3,
+                                   const ImVec2& uv4, ImU32 col1, ImU32 col2, ImU32 col3,
+                                   ImU32 col4)
+{
+	if (!drawList)
+		return;
+	if (((col1 | col2 | col3 | col4) & IM_COL32_A_MASK) == 0)
+		return;
+	const bool push_texture_id = tex_ref != drawList->_CmdHeader.TexRef;
+	if (push_texture_id)
+		drawList->PushTexture(tex_ref);
 
-		if (selected)
-			ImGui::PopStyleColor(2);
+	drawList->PrimReserve(6, 4);
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 1));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 2));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 2));
+	drawList->PrimWriteIdx((ImDrawIdx)(drawList->_VtxCurrentIdx + 3));
+	drawList->PrimWriteVtx(p1, uv1, col1);
+	drawList->PrimWriteVtx(p2, uv2, col2);
+	drawList->PrimWriteVtx(p3, uv3, col3);
+	drawList->PrimWriteVtx(p4, uv4, col4);
 
-		if (!enabled)
-		{
-			ImGui::PopItemFlag();
-			ImGui::PopStyleVar();
-		}
-
-		ImGui::SameLine();
-
-		return activated;
-	}
-
-	bool UI::toolbarImageButton(const char* img, const char* label, const char* shortcut,
-	                            bool enabled, bool selected)
-	{
-		std::string lblId;
-		lblId.append("##").append(img).append(label);
-
-		int texIndex = ResourceManager::getTexture(img);
-		if (texIndex == -1)
-		{
-			// fallback to regular toolbar button
-			return toolbarButton(img, label, shortcut, enabled, selected);
-		}
-
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 2, 2 });
-		if (!enabled)
-		{
-			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1 - (0.5f * true));
-		}
-
-		if (selected)
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_TabActive]);
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-			                      ImGui::GetStyle().Colors[ImGuiCol_TabActive]);
-		}
-
-		bool activated =
-		    ImGui::ImageButton(lblId.c_str(), (void*)ResourceManager::textures[texIndex].getID(),
-		                       UI::toolbarBtnImgSize);
-
-		std::string tooltipLabel = label;
-		if (shortcut && strlen(shortcut))
-			tooltipLabel.append(" (").append(shortcut).append(")");
-
-		if (tooltipLabel.size())
-			tooltip(tooltipLabel.c_str());
-
-		if (selected)
-			ImGui::PopStyleColor(2);
-
-		if (!enabled)
-		{
-			ImGui::PopItemFlag();
-			ImGui::PopStyleVar();
-		}
-
-		ImGui::PopStyleVar();
-		ImGui::SameLine();
-
-		return activated;
-	}
-
-	void UI::toolbarSeparator()
-	{
-		ImGui::SameLine();
-		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-		ImGui::SameLine();
-	}
-
-	void UI::beginNextItemDisabled()
-	{
-		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
-	}
-
-	void UI::endNextItemDisabled()
-	{
-		ImGui::PopStyleVar();
-		ImGui::PopItemFlag();
-	}
+	if (push_texture_id)
+		drawList->PopTexture();
 }

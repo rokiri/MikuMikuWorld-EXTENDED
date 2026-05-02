@@ -1,66 +1,90 @@
 #pragma once
 #include "ScoreEditorWindows.h"
 #include "ScoreSerializeWindow.h"
+#include "Rendering/Renderer.h"
+#include "NoteResource.h"
+#include <memory>
 #include <future>
 
 namespace MikuMikuWorld
 {
+	struct ScoreEditorState
+	{
+		bool wantCreateScore{ false };
+		bool wantOpenScore{ false };
+		bool wantExportScore{ false };
+		bool wantSaveScore{ false };
+		bool wantSaveAsScore{ false };
+		bool wantClosing{ false };
+		std::queue<FilePath> pendingOpenFiles;
+		std::queue<std::pair<id_t, FilePath>> pendingExportTimelines;
+		std::queue<id_t> pendingCloseTimelines;
+		int closingTimelines{ 0 };
+	};
+
 	class ScoreEditor
 	{
 	  private:
-		ScoreContext context{};
-		EditArgs edit{};
-		std::unique_ptr<Renderer> renderer;
+		ScoreEditorState state;
+		std::map<id_t, ScoreEditorTimeline> timelines;
+		id_t currTimelineId{ 0 };
+		id_t nextTimelineId{ 0 };
+		ScoreEditorTimeline* currTimeline;
+		ScoreContext* currContext;
+		Audio::AudioManager audio;
 		PresetManager presetManager;
-
-		ScoreEditorTimeline timeline{};
+		std::unique_ptr<Renderer> renderer;
+		EditorToolbar toolbar;
 		ScorePropertiesWindow propertiesWindow{};
+		ScoreOptionsWindow optionsWindow;
 		ScoreNotePropertiesWindow notePropertiesWindow{};
-		ScoreOptionsWindow optionsWindow{};
+		EditArgs edit{};
+		PasteData pasteData;
 		PresetsWindow presetsWindow{};
-		DebugWindow debugWindow{};
+
 		LayersWindow layersWindow{};
-		WaypointsWindow waypointsWindow{};
+
 		SettingsWindow settingsWindow{};
-		RecentFileNotFoundDialog recentFileNotFoundDialog{};
-		AboutDialog aboutDialog{};
-		UpdateAvailableDialog updateAvailableDialog{};
+		GenericDialog dialog;
+
 		ScoreSerializeWindow serializeWindow{};
 
 		Stopwatch autoSaveTimer;
-		std::string autoSavePath;
-		bool showImGuiDemoWindow;
+		FilePath autoSavePath;
+		bool showImGuiDemoWindow{ false };
+		DebugWindow debugWindow{};
+		WaypointsWindow waypointsWindow{};
 
-		bool save(std::string filename);
-
-		void fetchUpdate();
+		static void openHelp();
+		static void openReleasePage();
+		void openAutoSavePath() const;
 
 	  public:
 		ScoreEditor();
 
 		void update();
+		void handleEvents();
 
 		void create();
 		void open();
+		// Notify the the editor should be closing, return whether the editor is ready to close
+		bool close();
 		void loadScore(std::string filename);
 		void loadMusic(std::string filename);
 		size_t updateRecentFilesList(const std::string& entry);
-		void exportScore();
-		bool saveAs();
-		bool trySave(std::string);
+		void exportScore(ScoreEditorTimeline& timeline);
+		bool saveAs(ScoreEditorTimeline& timeline);
 		void autoSave();
-		int deleteOldAutoSave(int count);
+		int deleteOldAutoSave(int count) const;
+		void appendOpenFile(const FilePath& filepath);
 
 		void drawMenubar();
-		void drawToolbar();
-		void help();
+		void fetchUpdate();
 
-		inline void loadPresets(std::string path) { presetManager.loadPresets(path); }
-		inline void savePresets(std::string path) { presetManager.savePresets(path); }
+		void loadPresets(const FilePath& path);
+		void savePresets(const FilePath& path);
 
 		void writeSettings();
 		void uninitialize();
-		inline std::string_view getWorkingFilename() const { return context.workingData.filename; }
-		constexpr inline bool isUpToDate() const { return context.upToDate; }
 	};
 }

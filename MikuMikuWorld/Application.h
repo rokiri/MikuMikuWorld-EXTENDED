@@ -1,80 +1,93 @@
 #pragma once
 
-#define IMGUI_DEFINE_MATH_OPERATORS
-#define NOMINMAX
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-
+#include <filesystem>
 #include "ScoreEditor.h"
 #include "ImGuiManager.h"
-#include <Windows.h>
+#include "ApplicationConfiguration.h"
+#include "ApplicationResource.h"
+#include "PlatformIO.h"
 
-LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+struct PlatformData;
 
 namespace MikuMikuWorld
 {
-	class Result;
-
 	struct WindowState
 	{
-		bool resetting = false;
 		bool vsync = true;
-		bool showPerformanceMetrics = false;
 		bool maximized = false;
 		bool closing = false;
-		bool shouldPickScore = false;
-		bool dragDropHandled = true;
 		bool windowDragging = false;
-		float lastDpiScale = 0.0f;
-		void* windowHandle;
+		bool resetLayout = false;
+		float lastDpiScale = 1.0f;
 		Vector2 position{};
 		Vector2 size{};
-		UINT_PTR windowTimerId{};
+		IO::PlatformData* platfromData = nullptr;
 	};
 
 	class Application
 	{
 	  private:
+		static Application* instance;
+
 		GLFWwindow* window;
 		std::unique_ptr<ScoreEditor> editor;
 		std::unique_ptr<ImGuiManager> imgui;
-		UnsavedChangesDialog unsavedChangesDialog;
+		// UnsavedChangesDialog unsavedChangesDialog;
 
 		bool initialized;
-		bool shouldPickScore;
 		std::string language;
+		std::string version;
+		FilePath configRoot;
+		FilePath resourceRoot;
 
-		std::vector<std::string> pendingOpenFiles;
-
-		static std::string version;
-		static std::string appDir;
+		WindowState windowState;
+		ApplicationConfiguration config;
+		ApplicationResource resource;
+		Localization localization;
 
 		Result initOpenGL();
-		std::string getVersion();
 
 	  public:
-		static WindowState windowState;
-		static std::string pendingLoadScoreFile;
-
 		Application();
 
 		Result initialize(const std::string& root);
 		void run();
 		void update();
-		void appendOpenFile(const std::string& filename);
-		void handlePendingOpenFiles();
-		void readSettings();
-		void writeSettings();
+		void readConfiguration();
+		void writeConfiguration();
+		void appendOpenFile(const FilePath& filepath);
 		void loadResources();
+		void setTitle(const std::string& name);
 		void dispose();
 
-		GLFWwindow* getGlfwWindow() { return window; }
+		inline GLFWwindow* getGlfwWindow() { return window; }
+		inline WindowState& getWindowState() { return windowState; }
 
-		static const std::string& getAppDir();
-		static const std::string& getAppVersion();
+		const std::string& getAppVersion();
+
+		template <typename... TPath> std::filesystem::path getResourcePath(TPath... paths)
+		{
+			return (resourceRoot / ... / paths);
+		}
+
+		template <typename... TPath> std::filesystem::path getConfigPath(TPath... paths)
+		{
+			return (configRoot / ... / paths);
+		}
+
+		static Application& getInstance();
+		static void* getAppWindowHandle();
+
+		// Helpers
+		// ApplicationConfig
+		friend ApplicationConfiguration& getConfig();
+		// ApplicationResource
+		friend ApplicationResource& getResources();
+		friend Shader* getShader(const std::string& name);
+		// Localization
+		friend Localization& getLocalization();
 	};
 }

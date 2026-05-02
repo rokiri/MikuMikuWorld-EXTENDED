@@ -1,7 +1,9 @@
 #pragma once
 #include "ImGui/imgui.h"
-#include <functional>
 #include "NoteTypes.h"
+#include <functional>
+#include <cmath>
+#include <cfenv>
 
 namespace MikuMikuWorld
 {
@@ -24,12 +26,37 @@ namespace MikuMikuWorld
 		inline operator ImVec2() const { return { x, y }; }
 	};
 
+	inline Vector2 floor(const Vector2& vec2)
+	{
+		return Vector2(std::floor(vec2.x), std::floor(vec2.y));
+	}
+
+	inline Vector2 round(const Vector2& vec2)
+	{
+		return Vector2(std::round(vec2.x), std::round(vec2.y));
+	}
+
+	inline Vector2 ceil(const Vector2& vec2)
+	{
+		return Vector2(std::ceil(vec2.x), std::ceil(vec2.y));
+	}
+
 	struct Color
 	{
 	  public:
 		float r, g, b, a;
 
-		Color(float _r = 0.0f, float _g = 0.0f, float _b = 0.0f, float _a = 1.0f)
+		constexpr Color() : Color(0, 0, 0, 1) {}
+
+		constexpr Color(ImU32 col)
+		    : r{ ((col >> IM_COL32_R_SHIFT) & 0xFF) / 255.f },
+		      g{ ((col >> IM_COL32_G_SHIFT) & 0xFF) / 255.f },
+		      b{ ((col >> IM_COL32_B_SHIFT) & 0xFF) / 255.f },
+		      a{ ((col >> IM_COL32_A_SHIFT) & 0xFF) / 255.f }
+		{
+		}
+
+		constexpr Color(float _r, float _g, float _b, float _a = 1.0f) noexcept
 		    : r{ _r }, g{ _g }, b{ _b }, a{ _a }
 		{
 		}
@@ -39,10 +66,12 @@ namespace MikuMikuWorld
 			return r == c.r && g == c.g && b == c.b && a == c.a;
 		}
 		inline bool operator!=(const Color& c) { return !(*this == c); }
-		inline Color operator*(const Color& c)
+		inline Color operator*(const Color& c) const
 		{
 			return Color{ r * c.r, g * c.g, b * c.b, a * c.a };
 		}
+
+		inline Color scaleAlpha(float val) const { return { r, g, b, a * val }; }
 
 		static inline int rgbaToInt(int r, int g, int b, int a)
 		{
@@ -52,7 +81,7 @@ namespace MikuMikuWorld
 		{
 			return a << 24 | b << 16 | g << 8 | r;
 		}
-
+		inline ImU32 toImU32() const { return ImGui::ColorConvertFloat4ToU32({ r, g, b, a }); }
 		inline ImVec4 toImVec4() const { return ImVec4{ r, g, b, a }; }
 		static inline Color fromImVec4(const ImVec4& col)
 		{
@@ -86,6 +115,18 @@ namespace MikuMikuWorld
 		return std::round(dvalue * digits) / digits;
 	}
 
+	template <typename FloatType = double> static FloatType roundUnderHalf(FloatType x)
+	{
+		constexpr FloatType half(0.5), zero(0.0);
+		return std::trunc(std::nextafter(x + std::copysign(half, x), zero));
+	}
+
+	template <typename FloatType, typename IntType>
+	static FloatType roundToStep(FloatType value, IntType step)
+	{
+		return roundUnderHalf(value * step) / step;
+	}
+
 	template <typename FloatType>
 	static bool isClose(FloatType val, FloatType tgr,
 	                    FloatType epsilon = std::numeric_limits<FloatType>::epsilon())
@@ -96,21 +137,38 @@ namespace MikuMikuWorld
 		return std::fabs(val - tgr) <= std::max(epsilon, tolerance);
 	}
 
+	template <typename FloatType>
+	static bool isDivisibleBy(FloatType num, FloatType val,
+	                          FloatType epsilon = std::numeric_limits<FloatType>::epsilon())
+	{
+		constexpr FloatType zero = 0;
+		auto f = std::fmod(std::abs(num), val);
+		return isClose(f, zero) || isClose(val - f, zero);
+	}
+
+	template <typename IntType>
+	static std::pair<IntType, IntType> integerDivide(IntType x, IntType y)
+	{
+		// Due to div_t member order not defined by the standard
+		// We need to access the member directly to ensure the correct order
+		auto divResult = std::div(x, y);
+		return std::make_pair(divResult.quot, divResult.rem);
+	}
+
 	float lerp(float start, float end, float ratio);
-	float unlerp(float start, float end, float value);
+	float unlerp(float start, float end, float value, float fallback = 0);
 	double lerpD(double start, double end, double ratio);
-	double unlerpD(double start, double end, double value);
+	double unlerpD(double start, double end, double value, double fallback = 0);
 	float easeIn(float start, float end, float ratio);
 	float easeOut(float start, float end, float ratio);
 	float easeInOut(float start, float end, float ratio);
 	float easeOutIn(float start, float end, float ratio);
+	float easeNone(float start, float end, float ratio);
 	float midpoint(float x1, float x2);
 	bool isWithinRange(float x, float left, float right);
 
-	std::function<float(float, float, float)> getEaseFunction(EaseType ease);
-
-	std::tuple<Vector2, Vector2, Vector2> convertToBezier(const Vector2& p1, const Vector2 p2,
-	                                                      EaseType ease);
+	using EaseFunction = float (*)(float, float, float);
+	EaseFunction getEaseFunction(EaseType ease);
 
 	uint32_t gcf(uint32_t a, uint32_t b);
 }

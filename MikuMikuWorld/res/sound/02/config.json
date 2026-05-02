@@ -1,0 +1,35 @@
+{
+    "profile_name": "SE 02",
+    "sound_effects":
+    {
+        "tap": "perfect.mp3",
+        "flick": "flick.mp3",
+        "friction": "friction.mp3",
+        "tick": "tick.mp3",
+        "long_tap": "perfect.mp3",
+        "connect": "connect.mp3",
+        "critical_tap": "critical_tap.mp3",
+        "critical_flick": "critical_flick.mp3",
+        "critical_friction": "critical_friction.mp3",
+        "critical_tick": "critical_tick.mp3",
+        "critical_long_tap": "perfect.mp3",
+        "critical_connect": "critical_connect.mp3",
+        "damage": "damage.mp3"
+    },
+    "sound_effects_volumes":
+    {
+        "tap": 0.75,
+        "flick": 0.75,
+        "friction": 0.80,
+        "tick": 0.90,
+        "long_tap": 0.75,
+        "connect": 0.70,
+        "critical_tap": 0.75,
+        "critical_flick": 0.80,
+        "critical_friction": 0.82,
+        "critical_tick": 0.92,
+        "critical_long_tap": 0.75,
+        "critical_connect": 0.70,
+        "damage": 0.25
+    }
+}

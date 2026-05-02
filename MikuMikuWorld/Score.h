@@ -5,48 +5,33 @@
 #include <cstdint>
 #include <map>
 #include <string>
-#include <unordered_map>
+#include <set>
 #include <vector>
 
 namespace MikuMikuWorld
 {
-	id_t getNextSkillID();
-	id_t getNextHiSpeedID();
-
-	struct SkillTrigger
-	{
-		id_t ID;
-		int tick;
-	};
-
-	struct Fever
-	{
-		int startTick;
-		int endTick;
-	};
-
 	struct Layer
 	{
 		std::string name;
+		HiSpeedCollection hiSpeedChanges;
 		bool hidden = false;
+
+		Layer(std::string_view name) : name(name) {}
+		Layer(std::string_view name, int id) : name(name)
+		{
+			hiSpeedChanges.emplace(0, HiSpeed{ 0, id });
+		}
 	};
+	using LayerCollection = std::vector<Layer>;
 
 	struct Waypoint
 	{
-		std::string name;
-		int tick;
-	};
-	
-	struct HiSpeedChange
-	{
 		id_t ID;
-		int tick;
-		float speed;
-		int layer = 0;
-		float skips = 0;
-		HiSpeedEaseType ease;
-		bool hideNotes;
+		tick_t tick;
+		std::string name;
 	};
+	using WaypointCollection = std::map<id_t, Waypoint>;
+	using WaypointOrderedCollection = std::multimap<tick_t, Waypoint*>;
 
 	struct ScoreMetadata
 	{
@@ -55,25 +40,22 @@ namespace MikuMikuWorld
 		std::string author;
 		std::string musicFile;
 		std::string jacketFile;
-		float musicOffset;
+		float musicOffset = 0.0f;
 
 		int laneExtension = 0;
+		int baseLifePoint = 1000;
+		bool isExtendedScore = true;
 	};
 
-	struct Score
+	struct Score : public NotesContext
 	{
-		ScoreMetadata metadata;
-		std::unordered_map<id_t, Note> notes;
-		std::unordered_map<id_t, HoldNote> holdNotes;
-		std::vector<Tempo> tempoChanges;
-		std::map<int, TimeSignature> timeSignatures;
-		std::unordered_map<id_t, HiSpeedChange> hiSpeedChanges;
-		std::unordered_map<id_t, SkillTrigger> skills;
+	  public:
+		TempoCollection tempoChanges{ {} };           // always have 1 tempo change
+		TimeSignatureCollection timeSignatures{ {} }; // always have 1 timesign change
+		SkillTriggerCollection skills;
 		Fever fever;
 
-		std::vector<Layer> layers{ { Layer{ "default" } } };
-		std::vector<Waypoint> waypoints;
-
-		Score();
+		LayerCollection layers{ Layer{ "default", 0 } };
+		WaypointCollection waypoints;
 	};
 }

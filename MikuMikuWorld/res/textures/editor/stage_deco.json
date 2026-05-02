@@ -1,0 +1,109 @@
+{
+  "sprites": [
+    {
+      "name": "bg_2dmode_window_nml",
+      "x": 2,
+      "y": 2,
+      "w": 840,
+      "h": 840
+    },
+    {
+      "name": "bg_2dmode_window_mirror",
+      "x": 846,
+      "y": 2,
+      "w": 800,
+      "h": 800
+    },
+    {
+      "name": "tex_2dmode_jacket_nml_main",
+      "x": 2,
+      "y": 846,
+      "w": 498,
+      "h": 474
+    },
+    {
+      "name": "tex_2dmode_jacket_nml_main_mask",
+      "x": 504,
+      "y": 846,
+      "w": 498,
+      "h": 474
+    },
+    {
+      "name": "tex_2dmode_jacket_mirror_main",
+      "x": 1006,
+      "y": 806,
+      "w": 474,
+      "h": 428
+    },
+    {
+      "name": "tex_2dmode_jacket_mirror_main_mask",
+      "x": 2,
+      "y": 1324,
+      "w": 474,
+      "h": 428
+    },
+    {
+      "name": "tex_2dmode_jacket_nml_l",
+      "x": 480,
+      "y": 1324,
+      "w": 322,
+      "h": 212
+    },
+    {
+      "name": "tex_2dmode_jacket_nml_l_mask",
+      "x": 480,
+      "y": 1540,
+      "w": 322,
+      "h": 212
+    },
+    {
+      "name": "tex_2dmode_jacket_mirror_l",
+      "x": 806,
+      "y": 1324,
+      "w": 310,
+      "h": 196
+    },
+    {
+      "name": "tex_2dmode_jacket_mirror_l_mask",
+      "x": 806,
+      "y": 1524,
+      "w": 310,
+      "h": 196
+    },
+    {
+      "name": "tex_2dmode_jacket_mirror_r",
+      "x": 1120,
+      "y": 1238,
+      "w": 244,
+      "h": 130
+    },
+    {
+      "name": "tex_2dmode_jacket_mirror_r_mask",
+      "x": 1368,
+      "y": 1238,
+      "w": 244,
+      "h": 130
+    },
+    {
+      "name": "tex_2dmode_jacket_nml_r",
+      "x": 1120,
+      "y": 1372,
+      "w": 240,
+      "h": 136
+    },
+    {
+      "name": "tex_2dmode_jacket_nml_r_mask",
+      "x": 1364,
+      "y": 1372,
+      "w": 240,
+      "h": 136
+    },
+    {
+      "name": "tex_mask_all",
+      "x": 808,
+      "y": 1726,
+      "w": 4,
+      "h": 4
+    }
+  ]
+}

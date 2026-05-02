@@ -1,0 +1,416 @@
+{
+    "sprites": [
+        {
+            "name": "notes_2",
+            "x": 0,
+            "y": 0,
+            "w": 354,
+            "h": 186
+        },
+        {
+            "name": "notes_1",
+            "x": 354,
+            "y": 0,
+            "w": 354,
+            "h": 186
+        },
+        {
+            "name": "notes_0",
+            "x": 708,
+            "y": 0,
+            "w": 354,
+            "h": 186
+        },
+        {
+            "name": "notes_3",
+            "x": 1062,
+            "y": 0,
+            "w": 354,
+            "h": 186
+        },
+        {
+            "name": "cc_notes_0",
+            "x": 0,
+            "y": 186,
+            "w": 354,
+            "h": 186
+        },
+        {
+            "name": "notes_4",
+            "x": 354,
+            "y": 186,
+            "w": 354,
+            "h": 186
+        },
+        {
+            "name": "notes_5",
+            "x": 708,
+            "y": 186,
+            "w": 354,
+            "h": 186
+        },
+        {
+            "name": "notes_6",
+            "x": 1062,
+            "y": 186,
+            "w": 354,
+            "h": 186
+        },
+        {
+            "name": "ns_dummy_cross",
+            "x": 1092,
+            "y": 554,
+            "w": 128,
+            "h": 128
+        },
+        {
+            "name": "notes_flick_arrow_01",
+            "x": 0,
+            "y": 372,
+            "w": 144,
+            "h": 158
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_01",
+            "x": 144,
+            "y": 372,
+            "w": 144,
+            "h": 158
+        },
+        {
+            "name": "notes_flick_arrow_01_diagonal",
+            "x": 288,
+            "y": 372,
+            "w": 176,
+            "h": 160
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_01_diagonal",
+            "x": 464,
+            "y": 372,
+            "w": 176,
+            "h": 160
+        },
+        {
+            "name": "notes_flick_arrow_02",
+            "x": 640,
+            "y": 372,
+            "w": 188,
+            "h": 174
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_02",
+            "x": 828,
+            "y": 372,
+            "w": 188,
+            "h": 174
+        },
+        {
+            "name": "notes_flick_arrow_02_diagonal",
+            "x": 1016,
+            "y": 372,
+            "w": 228,
+            "h": 182
+        },
+        {
+            "name": "notes_long_among",
+            "x": 1244,
+            "y": 372,
+            "w": 158,
+            "h": 160
+        },
+        {
+            "name": "notes_long_among_crtcl",
+            "x": 1244,
+            "y": 532,
+            "w": 158,
+            "h": 160
+        },
+        {
+            "name": "notes_flick_arrow_03",
+            "x": 0,
+            "y": 554,
+            "w": 248,
+            "h": 194
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_03",
+            "x": 248,
+            "y": 554,
+            "w": 248,
+            "h": 194
+        },
+        {
+            "name": "notes_flick_arrow_03_diagonal",
+            "x": 496,
+            "y": 554,
+            "w": 298,
+            "h": 212
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_03_diagonal",
+            "x": 794,
+            "y": 554,
+            "w": 298,
+            "h": 212
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_02_diagonal",
+            "x": 1192,
+            "y": 1008,
+            "w": 228,
+            "h": 182
+        },
+        {
+            "name": "notes_flick_arrow_04",
+            "x": 0,
+            "y": 766,
+            "w": 312,
+            "h": 216
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_04",
+            "x": 312,
+            "y": 766,
+            "w": 312,
+            "h": 216
+        },
+        {
+            "name": "notes_flick_arrow_04_diagonal",
+            "x": 624,
+            "y": 766,
+            "w": 376,
+            "h": 242
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_04_diagonal",
+            "x": 1000,
+            "y": 766,
+            "w": 376,
+            "h": 242
+        },
+        {
+            "name": "notes_flick_arrow_05",
+            "x": 0,
+            "y": 1008,
+            "w": 374,
+            "h": 236
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_05",
+            "x": 374,
+            "y": 1008,
+            "w": 374,
+            "h": 236
+        },
+        {
+            "name": "notes_flick_arrow_05_diagonal",
+            "x": 748,
+            "y": 1008,
+            "w": 444,
+            "h": 270
+        },
+        {
+            "name": "notes_flick_arrow_06",
+            "x": 0,
+            "y": 1278,
+            "w": 436,
+            "h": 258
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_06",
+            "x": 436,
+            "y": 1278,
+            "w": 436,
+            "h": 258
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_05_diagonal",
+            "x": 872,
+            "y": 1278,
+            "w": 444,
+            "h": 270
+        },
+        {
+            "name": "notes_friction_among_long",
+            "x": 1316,
+            "y": 1190,
+            "w": 104,
+            "h": 112
+        },
+        {
+            "name": "notes_friction_among_crtcl",
+            "x": 1316,
+            "y": 1302,
+            "w": 104,
+            "h": 112
+        },
+        {
+            "name": "notes_friction_among_flick",
+            "x": 1316,
+            "y": 1414,
+            "w": 102,
+            "h": 102
+        },
+        {
+            "name": "notes_flick_arrow_06_diagonal",
+            "x": 0,
+            "y": 1548,
+            "w": 514,
+            "h": 300
+        },
+        {
+            "name": "notes_flick_arrow_crtcl_06_diagonal",
+            "x": 514,
+            "y": 1548,
+            "w": 514,
+            "h": 300
+        },
+        {
+            "name": "longNoteLine",
+            "x": 1092,
+            "y": 726,
+            "w": 306,
+            "h": 16
+        },
+        {
+            "name": "long_active",
+            "x": 1092,
+            "y": 727,
+            "w": 306,
+            "h": 2
+        },
+        {
+            "name": "long_normal",
+            "x": 1092,
+            "y": 731,
+            "w": 306,
+            "h": 2
+        },
+        {
+            "name": "long_critical_active",
+            "x": 1092,
+            "y": 735,
+            "w": 306,
+            "h": 2
+        },
+        {
+            "name": "long_critical_normal",
+            "x": 1092,
+            "y": 739,
+            "w": 306,
+            "h": 2
+        },
+        {
+            "name": "traceLine_eff",
+            "x": 1028,
+            "y": 1548,
+            "w": 244,
+            "h": 224
+        },
+        {
+            "name": "touch_line_1",
+            "x": 1028,
+            "y": 1548,
+            "w": 244,
+            "h": 56
+        },
+        {
+            "name": "touch_line_2",
+            "x": 1028,
+            "y": 1604,
+            "w": 244,
+            "h": 56
+        },
+        {
+            "name": "critical_touch_line_1",
+            "x": 1028,
+            "y": 1660,
+            "w": 244,
+            "h": 56
+        },
+        {
+            "name": "critical_touch_line_2",
+            "x": 1028,
+            "y": 1716,
+            "w": 244,
+            "h": 56
+        },
+        {
+            "name": "guideColors",
+            "x": 1092,
+            "y": 742,
+            "w": 300,
+            "h": 24
+        },
+        {
+            "name": "guide_color_0",
+            "x": 1092,
+            "y": 743,
+            "w": 300,
+            "h": 1
+        },
+        {
+            "name": "guide_color_1",
+            "x": 1092,
+            "y": 746,
+            "w": 300,
+            "h": 1
+        },
+        {
+            "name": "guide_color_2",
+            "x": 1092,
+            "y": 749,
+            "w": 300,
+            "h": 1
+        },
+        {
+            "name": "guide_color_3",
+            "x": 1092,
+            "y": 752,
+            "w": 300,
+            "h": 1
+        },
+        {
+            "name": "guide_color_4",
+            "x": 1092,
+            "y": 755,
+            "w": 300,
+            "h": 1
+        },
+        {
+            "name": "guide_color_5",
+            "x": 1092,
+            "y": 758,
+            "w": 300,
+            "h": 1
+        },
+        {
+            "name": "guide_color_6",
+            "x": 1092,
+            "y": 761,
+            "w": 300,
+            "h": 1
+        },
+        {
+            "name": "guide_color_7",
+            "x": 1092,
+            "y": 764,
+            "w": 300,
+            "h": 1
+        },
+        {
+            "name": "simultaneousLine",
+            "x": 1220,
+            "y": 554,
+            "w": 10,
+            "h": 40
+        }
+    ],
+    "configs": {
+        "noteMargin": 30,
+        "noteSideWidth": 90,
+        "holdMargin": 30,
+        "holdSideWidth": 13
+    }
+}

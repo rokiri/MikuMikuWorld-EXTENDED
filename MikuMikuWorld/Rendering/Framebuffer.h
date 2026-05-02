@@ -16,10 +16,17 @@ namespace MikuMikuWorld
 
 	  public:
 		Framebuffer(unsigned int w, unsigned int h);
-		Framebuffer();
+		~Framebuffer();
 
-		void clear();
+		Framebuffer(const Framebuffer&) = delete;
+		Framebuffer& operator=(const Framebuffer&) = delete;
+
+		Framebuffer(Framebuffer&& other) noexcept;
+		Framebuffer& operator=(Framebuffer&& other) noexcept;
+
+		void clear(float r = 0.f, float g = 0.f, float b = 0.f, float a = 0.f);
 		void bind();
+		void unbind();
 		void dispose();
 		void resize(unsigned int w, unsigned int h);
 

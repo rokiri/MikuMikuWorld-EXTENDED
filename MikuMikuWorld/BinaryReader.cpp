@@ -6,7 +6,7 @@ namespace IO
 	BinaryReader::BinaryReader(const std::string& filename)
 	{
 		stream = NULL;
-		std::wstring wFilename = mbToWideStr(filename);
+		std::wstring wFilename = utf8ToWide(filename);
 		stream = _wfopen(wFilename.c_str(), L"rb");
 	}
 

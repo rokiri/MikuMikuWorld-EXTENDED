@@ -10,6 +10,7 @@
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-vi)](./MikuMikuWorld/res/i18n/vi.csv)
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-tr)](./MikuMikuWorld/res/i18n/tr.csv)
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-pt)](./MikuMikuWorld/res/i18n/pt.csv)
+[![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-zh)](./MikuMikuWorld/res/i18n/zh.csv)
 
 Fork of [MikuMikuWorld](https://github.com/crash5band/MikuMikuWorld) for [UntitledCharts](https://untitledcharts.com/).
 
@@ -28,19 +29,24 @@ In addition to the original features of MikuMikuWorld, the following features ar
 - Note Properties panel
 - Support for decimal note lane and width
 - More hispeed options
+- Customizable alpha for Guide
+- Customizable note sound effect
 - Add import/export to LevelData
+- And so much more!
 
 ## Translations
 
 If you want to contribute a translation, please see [the guide](./TRANSLATION.md).
 
-- 日本語 (Japanese) by @sevenc_nanashi
+- 日本語 (Japanese) by [@sevenc_nanashi](https://github.com/sevenc-nanashi) and [@MI11435](https://github.com/MI11435)
 - Español (Spanish) by @mi.honesta.reaccion
-- Русский (Russian) by @\_notfallen\_
-- Tiếng Việt (Vietnamese) by @uwulovecrosshand
-- 한글 (Korean) by @fjordic
-- Türkçe (Turkish) by @sctech-tr
-- Português do Brasil (Brazillian Portuguese) by @\_\_noradrenaline
+- Русский (Russian) by [@\_notfallen\_](https://github.com/notfallen-dev) and Ababik (ababikmeoww)
+- Tiếng Việt (Vietnamese) by @uwulovecrosshand and [@SweetSea](https://github.com/SweetSea-ButImNotSweet)
+- 한국어 (Korean) by @fjordic and [@TK50P](https://github.com/TK50P)
+- Türkçe (Turkish) by [@sctech-tr](https://github.com/sctech-tr)
+- Português do Brasil (Brazillian Portuguese) by @\_\_noradrenaline and Myllo (@mynameismyllo)
+- 中文(简体) (Chinese Simplified) by [@\_guanfei\_](https://github.com/GuanFeiHK)
+- 中文(繁體) (Chinese Traditional) by [(@269Seahorse)](https://github.com/269Seahorse)
 
 ## Requirements
 
@@ -57,6 +63,4 @@ The latest version can be downloaded [here](https://github.com/UntitledCharts/Mi
 ## Screenshot
 
 ## Todo
-- Adding alpha property to Guide (enabled by changing Fade Type to Custom)
-- Changing `HoldNote` class so you can insert more than ticks note into holds
 - Translation

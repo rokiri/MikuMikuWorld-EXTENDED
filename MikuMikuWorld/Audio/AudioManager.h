@@ -11,41 +11,35 @@ namespace Audio
 	{
 	  private:
 		ma_engine engine;
-		ma_sound music;
 		ma_sound_group musicGroup;
 		ma_sound_group soundEffectsGroup;
-		std::array<SoundEffectProfile, soundEffectsProfileCount> sounds;
-
-		// Offset from chart time in seconds
-		float musicOffset{ 0.0f };
+		std::shared_ptr<SoundEffectProfile> sounds;
 
 		float masterVolume{ 1.0f };
 		float musicVolume{ 1.0f };
 		float soundEffectsVolume{ 1.0f };
 
-		float playbackSpeed{ 1.0f };
-		size_t soundEffectsProfileIndex{ 0 };
-
-		float lastPlaybackTime{};
+		std::string soundEffectsProfilePath;
+		std::unordered_map<std::string, std::string> soundEffectsProfileNames;
 
 	  public:
-		SoundBuffer musicBuffer;
-		std::vector<SoundInstance> debugSounds;
-
 		void initializeAudioEngine();
 		void uninitializeAudioEngine();
-		void syncAudioEngineTimer();
 		void startEngine();
 		void stopEngine();
 		bool isEngineStarted() const;
+		void loadSoundEffects();
+
+		void initializeMusic(ma_sound* music, ma_audio_buffer* buffer);
+		std::shared_ptr<SoundEffectProfile> getCurrentSoundEffectsProfile();
 
 		uint32_t getDeviceSampleRate() const;
 		uint32_t getDeviceChannelCount() const;
 		float getDeviceLatency() const;
-		float getAudioEngineAbsoluteTime() const;
 
-		void loadSoundEffects();
-		MikuMikuWorld::Result loadMusic(const std::string& filename);
+		float getAudioEngineAbsoluteTime() const;
+		void setAudioEngineAbsoluteTime(float time);
+		uint32_t getAudioEngineSampleRate() const;
 
 		void setMasterVolume(float volume);
 		float getMasterVolume() const;
@@ -56,12 +50,38 @@ namespace Audio
 		void setSoundEffectsVolume(float volume);
 		float getSoundEffectsVolume() const;
 
-		void setPlaybackSpeed(float speed, float currentTime);
-		float getPlaybackSpeed() const;
+		const std::string& getCurrentProfilePath() const;
+		void setSoundEffectsProfilePath(const std::string& path);
+		const std::unordered_map<std::string, std::string>& getSoundEffectsProfileNames() const;
+
+	  private:
+		void initializeSoundProfile(const std::string& path);
+		void uninitializeSoundProfile();
+	};
+
+	class AudioContext
+	{
+		AudioManager& manager;
+		ma_sound music;
+		std::shared_ptr<SoundEffectProfile> soundEffects;
+
+		// Offset from chart time in seconds
+		// Positive is late, negative is early
+		float musicOffset{ 0.0f };
+
+		float playbackSpeed{ 1.0f };
+
+		float absoluteStartTime{};
+		float startTime{};
+
+	  public:
+		SoundBuffer musicBuffer;
+		AudioContext(AudioManager& manager);
+		~AudioContext();
 
 		void playMusic(float currentTime);
 		void stopMusic();
-		void seekMusic(float time);
+		void seekMusic(float musicTime);
 		void setMusicOffset(float currentTime, float offset);
 		float getMusicPosition();
 		float getMusicLength();
@@ -69,6 +89,8 @@ namespace Audio
 		float getMusicEndTime();
 		bool isMusicInitialized() const;
 		bool isMusicAtEnd() const;
+
+		MikuMikuWorld::Result loadMusic(const std::string& filename);
 		void disposeMusic();
 
 		void playOneShotSound(std::string_view name);
@@ -76,12 +98,10 @@ namespace Audio
 		void stopSoundEffects(bool all);
 		bool isSoundPlaying(std::string_view name) const;
 
-		size_t getSoundEffectsProfileIndex() const;
-		void setSoundEffectsProfileIndex(size_t index);
+		float getPlaybackSpeed() const;
+		void setPlaybackSpeed(float speed, float currentTime);
 
-		float getLastPlaybackTime() const;
-		void setLastPlaybackTime(float time);
-
-		using SoundPoolPair = std::pair<std::string_view, std::unique_ptr<SoundPool>>;
+		void syncPlaybackTime(float currentTime);
+		void syncSoundEffectsProfile();
 	};
 }

@@ -156,7 +156,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../Depends/GLFW/lib;../Depends/openssl/lib;../Depends/zlib/lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;Version.lib;libcrypto.lib;libssl.lib;zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3_mt.lib;opengl32.lib;Version.lib;libcrypto.lib;libssl.lib;zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='amd64' publicKeyToken='6595b64144ccf1df' language='*'</AdditionalManifestDependencies>
     </Link>
@@ -172,8 +172,10 @@
     <ClCompile Include="..\Depends\stb_vorbis\stb_vorbis.c" />
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="ApplicationConfiguration.cpp" />
+    <ClCompile Include="ApplicationResource.cpp" />
     <ClCompile Include="Audio\Sound.cpp" />
     <ClCompile Include="Audio\AudioManager.cpp" />
+    <ClCompile Include="Audio\Waveform.cpp" />
     <ClCompile Include="Background.cpp" />
     <ClCompile Include="BinaryReader.cpp" />
     <ClCompile Include="BinaryWriter.cpp" />
@@ -189,25 +191,25 @@
     <ClCompile Include="ImGui\imgui_tables.cpp" />
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
     <ClCompile Include="InputBinding.cpp" />
+    <ClCompile Include="InputConfiguration.cpp" />
     <ClCompile Include="IO.cpp" />
     <ClCompile Include="Jacket.cpp" />
     <ClCompile Include="JsonIO.cpp" />
-    <ClCompile Include="Language.cpp" />
     <ClCompile Include="Localization.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Math.cpp" />
     <ClCompile Include="NativeScoreSerializer.cpp" />
     <ClCompile Include="Note.cpp" />
+    <ClCompile Include="NoteResource.cpp" />
     <ClCompile Include="OpenGlLoader.cpp" />
     <ClCompile Include="NotesPreset.cpp" />
+    <ClCompile Include="PlatformIO.cpp" />
     <ClCompile Include="Rendering\Camera.cpp" />
     <ClCompile Include="Rendering\Framebuffer.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Rendering\Shader.cpp" />
-    <ClCompile Include="Rendering\Sprite.cpp" />
     <ClCompile Include="Rendering\Texture.cpp" />
     <ClCompile Include="Rendering\VertexBuffer.cpp" />
-    <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="Score.cpp" />
     <ClCompile Include="ScoreContext.cpp" />
     <ClCompile Include="ScoreEditorTimeline.cpp" />
@@ -222,7 +224,10 @@
     <ClCompile Include="SusParser.cpp" />
     <ClCompile Include="SusSerializer.cpp" />
     <ClCompile Include="Tempo.cpp" />
-    <ClCompile Include="ScoreEditor.cpp" />
+    <ClCompile Include="ScoreEditor.cpp">
+      <SDLCheck Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</SDLCheck>
+      <SDLCheck Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</SDLCheck>
+    </ClCompile>
     <ClCompile Include="UI.cpp" />
     <ClCompile Include="UscSerializer.cpp" />
     <ClCompile Include="Utilities.cpp" />
@@ -230,6 +235,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="ApplicationConfiguration.h" />
+    <ClInclude Include="ApplicationResource.h" />
     <ClInclude Include="Audio\Sound.h" />
     <ClInclude Include="Audio\AudioManager.h" />
     <ClInclude Include="Background.h" />
@@ -237,6 +243,7 @@
     <ClInclude Include="BinaryWriter.h" />
     <ClInclude Include="Colors.h" />
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="Enum.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HistoryManager.h" />
     <ClInclude Include="IconsFontAwesome5.h" />
@@ -251,10 +258,10 @@
     <ClInclude Include="ImGui\imstb_textedit.h" />
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="InputBinding.h" />
+    <ClInclude Include="InputConfiguration.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="Jacket.h" />
     <ClInclude Include="JsonIO.h" />
-    <ClInclude Include="Language.h" />
     <ClInclude Include="Localization.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="Audio\miniaudio.h" />
@@ -262,22 +269,23 @@
     <ClInclude Include="Note.h" />
     <ClInclude Include="NoteTypes.h" />
     <ClInclude Include="NotesPreset.h" />
+    <ClInclude Include="PlatformIO.h" />
     <ClInclude Include="Rendering\AnchorType.h" />
     <ClInclude Include="Rendering\Camera.h" />
     <ClInclude Include="Rendering\Framebuffer.h" />
     <ClInclude Include="Rendering\Quad.h" />
     <ClInclude Include="Rendering\Renderer.h" />
     <ClInclude Include="Rendering\Shader.h" />
-    <ClInclude Include="Rendering\Sprite.h" />
     <ClInclude Include="Rendering\Texture.h" />
     <ClInclude Include="Rendering\Vertex.h" />
     <ClInclude Include="Rendering\VertexBuffer.h" />
+    <ClInclude Include="NoteResource.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="Score.h" />
     <ClInclude Include="ScoreContext.h" />
     <ClInclude Include="ScoreEditorTimeline.h" />
     <ClInclude Include="ScoreEditorWindows.h" />
+    <ClInclude Include="ScoreEvents.h" />
     <ClInclude Include="ScoreSerializer.h" />
     <ClInclude Include="ScoreSerializeWindow.h" />
     <ClInclude Include="ScoreStats.h" />
@@ -290,7 +298,7 @@
     <ClInclude Include="SusSerializer.h" />
     <ClInclude Include="Tempo.h" />
     <ClInclude Include="ScoreEditor.h" />
-    <ClInclude Include="TimelineMode.h" />
+    <ClInclude Include="Text.h" />
     <ClInclude Include="UI.h" />
     <ClInclude Include="UscSerializer.h" />
     <ClInclude Include="Utilities.h" />

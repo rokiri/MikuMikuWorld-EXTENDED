@@ -1,5 +1,5 @@
 ﻿#include "Application.h"
-#include "ApplicationConfiguration.h"
+#include "ImGuiManager.h"
 #include "ImGui/imgui_impl_glfw.h"
 #include "ImGui/imgui_impl_opengl3.h"
 #include "../Depends/glad/include/glad/glad.h"
@@ -19,15 +19,21 @@ namespace MikuMikuWorld
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 
-		configFilename = Application::getAppDir() + IMGUI_CONFIG_FILENAME;
+		configFilename =
+		    IO::toString(Application::getInstance().getConfigPath(IMGUI_CONFIG_FILENAME));
 
 		ImGuiIO& io = ImGui::GetIO();
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable |
-		                  ImGuiConfigFlags_DpiEnableScaleViewports;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
 
 		io.ConfigWindowsMoveFromTitleBarOnly = true;
 		io.ConfigViewportsNoDefaultParent = false;
 		io.ConfigViewportsNoAutoMerge = true;
+		io.ConfigDpiScaleViewports = true;
+		io.ConfigDpiScaleFonts = false;
+		io.ConfigDockingTransparentPayload = true;
+		ImGui::GetStyle().HoverFlagsForTooltipMouse =
+		    ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary;
+
 		io.IniFilename = configFilename.c_str();
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(window, true))
@@ -36,7 +42,9 @@ namespace MikuMikuWorld
 		if (!ImGui_ImplOpenGL3_Init("#version 150"))
 			return Result(ResultStatus::Error, "Failed to initialize ImGui OpenGL implementation.");
 
-		setBaseTheme(BaseTheme::DARK);
+		setBaseTheme(getConfig().baseTheme);
+		buildFonts();
+		baseStyle = std::make_unique<ImGuiStyle>(ImGui::GetStyle());
 
 		return Result::Ok();
 	}
@@ -44,22 +52,23 @@ namespace MikuMikuWorld
 	void ImGuiManager::setBaseTheme(BaseTheme theme)
 	{
 		ImGuiStyle* style = &ImGui::GetStyle();
-		style->FramePadding.x = 4;
-		style->FramePadding.y = 2;
-		style->ItemSpacing.x = 2;
-		style->ItemSpacing.y = 4;
-		style->WindowPadding.x = 6;
-		style->WindowRounding = 4;
-		style->WindowBorderSize = 1;
-		style->FrameBorderSize = 0;
-		style->FrameRounding = 1;
-		style->ScrollbarRounding = 6;
-		style->ChildRounding = 2;
-		style->PopupRounding = 2;
-		style->GrabRounding = 1;
-		style->TabRounding = 1;
-		style->ScrollbarSize = 12;
-		style->GrabMinSize = 8;
+		float scale = style->_MainScale;
+		style->FramePadding.x = ImTrunc(4 * scale);
+		style->FramePadding.y = ImTrunc(2 * scale);
+		style->ItemSpacing.x = ImTrunc(2 * scale);
+		style->ItemSpacing.y = ImTrunc(4 * scale);
+		style->WindowPadding.x = ImTrunc(6 * scale);
+		style->WindowRounding = ImTrunc(4 * scale);
+		style->WindowBorderSize = ImTrunc(1 * scale);
+		style->FrameBorderSize = ImTrunc(0 * scale);
+		style->FrameRounding = ImTrunc(1 * scale);
+		style->ScrollbarRounding = ImTrunc(6 * scale);
+		style->ChildRounding = ImTrunc(2 * scale);
+		style->PopupRounding = ImTrunc(2 * scale);
+		style->GrabRounding = ImTrunc(1 * scale);
+		style->TabRounding = ImTrunc(1 * scale);
+		style->ScrollbarSize = ImTrunc(12 * scale);
+		style->GrabMinSize = ImTrunc(8 * scale);
 
 		ImVec4* colors = style->Colors;
 
@@ -87,9 +96,9 @@ namespace MikuMikuWorld
 			colors[ImGuiCol_SeparatorActive] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
 			colors[ImGuiCol_Tab] = ImVec4(0.96f, 0.96f, 0.96f, 1.00f);
 			colors[ImGuiCol_TabHovered] = ImVec4(0.99f, 0.48f, 0.88f, 0.80f);
-			colors[ImGuiCol_TabActive] = ImVec4(0.16f, 0.44f, 0.75f, 1.00f);
-			colors[ImGuiCol_TabUnfocused] = ImVec4(0.80f, 0.80f, 0.80f, 1.00f);
-			colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.80f, 0.80f, 0.80f, 1.00f);
+			colors[ImGuiCol_TabSelected] = ImVec4(0.16f, 0.44f, 0.75f, 1.00f);
+			colors[ImGuiCol_TabDimmed] = ImVec4(0.80f, 0.80f, 0.80f, 1.00f);
+			colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.80f, 0.80f, 0.80f, 1.00f);
 			colors[ImGuiCol_ChildBg] = ImVec4(0.9f, 0.9f, 0.9f, 1.00f);
 			colors[ImGuiCol_PopupBg] = ImVec4(0.9f, 0.9f, 0.9f, 1.00f);
 			colors[ImGuiCol_TitleBg] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
@@ -123,9 +132,9 @@ namespace MikuMikuWorld
 			colors[ImGuiCol_SeparatorActive] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
 			colors[ImGuiCol_Tab] = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
 			colors[ImGuiCol_TabHovered] = ImVec4(0.19f, 0.48f, 0.88f, 0.80f);
-			colors[ImGuiCol_TabActive] = ImVec4(0.16f, 0.44f, 0.75f, 1.00f);
-			colors[ImGuiCol_TabUnfocused] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
-			colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+			colors[ImGuiCol_TabSelected] = ImVec4(0.16f, 0.44f, 0.75f, 1.00f);
+			colors[ImGuiCol_TabDimmed] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+			colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
 			colors[ImGuiCol_ChildBg] = ImVec4(0.196f, 0.196f, 0.196f, 1.00f);
 			colors[ImGuiCol_PopupBg] = ImVec4(0.196f, 0.196f, 0.196f, 1.00f);
 			colors[ImGuiCol_TitleBg] = ImVec4(0.13f, 0.13f, 0.13f, 1.00f);
@@ -138,7 +147,7 @@ namespace MikuMikuWorld
 		}
 
 		this->theme = theme;
-		applyAccentColor(config.accentColor);
+		applyAccentColor(getConfig().accentColor);
 	}
 
 	void ImGuiManager::shutdown()
@@ -154,12 +163,29 @@ namespace MikuMikuWorld
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+		auto& config = getConfig();
 		float dpiScale = ImGui::GetMainViewport()->DpiScale;
 		if (dpiScale != styleScale)
 		{
+			// Reset base theme so scaling doesn't lose precision
+			ImGui::GetStyle() = *baseStyle;
+			styleScale = 1;
+			theme = BaseTheme::DARK;
+			accentColor = 1;
+
 			ImGui::GetStyle().ScaleAllSizes(dpiScale / styleScale);
 			styleScale = dpiScale;
+			ImGui::GetStyle().FontScaleDpi = dpiScale;
 		}
+
+		if (config.accentColor != accentColor)
+			applyAccentColor(config.accentColor);
+
+		if (config.accentColor == 0 && config.userColor != Color::fromImVec4(UI::accentColors[0]))
+			applyAccentColor(config.accentColor);
+
+		if (config.baseTheme != theme)
+			setBaseTheme(config.baseTheme);
 	}
 
 	void ImGuiManager::draw(GLFWwindow* window)
@@ -186,21 +212,7 @@ namespace MikuMikuWorld
 		fontConfig.OversampleH = 1;
 		fontConfig.RasterizerMultiply = 1.05f;
 
-		ImFontGlyphRangesBuilder rangeBuilder;
-		static ImVector<ImWchar> ranges;
-		rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesDefault());
-		rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesJapanese());
-		rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesKorean());
-		rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
-		rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesVietnamese());
-		rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesChineseFull());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesThai());
-		// rangeBuilder.AddRanges(ImGui::GetIO().Fonts->GetGlyphRangesGreek());
-		rangeBuilder.BuildRanges(&ranges);
-
-		auto font = ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size,
-		                                                     &fontConfig, ranges.Data);
-		ImGui::GetIO().Fonts->Build();
+		ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size, &fontConfig);
 	}
 
 	void ImGuiManager::loadIconFont(const std::string& filename, int start, int end, float size)
@@ -213,7 +225,7 @@ namespace MikuMikuWorld
 		fontConfig.GlyphMinAdvanceX = 13.0f;
 		fontConfig.PixelSnapH = false;
 		fontConfig.OversampleH = 1;
-		static const ImWchar iconRanges[] = { start, end, 0 };
+		static const ImWchar iconRanges[] = { ImWchar(start), ImWchar(end), 0 };
 		ImGui::GetIO().Fonts->AddFontFromFileTTF(filename.c_str(), (int)size, &fontConfig,
 		                                         iconRanges);
 	}
@@ -227,10 +239,9 @@ namespace MikuMikuWorld
 
 		io.FontDefault = nullptr;
 
-		loadFont(Application::getAppDir() + "res/fonts/NotoSansCJK-Regular.ttc", 16 * dpiScale);
-		loadIconFont(Application::getAppDir() + "res/fonts/fa-solid-900.ttf", ICON_MIN_FA,
-		             ICON_MAX_FA, 12 * dpiScale);
-		ImGui_ImplOpenGL3_CreateFontsTexture();
+		auto fontPath = Application::getInstance().getResourcePath("fonts");
+		loadFont(IO::toString(fontPath / "NotoSansCJK-Regular.ttc"), 16);
+		loadIconFont(IO::toString(fontPath / "fa-solid-900.ttf"), ICON_MIN_FA, ICON_MAX_FA, 13);
 	}
 
 	void ImGuiManager::initializeLayout()
@@ -242,7 +253,8 @@ namespace MikuMikuWorld
 		                               ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
 
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImVec2 viewportOffset{ 0, UI::toolbarBtnSize.y + ImGui::GetStyle().WindowPadding.y + 5 };
+		auto toolbarWindow = ImGui::FindWindowByName(EditorToolbar::windowName);
+		ImVec2 viewportOffset{ 0, toolbarWindow ? toolbarWindow->Size.y : 0 };
 		ImGui::SetNextWindowPos(viewport->WorkPos + viewportOffset);
 		ImGui::SetNextWindowSize(viewport->WorkSize - viewportOffset);
 		ImGui::SetNextWindowViewport(viewport->ID);
@@ -250,15 +262,14 @@ namespace MikuMikuWorld
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("InvisibleWindow", nullptr,
-		             windowFlags); // This is basically the background window that contains all the
-		                           // dockable windows
+		// This is basically the background window that contains all the dockable windows
+		// We'll use it as the dockspace
+		ImGui::Begin("InvisibleWindow", nullptr, windowFlags);
 		ImGui::PopStyleVar(3);
 
-		std::string dockStrId{ "InvisibleWindowDockSpace" };
-
-		ImGuiID dockSpaceId = ImGui::GetID(dockStrId.c_str());
-		if (!ImGui::DockBuilderGetNode(dockSpaceId))
+		bool& wantsReset = Application::getInstance().getWindowState().resetLayout;
+		ImGuiID dockSpaceId = ImGui::GetID("InvisibleWindowDockSpace");
+		if (!ImGui::DockBuilderGetNode(dockSpaceId) || wantsReset)
 		{
 			ImGui::DockBuilderAddNode(dockSpaceId, ImGuiDockNodeFlags_DockSpace);
 			ImGui::DockBuilderSetNodeSize(dockSpaceId, viewport->WorkSize - viewportOffset);
@@ -278,7 +289,10 @@ namespace MikuMikuWorld
 			ImGui::DockBuilderDockWindow("###waypoints", bottomRightId);
 
 			ImGui::DockBuilderFinish(dockMainId);
+			wantsReset = false;
 		}
+
+		dockNodeSetFlag(ImGui::DockBuilderGetNode(dockSpaceId), ImGuiDockNodeFlags_NoCloseButton);
 
 		ImGui::DockSpace(dockSpaceId, ImVec2(), ImGuiDockNodeFlags_PassthruCentralNode);
 		ImGui::End();
@@ -296,11 +310,20 @@ namespace MikuMikuWorld
 		colors[ImGuiCol_ButtonActive] = darkColor;
 		colors[ImGuiCol_SeparatorHovered] = lightColor;
 		colors[ImGuiCol_TabHovered] = lightColor;
-		colors[ImGuiCol_TabActive] = color;
+		colors[ImGuiCol_TabSelected] = color;
 		colors[ImGuiCol_CheckMark] = color;
 		colors[ImGuiCol_PlotHistogram] = color;
 		colors[ImGuiCol_PlotHistogramHovered] = darkColor;
 
 		accentColor = colIndex;
+	}
+
+	void ImGuiManager::dockNodeSetFlag(ImGuiDockNode* node, ImGuiDockNodeFlags flag)
+	{
+		if (!node)
+			return;
+		node->SetLocalFlags(node->LocalFlags | flag);
+		dockNodeSetFlag(node->ChildNodes[0], flag);
+		dockNodeSetFlag(node->ChildNodes[1], flag);
 	}
 }

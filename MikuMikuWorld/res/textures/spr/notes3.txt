@@ -1,2 +1,0 @@
-#Dummy cross mark
-0,0,128,128

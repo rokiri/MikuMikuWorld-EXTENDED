@@ -3,6 +3,8 @@
 #include <regex>
 #include <string>
 
+#ifdef COMPILE_ME
+
 namespace MikuMikuWorld
 {
 	struct SusLineData
@@ -47,3 +49,5 @@ namespace MikuMikuWorld
 		void processCommand(std::string& line);
 	};
 }
+
+#endif

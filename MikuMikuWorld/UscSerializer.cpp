@@ -5,18 +5,20 @@
 
 using json = nlohmann::json;
 
+#ifdef COMPILE_ME
+
 namespace MikuMikuWorld
 {
-	void UscSerializer::serialize(const Score& score, std::string filename)
+	void UscSerializer::serialize(const SerializingScore& data, std::string filename)
 	{
-		json usc = scoreToUsc(score);
+		json usc = scoreToUsc(data);
 		IO::File uscfile(filename, IO::FileMode::Write);
 		uscfile.write(usc.dump(minify ? -1 : 4));
 		uscfile.flush();
 		uscfile.close();
 	}
 
-	Score UscSerializer::deserialize(std::string filename)
+	SerializingScore UscSerializer::deserialize(std::string filename)
 	{
 		IO::File uscFile(filename, IO::FileMode::Read);
 		json usc = json::parse(uscFile.readAllText());
@@ -24,12 +26,14 @@ namespace MikuMikuWorld
 		return uscToScore(usc);
 	}
 
-	json UscSerializer::scoreToUsc(const Score& score)
+	json UscSerializer::scoreToUsc(const SerializingScore& data)
 	{
+		const Score& score = data.score;
+		const ScoreMetadata& metadata = data.metadata;
 		json vusc;
 		json usc;
 
-		usc["offset"] = score.metadata.musicOffset / -1000.0f;
+		usc["offset"] = metadata.musicOffset / -1000.0f;
 
 		std::vector<json> objects;
 
@@ -37,7 +41,7 @@ namespace MikuMikuWorld
 		{
 			json obj;
 			obj["type"] = "bpm";
-			obj["beat"] = bpm.tick / (double)TICKS_PER_BEAT;
+			obj["beat"] = bpm.tick / (double)TICKS_PER_QUARTER;
 			obj["bpm"] = bpm.bpm;
 			objects.push_back(obj);
 		}
@@ -54,7 +58,7 @@ namespace MikuMikuWorld
 					continue;
 				}
 				json obj;
-				obj["beat"] = hs.tick / (double)TICKS_PER_BEAT;
+				obj["beat"] = hs.tick / (double)TICKS_PER_QUARTER;
 				obj["timeScale"] = hs.speed;
 				timeScaleObjects.push_back(obj);
 			}
@@ -68,7 +72,7 @@ namespace MikuMikuWorld
 			{
 				json obj;
 				obj["type"] = "single";
-				obj["beat"] = note.tick / (double)TICKS_PER_BEAT;
+				obj["beat"] = note.tick / (double)TICKS_PER_QUARTER;
 				obj["size"] = note.width / 2.0;
 				obj["lane"] = note.lane - 6 + (note.width / 2.0);
 				obj["critical"] = note.critical;
@@ -88,7 +92,7 @@ namespace MikuMikuWorld
 			{
 				json obj;
 				obj["type"] = "damage";
-				obj["beat"] = note.tick / (double)TICKS_PER_BEAT;
+				obj["beat"] = note.tick / (double)TICKS_PER_QUARTER;
 				obj["size"] = note.width / 2.0;
 				obj["lane"] = note.lane - 6 + (note.width / 2.0);
 				obj["timeScaleGroup"] = note.layer;
@@ -113,10 +117,10 @@ namespace MikuMikuWorld
 				steps.reserve(note.steps.size() + 1);
 
 				json startStep;
-				startStep["beat"] = start.tick / (double)TICKS_PER_BEAT;
+				startStep["beat"] = start.tick / (double)TICKS_PER_QUARTER;
 				startStep["size"] = start.width / 2.0;
 				startStep["lane"] = start.lane - 6 + (start.width / 2.0);
-				startStep["ease"] = easeNames[(int)note.start.ease];
+				startStep["ease"] = easeTypes[(int)note.start.ease];
 				startStep["timeScaleGroup"] = start.layer;
 				if (start.dummy)
 					startStep["dummy"] = true;
@@ -126,17 +130,17 @@ namespace MikuMikuWorld
 				{
 					json stepObj;
 					auto& stepNote = score.notes.at(step.ID);
-					stepObj["beat"] = stepNote.tick / (double)TICKS_PER_BEAT;
+					stepObj["beat"] = stepNote.tick / (double)TICKS_PER_QUARTER;
 					stepObj["size"] = stepNote.width / 2.0;
 					stepObj["lane"] = stepNote.lane - 6 + (stepNote.width / 2.0);
-					stepObj["ease"] = easeNames[(int)step.ease];
+					stepObj["ease"] = easeTypes[(int)step.ease];
 					stepObj["timeScaleGroup"] = stepNote.layer;
 					steps.push_back(stepObj);
 				}
 
 				json endStep;
 				auto& end = score.notes.at(note.end);
-				endStep["beat"] = end.tick / (double)TICKS_PER_BEAT;
+				endStep["beat"] = end.tick / (double)TICKS_PER_QUARTER;
 				endStep["size"] = end.width / 2.0;
 				endStep["lane"] = end.lane - 6 + (end.width / 2.0);
 				endStep["ease"] = "linear";
@@ -155,11 +159,11 @@ namespace MikuMikuWorld
 			steps.reserve(note.steps.size() + 1);
 			json startStep;
 			startStep["type"] = "start";
-			startStep["beat"] = start.tick / (double)TICKS_PER_BEAT;
+			startStep["beat"] = start.tick / (double)TICKS_PER_QUARTER;
 			startStep["size"] = start.width / 2.0;
 			startStep["lane"] = start.lane - 6 + (start.width / 2.0);
 			startStep["critical"] = start.critical;
-			startStep["ease"] = easeNames[(int)note.start.ease];
+			startStep["ease"] = easeTypes[(int)note.start.ease];
 			startStep["judgeType"] = note.startType == HoldNoteType::Hidden ? "none"
 			                         : start.friction                       ? "trace"
 			                                                                : "normal";
@@ -171,14 +175,14 @@ namespace MikuMikuWorld
 				json stepObj;
 				auto& stepNote = score.notes.at(step.ID);
 				stepObj["type"] = step.type == HoldStepType::Skip ? "attach" : "tick";
-				stepObj["beat"] = stepNote.tick / (double)TICKS_PER_BEAT;
+				stepObj["beat"] = stepNote.tick / (double)TICKS_PER_QUARTER;
 				stepObj["size"] = stepNote.width / 2.0;
 				stepObj["lane"] = stepNote.lane - 6 + (stepNote.width / 2.0);
 				if (step.type != HoldStepType::Hidden)
 				{
 					stepObj["critical"] = stepNote.critical;
 				}
-				stepObj["ease"] = easeNames[(int)step.ease];
+				stepObj["ease"] = easeTypes[(int)step.ease];
 				stepObj["timeScaleGroup"] = stepNote.layer;
 				steps.push_back(stepObj);
 			}
@@ -186,7 +190,7 @@ namespace MikuMikuWorld
 			json endStep;
 			auto& end = score.notes.at(note.end);
 			endStep["type"] = "end";
-			endStep["beat"] = end.tick / (double)TICKS_PER_BEAT;
+			endStep["beat"] = end.tick / (double)TICKS_PER_QUARTER;
 			endStep["size"] = end.width / 2.0;
 			endStep["lane"] = end.lane - 6 + (end.width / 2.0);
 			endStep["critical"] = end.critical;
@@ -213,9 +217,10 @@ namespace MikuMikuWorld
 		return vusc;
 	}
 
-	Score UscSerializer::uscToScore(const json& vusc)
+	SerializingScore UscSerializer::uscToScore(const json& vusc)
 	{
 		Score score;
+		ScoreMetadata metadata;
 		if (vusc["version"] != 2)
 		{
 			throw std::runtime_error("Invalid version");
@@ -225,14 +230,14 @@ namespace MikuMikuWorld
 		score.hiSpeedChanges.clear();
 		score.tempoChanges.clear();
 
-		score.metadata.musicOffset = usc["offset"].get<float>() * -1000.0f;
+		metadata.musicOffset = usc["offset"].get<float>() * -1000.0f;
 
 		for (const auto& obj : usc["objects"].get<std::vector<json>>())
 		{
 			if (obj["type"] == "bpm")
 			{
 				score.tempoChanges.push_back(Tempo{
-				    (int)(obj["beat"].get<double>() * TICKS_PER_BEAT), obj["bpm"].get<float>() });
+				    (int)(obj["beat"].get<double>() * TICKS_PER_QUARTER), obj["bpm"].get<float>() });
 			}
 			else if (obj["type"] == "timeScaleGroup")
 			{
@@ -242,14 +247,14 @@ namespace MikuMikuWorld
 				{
 					id_t id = Note::getNextID();
 					score.hiSpeedChanges[id] =
-					    HiSpeedChange{ id, (int)(change["beat"].get<double>() * TICKS_PER_BEAT),
+					    HiSpeedChange{ id, (int)(change["beat"].get<double>() * TICKS_PER_QUARTER),
 						               change["timeScale"].get<float>(), index };
 				}
 			}
 			else if (obj["type"] == "single")
 			{
 				Note note(NoteType::Tap);
-				note.tick = obj["beat"].get<double>() * TICKS_PER_BEAT;
+				note.tick = obj["beat"].get<double>() * TICKS_PER_QUARTER;
 				note.width = obj["size"].get<float>() * 2;
 				note.lane = obj["lane"].get<float>() + 6 - obj["size"].get<float>();
 				note.critical = obj["critical"].get<bool>();
@@ -276,7 +281,7 @@ namespace MikuMikuWorld
 			else if (obj["type"] == "damage")
 			{
 				Note note(NoteType::Damage);
-				note.tick = obj["beat"].get<double>() * TICKS_PER_BEAT;
+				note.tick = obj["beat"].get<double>() * TICKS_PER_QUARTER;
 				note.width = obj["size"].get<float>() * 2;
 				note.lane = obj["lane"].get<float>() + 6 - obj["size"].get<float>();
 				note.layer = obj["timeScaleGroup"].get<int>();
@@ -331,7 +336,7 @@ namespace MikuMikuWorld
 					if (i == 0)
 					{
 						Note startNote(NoteType::Hold);
-						startNote.tick = step["beat"].get<double>() * TICKS_PER_BEAT;
+						startNote.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
 						startNote.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
 						startNote.layer = step["timeScaleGroup"].get<int>();
 						startNote.ID = Note::getNextID();
@@ -365,7 +370,7 @@ namespace MikuMikuWorld
 					else if (i == obj["midpoints"].size() - 1)
 					{
 						Note endNote(NoteType::HoldEnd);
-						endNote.tick = step["beat"].get<double>() * TICKS_PER_BEAT;
+						endNote.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
 						endNote.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
 						endNote.layer = step["timeScaleGroup"].get<int>();
 						endNote.ID = Note::getNextID();
@@ -379,7 +384,7 @@ namespace MikuMikuWorld
 					{
 						HoldStep s;
 						Note mid(NoteType::HoldMid);
-						mid.tick = step["beat"].get<double>() * TICKS_PER_BEAT;
+						mid.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
 						mid.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
 						mid.layer = step["timeScaleGroup"].get<int>();
 						mid.ID = Note::getNextID();
@@ -450,7 +455,7 @@ namespace MikuMikuWorld
 					if (type == "start")
 					{
 						Note startNote(NoteType::Hold);
-						startNote.tick = step["beat"].get<double>() * TICKS_PER_BEAT;
+						startNote.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
 						startNote.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
 						startNote.layer = step["timeScaleGroup"].get<int>();
 						startNote.critical = step["critical"].get<bool>();
@@ -498,7 +503,7 @@ namespace MikuMikuWorld
 					else if (type == "end")
 					{
 						Note endNote(NoteType::HoldEnd);
-						endNote.tick = step["beat"].get<double>() * TICKS_PER_BEAT;
+						endNote.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
 						endNote.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
 						endNote.layer = step["timeScaleGroup"].get<int>();
 						endNote.width = step["size"].get<float>() * 2;
@@ -533,7 +538,7 @@ namespace MikuMikuWorld
 					{
 						HoldStep s;
 						Note mid(NoteType::HoldMid);
-						mid.tick = step["beat"].get<double>() * TICKS_PER_BEAT;
+						mid.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
 						mid.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
 						mid.width = step["size"].get<float>() * 2;
 						mid.layer = step["timeScaleGroup"].get<int>();
@@ -597,8 +602,10 @@ namespace MikuMikuWorld
 			score.tempoChanges.push_back(Tempo{ 0, 120 });
 		}
 
-		return score;
+		return { score, metadata };
 	}
 
-	bool UscSerializer::canSerialize(const Score& score) { return true; }
+	Result UscSerializer::canSerialize(const SerializingScore& data) { return true; }
 }
+
+#endif

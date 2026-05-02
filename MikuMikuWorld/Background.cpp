@@ -1,138 +1,191 @@
 #include "Background.h"
 #include "Math.h"
-#include "ResourceManager.h"
+#include "ApplicationResource.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/Framebuffer.h"
+#include "ImGui/imgui_internal.h"
+
+// Scale a rectangle with specified aspect ratio so it fill the area of the target rectangle
+static void fillRect(float target_width, float target_height, long double source_aspect_ratio,
+                     float& width, float& height)
+{
+	const float target_aspect_ratio = target_width / target_height;
+	width = target_aspect_ratio < source_aspect_ratio ? source_aspect_ratio * target_height
+	                                                  : target_width;
+	height = target_aspect_ratio > source_aspect_ratio ? target_width / source_aspect_ratio
+	                                                   : target_height;
+	return;
+}
 
 namespace MikuMikuWorld
 {
-	Background::Background()
-	    : blur{ 0.0f }, brightness{ 0.4f }, width{ 0 }, height{ 0 }, dirty{ false }
+	Background::Background() : brightness{ 1.0f }, dirty{ true }, wantJacket{ true }
 	{
 		framebuffer = std::make_unique<Framebuffer>(1, 1);
 	}
 
-	void Background::load(const std::string& filename)
+	void Background::process(Renderer* renderer, const Jacket& jacket)
 	{
-		this->filename = filename;
-		if (texture)
-		{
-			texture->dispose();
-			texture = nullptr;
-		}
-
-		if (filename.empty() || !IO::File::exists(filename))
+		if (framebuffer == nullptr)
 			return;
 
-		texture = std::make_unique<Texture>(filename);
-		framebuffer->resize(texture->getWidth(), texture->getHeight());
-
-		dirty = true;
-	}
-
-	void Background::resizeByRatio(float& w, float& h, const Vector2& tgt, bool vertical)
-	{
-		if (vertical)
-		{
-			float ratio = tgt.y / h;
-			h = tgt.y;
-			w *= ratio;
-		}
-		else
-		{
-			float ratio = tgt.x / w;
-			w = tgt.x;
-			h *= ratio;
-		}
-	}
-
-	void Background::resize(Vector2 target)
-	{
-		if (framebuffer == nullptr || texture == nullptr)
+		dirty = false;
+		auto& resource = getResources().backgroundResources;
+		const Texture* bgTexture = resource.getBackgroundTexture();
+		const Texture* decoTexture = resource.getStageDecoTexture();
+		const Sprite* whiteMask = resource.getMaskWhite();
+		wantJacket = !bgTexture;
+		if (!bgTexture)
+			bgTexture = resource.getStageBGTexture();
+		if (bgTexture == nullptr || decoTexture == nullptr || whiteMask == nullptr)
 			return;
 
-		float w = texture->getWidth();
-		float h = texture->getHeight();
-		float tgtAspect = target.x / target.y;
-
-		if (tgtAspect > 1.0f)
-			resizeByRatio(w, h, target, false);
-		else if (tgtAspect < 1.0f)
-			resizeByRatio(w, h, target, true);
-		else
-			w = h = target.x;
-
-		// for non-square aspect ratios
-		if (h < target.y)
-			resizeByRatio(w, h, target, true);
-		else if (w < target.x)
-			resizeByRatio(w, h, target, false);
-
-		width = w;
-		height = h;
-	}
-
-	void Background::process(Renderer* renderer)
-	{
-		if (framebuffer == nullptr || texture == nullptr)
-			return;
-
-		int s = ResourceManager::getShader("basic2d");
-		if (s == -1)
-			return;
-
-		int w = texture->getWidth();
-		int h = texture->getHeight();
-
+		float w = bgTexture->getWidth(), h = bgTexture->getHeight();
 		if (w < 1 || h < 1)
 			return;
 
-		Shader* blur = ResourceManager::shaders[s];
-		blur->use();
-		blur->setMatrix4("projection", DirectX::XMMatrixOrthographicRH(w, -h, 0.001f, 100));
+		Shader* shader = getShader("basicMask");
+		if (!shader)
+			return;
+		shader->use();
+		shader->setInt("baseTex", 0);
+		shader->setInt("maskTex", 1);
+		// DirectXMath dies when projection size is too small
+		w = std::max(w, 10.f), h = std::max(h, 10.f);
+		shader->setMatrix4("projection",
+		                   DirectX::XMMatrixOrthographicOffCenterRH(0, w, 0, h, 0.001f, 100.0f));
 
+		framebuffer->resize(w, h);
 		framebuffer->bind();
-		framebuffer->clear();
+		framebuffer->clear(0.2, 0.2, 0.2, 1.f);
+
+		ImDrawListSharedData* sharedData = ImGui::GetDrawListSharedData();
+		if (!sharedData)
+			return;
+
 		renderer->beginBatch();
 
-		// align background quad to canvas position
-		Vector2 posR;
-		Vector2 size(w, h);
-		Color tint(brightness, brightness, brightness, 1.0f);
+		renderer->setTexture(*bgTexture, *bgTexture->getDefaultSprite(), *decoTexture, *whiteMask);
+		renderer->drawRectangle({ 0, 0 }, { w, h });
 
-		renderer->drawSprite(posR, 0.0f, size, AnchorType::MiddleCenter, *texture, 0, tint);
+		int jacketTexID;
+
+		if (!wantJacket || (jacketTexID = jacket.getTexID()) == 0)
+		{
+			renderer->endBatch();
+			framebuffer->unbind();
+			return;
+		}
+
+		Vector2 mainLeftPos{ 602, 816 }, mainLeftSize{ 264, 174 };
+		Vector2 mainRightPos{ 1205, 629 }, mainRightSize{ 200, 114 };
+		Vector2 mirrorLeftPos{ 615, 1170 }, mirrorLeftSize{ 256, 162 };
+		Vector2 mirrorRightPos{ 1186, 1387 }, mirrorRightSize{ 196, 105 };
+		// Draw the masked frame first
+		renderer->setTexture(jacketTexID, decoTexture->getID(), resource.getJacketMaskLeftUV());
+		renderer->drawRectangle(mainLeftPos, mainLeftSize);
+		renderer->setTexture(jacketTexID, decoTexture->getID(), resource.getJacketMaskRightUV());
+		renderer->drawRectangle(mainRightPos, mainRightSize);
+		renderer->setTexture(jacketTexID, decoTexture->getID(),
+		                     resource.getJacketMaskLeftMirrorUV());
+		renderer->drawRectangle(mirrorLeftPos, mirrorLeftSize);
+		renderer->setTexture(jacketTexID, decoTexture->getID(),
+		                     resource.getJacketMaskRightMirrorUV());
+		renderer->drawRectangle(mirrorRightPos, mirrorRightSize);
+		// Draw the polka dot cover
+		const Sprite* sprite = resource.getJacketLeftCover();
+		if (sprite)
+		{
+			renderer->setTexture(*decoTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle(mainLeftPos, mainLeftSize);
+		}
+		sprite = resource.getJacketRightCover();
+		if (sprite)
+		{
+			renderer->setTexture(*decoTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle(mainRightPos, mainRightSize);
+		}
+		sprite = resource.getJacketLeftCoverMirror();
+		if (sprite)
+		{
+			renderer->setTexture(*decoTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle(mirrorLeftPos, mirrorLeftSize);
+		}
+		sprite = resource.getJacketRightCoverMirror();
+		if (sprite)
+		{
+			renderer->setTexture(*decoTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle(mirrorRightPos, mirrorRightSize);
+		}
+		// Draw the main window
+		sprite = resource.getJacketCenterWindow();
+		if (sprite)
+		{
+			renderer->setTexture(*decoTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle({ 682, 497 }, { 686, 686 });
+		}
+		sprite = resource.getJacketCenterWindowMirror();
+		if (sprite)
+		{
+			renderer->setTexture(*decoTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle({ 699, 958 }, { 651, 650 });
+		}
+		// Draw main masked jacket
+		Vector2 mainCenterPos{ 824, 666 }, mainCenterSize{ 400, 384 };
+		Vector2 mirrorCenterPos{ 834, 1120 }, mirrorCenterSize{ 386, 336 };
+		renderer->setTexture(jacketTexID, decoTexture->getID(), resource.getJacketMaskCenterUV());
+		renderer->drawRectangle(mainCenterPos, mainCenterSize);
+		renderer->setTexture(jacketTexID, decoTexture->getID(),
+		                     resource.getJacketMaskCenterMirrorUV());
+		renderer->drawRectangle(mirrorCenterPos, mirrorCenterSize);
+		// Draw main polka dot overlay
+		sprite = resource.getJacketCenterCover();
+		if (sprite)
+		{
+			renderer->setTexture(*decoTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle(mainCenterPos, mainCenterSize);
+		}
+		sprite = resource.getJacketCenterCoverMirror();
+		if (sprite)
+		{
+			renderer->setTexture(*decoTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle(mirrorCenterPos, mirrorCenterSize);
+		}
+		// Draw the stage floor
+		const Texture* stageTexture = resource.getStageTexture();
+		sprite = resource.getStageFloor();
+		if (stageTexture && sprite)
+		{
+			renderer->setTexture(*stageTexture, *sprite, *decoTexture, *whiteMask);
+			renderer->drawRectangle({ 0, 1251 }, { sprite->getWidth(), sprite->getHeight() });
+		}
 		renderer->endBatch();
-		glDisable(GL_DEPTH_TEST);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		framebuffer->unbind();
 
 		dirty = false;
 	}
 
-	std::string Background::getFilename() const { return filename; }
-
-	int Background::getWidth() const { return width; }
-
-	int Background::getHeight() const { return height; }
-
-	int Background::getTextureID() const { return framebuffer->getTexture(); }
-
-	float Background::getBlur() const { return blur; }
-
-	void Background::setBlur(float b)
+	void Background::draw(ImDrawList* drawList, ImVec2 min, ImVec2 max) const
 	{
-		blur = b;
-		dirty = true;
+		float scrWidth = max.x - min.x, scrHeight = max.y - min.y;
+		float bgScrWidth = framebuffer->getWidth(), bgScrHeight = framebuffer->getHeight();
+		fillRect(scrWidth, scrHeight, bgScrWidth / bgScrHeight, bgScrWidth, bgScrHeight);
+		float ratioX = scrWidth / bgScrWidth, ratioY = scrHeight / bgScrHeight;
+		ImVec2 uv1 = { (1 - ratioX) / 2, (1 - ratioY) / 2 };
+		ImVec2 uv2 = { uv1.x + ratioX, uv1.y + ratioY };
+		ImU32 col = ImGui::ColorConvertFloat4ToU32({ brightness, brightness, brightness, 1.0f });
+		drawList->AddImage(framebuffer->getTexture(), min, max, uv1, uv2, col);
 	}
 
 	float Background::getBrightness() const { return brightness; }
 
-	void Background::setBrightness(float b)
-	{
-		brightness = b;
-		dirty = true;
-	}
+	void Background::setBrightness(float b) { brightness = b; }
 
 	bool Background::isDirty() const { return dirty; }
+
+	void Background::setDirty() { dirty = true; }
+
+	bool Background::hasJacket() const { return wantJacket; }
 
 	void Background::dispose()
 	{
@@ -140,12 +193,6 @@ namespace MikuMikuWorld
 		{
 			framebuffer->dispose();
 			framebuffer = nullptr;
-		}
-
-		if (texture)
-		{
-			texture->dispose();
-			texture = nullptr;
 		}
 	}
 }

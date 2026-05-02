@@ -8,14 +8,16 @@
 
 namespace MikuMikuWorld
 {
-	SerializeFormat
-	ScoreSerializeController::toSerializeFormat(const std::string_view& filename)
+	SerializeFormat ScoreSerializeController::toSerializeFormat(const std::string_view& filename)
 	{
 		const auto hasExtension = IO::endsWith;
-		if (hasExtension(filename, MMWS_EXTENSION) || hasExtension(filename, CC_MMWS_EXTENSION) ||
-		    hasExtension(filename, UC_MMWS_EXTENSION))
+		if (hasExtension(filename, CC_MMWS_EXTENSION) || hasExtension(filename, UC_MMWS_EXTENSION))
 		{
 			return SerializeFormat::NativeFormat;
+		}
+		else if (hasExtension(filename, MMWS_EXTENSION))
+		{
+			return SerializeFormat::LegacyNativeFormat;
 		}
 		else if (hasExtension(filename, SUS_EXTENSION))
 		{
@@ -44,7 +46,9 @@ namespace MikuMikuWorld
 		switch (format)
 		{
 		case SerializeFormat::NativeFormat:
-			return IO::mmwsFilter;
+			return IO::mmwsNativeFilter;
+		case SerializeFormat::LegacyNativeFormat:
+			return IO::mmwsLegacyFilter;
 		case SerializeFormat::SusFormat:
 			return IO::susFilter;
 		case SerializeFormat::UscFormat:
@@ -58,26 +62,36 @@ namespace MikuMikuWorld
 
 	std::string ScoreSerializeController::getFormatDefaultExtension(SerializeFormat format)
 	{
+		std::string extension;
 		switch (format)
 		{
 		case SerializeFormat::NativeFormat:
-			return "unchmmws";
+			extension = UC_MMWS_EXTENSION;
+			break;
+		case SerializeFormat::LegacyNativeFormat:
+			extension = MMWS_EXTENSION;
+			break;
 		case SerializeFormat::SusFormat:
-			return "sus";
+			extension = SUS_EXTENSION;
+			break;
 		case SerializeFormat::UscFormat:
-			return "usc";
+			extension = USC_EXTENSION;
+			break;
 		case SerializeFormat::LvlDataFormat:
-			return "json.gz";
+			extension = GZ_JSON_EXTENSION;
+			break;
 		default:
 			return "";
 		}
+		extension.erase(extension.begin()); // remove the initial '.'
+		return extension;
 	}
 
-	Score& ScoreSerializeController::getScore() { return score; }
+	SerializingScore& ScoreSerializeController::getSerializeScore() { return score; }
 
 	const std::string& ScoreSerializeController::getFilename() const { return filename; }
 
-	const std::string& ScoreSerializeController::getScoreFilename() const { return scoreFilename; }
+	const std::string& ScoreSerializeController::getName() const { return name; }
 
 	const std::string& ScoreSerializeController::getErrorMessage() const { return errorMessage; }
 }

@@ -47,14 +47,12 @@ namespace IO
 	bool endsWith(const std::string_view& line, const std::string_view& key);
 	bool isDigit(const std::string_view& str);
 	std::string trim(const std::string& line);
-	std::vector<std::string> split(const std::string& line, const std::string& delim);
+	std::vector<std::string> split(const std::string& line, std::string_view delim);
 	std::pair<std::string, std::string> split_first(const std::string& line,
 	                                                const std::string& delim);
 
-	std::string wideStringToMb(const std::wstring& str);
-	std::string ansiWideStringToMb(const std::wstring& str);
-	std::wstring mbToWideStr(const std::string& str);
-	std::wstring ansiMbToWideStr(const std::string& str);
+	std::string wideToUtf8(const std::wstring& str);
+	std::wstring utf8ToWide(const std::string& str);
 
 	std::string concat(const char* s1, const char* s2, const char* join = "");
 
@@ -80,7 +78,7 @@ namespace IO
 	template <typename... Args> std::string formatString(const char* format, Args... args)
 	{
 		auto length = 1 + std::snprintf(nullptr, 0, format,
-		                                  formatting::to_printable(std::forward<Args>(args))...);
+		                                formatting::to_printable(std::forward<Args>(args))...);
 		if (length <= 0)
 			throw std::runtime_error("An error occurred while attempting to format a string.");
 
@@ -92,23 +90,23 @@ namespace IO
 		return buf;
 	}
 
-	static std::string formatFixedFloatTrimmed(float value, int precision = 7,
-	                                           const char* format = "%.*f")
+	static bool formatFixedFloatTrimmed(std::string& buf, float value, int precision = 7,
+	                                    const char* format = "%.*f")
 	{
 		auto length = std::snprintf(NULL, 0, format, precision, value) + 1;
 		if (length < 0)
-			return "NaN";
-		std::string buf(length, '\0');
-		std::snprintf(buf.data(), length, format, precision, value);
+			return false;
+		size_t curLength = buf.length();
+		std::snprintf(&buf.append(length, '\0')[curLength], length, format, precision, value);
 		buf.pop_back();
 		// Trim trailing zeros
 		size_t end = buf.find_last_not_of('0');
 		if (end != std::string::npos)
 			buf.erase(buf[end] == '.' ? end : end + 1);
-		return buf;
+		return true;
 	}
 
-	MessageBoxResult messageBox(std::string title, std::string message, MessageBoxButtons buttons,
-	                            MessageBoxIcon icon, void* parentWindow = NULL);
-
+	MessageBoxResult messageBox(const std::string& title, const std::string& message,
+	                            MessageBoxButtons buttons, MessageBoxIcon icon,
+	                            void* parentWindow = NULL);
 }

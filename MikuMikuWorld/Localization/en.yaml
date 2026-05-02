@@ -1,0 +1,336 @@
+en:
+# key, value
+
+  language_name: English
+  translator: N/A
+
+# menu bar
+  file: File
+  new: New
+  open: Open
+  open_recent: Open Recent
+  clear: Clear
+  save: Save
+  save_as: Save As
+  export_score: Export Score
+  exit: Exit
+  edit: Edit
+  undo: Undo
+  redo: Redo
+  select_all: Select All
+  view: View
+  settings: Settings
+  window: Window
+  vsync: VSync
+  show_fps: Show FPS
+  debug: Debug
+  create_auto_save: Create Auto Save
+  help: Help
+  about: About
+
+# dialogs
+  file_not_found: File not found
+  file_not_found_msg1: The file
+  file_not_found_msg2: was not found
+  remove_recent_file_not_found: Do you want to remove it from the recent files list?
+  yes: Yes
+  no: No
+  unsaved_changes: Unsaved Changes
+  ask_save: Save current changes?
+  warn_unsaved: Any unsaved changes will be lost.
+  save_changes: Save Changes
+  discard_changes: Discard Changes
+  update_available: New version available!
+  update_available_description: %s is available. Do you want to open in the browser?
+  score_file: Score file
+  export_successful: The export completed successfully
+  unknown_file_format: Unknown file format
+  open_as_file_format: Do you want to open it as...
+  export_as_file_format: Do you want to export it as...
+  error: Error
+  error_load_score_file: An error occurred while reading the score file
+  error_save_score_file: An error occurred while saving the score file
+  error_load_music_file: Cannot open music file
+  score_partially_missing: Some of part of the score the might be missing!
+  export_format_not_avail_extended: This format is not available for extended score
+  cancel: Cancel
+  general: General
+  key_config: Key Config
+  language: Language
+  minify: Minify
+  auto: Auto
+  auto_save: Auto Save
+  auto_save_enable: Auto Save Enabled
+  auto_save_interval: Auto Save Interval (min)
+  auto_save_count: Maximum Auto Save Entries
+  accent_color: Accent Color
+  accent_color_help: Select an accent color to apply. The first slot can be customized from the color controls below.
+  select_accent_color: Select an accent color.
+  display_mode: Display Mode
+  theme: Theme
+  base_theme: Base Theme
+  theme_light: Light
+  theme_dark: Dark
+  custom_color: Custom Color
+  timeline: Timeline
+  match_timeline_size_to_window: Match timeline width to the window's width
+  match_notes_size_to_timeline: Match notes size to timeline width
+  lane_width: Lane Width
+  notes_height: Notes Height
+  scrolling: Scrolling
+  scroll_speed_normal: Scroll Speed
+  scroll_speed_shift: Scroll Speed (Shift)
+  use_smooth_scroll: Use Smooth Scrolling
+  smooth_scroll_time: Smooth Scrolling Time
+  return_to_last_tick: Return To Last Tick On Pause
+  cursor_auto_scroll: Cursor Auto Scroll
+  cursor_auto_scroll_amount: Cursor Auto Scroll Percentage From Timeline
+  division_type: Display Division Type
+  background: Background
+  background_image: Background Image
+  draw_background: Draw Background Image
+  background_brightness: Background Brightness
+  lanes_opacity: Lanes Opacity
+  video: Video
+  visuals: Visuals
+  notes_skin: Notes Skin
+  notes_se: Notes SE
+  show_tick_in_properties: Show Tick in Note Properties Window
+  warn_score_extension_disable: Disabling extended features will remove associated data. Do you want to continue?
+
+# score editor
+  options: Options
+  chart_properties: Chart Properties
+  note_properties: Note Properties
+  notes_timeline: Notes Timeline
+  select: Select
+  tap: Tap
+  hold: Hold
+  hold_step: Hold Mid
+  flick: Flick
+  critical: Critical
+  dummy: Fake
+  hold_dummy: Fake Hold
+  hold_critical: Critical Hold
+  hold_separator: Hold Separator
+  trace: Trace
+  guide: Guide
+  damage: Damage
+  bpm: BPM
+  time_signature: Time Signature
+  none: None
+  default: Default
+  left: Left
+  right: Right
+  down: Down
+  down_left: Down Left
+  down_right: Down Right
+  normal: Normal
+  hidden: Hidden
+  skip: Skip
+  linear: Linear
+  ease_in: Ease In
+  ease_out: Ease Out
+  ease_in_out: Ease In Out
+  ease_out_in: Ease Out In
+  ease_none: Ease None
+  sound_effect: SFX
+  sfx_default: Default
+  sfx_none: None
+  sfx_tap: Tap
+  sfx_flick: Flick
+  sfx_trace: Trace
+  sfx_tick: Tick
+  sfx_crit_tap: Critical Tap
+  sfx_crit_flick: Critical Flick
+  sfx_crit_trace: Critical Trace
+  sfx_crit_tick: Critical Tick
+  sfx_damage: Damage
+  hold_layer_top: Top
+  hold_layer_bottom: Bottom
+  hold_layer_tooltip: Guide Note is on top of Hold Note by default. Change this property to switch the order.
+  delete: Delete
+  copy: Copy
+  cut: Cut
+  paste: Paste
+  flip_paste: Flip Paste
+  duplicate: Duplicate
+  flip_duplicate: Flip Duplicate
+  flip: Flip
+  note_width: Note Width
+  note_align: Note Alignment
+  shrink_down: Shrink Down
+  shrink_up: Shrink Up
+  compress_selection: Compress Selection
+  connect_holds: Connect Holds
+  split_hold: Split Hold
+  repeat_hold_mids: Repeat Hold Mids
+  hold_to_traces: Convert Hold to Traces
+  add_traces_for_hold: Add Traces for Hold
+  convert_hold_to_traces: Convert Hold to Traces
+  convert_guide_hold: Convert Hold-Guide
+  convert_guide_to_hold: Convert Guide to Hold
+  convert_hold_to_guide: Convert Hold to Guide
+  convert_hold_to_none: Convert to None
+  lerp_hispeeds: Interpolate Hi-Speeds
+  step_type: Hold Mid Type
+  step_alpha: Guide Alpha
+  ease_type: Ease Type
+  flick_type: Flick Type
+  hold_type: Hold Type
+  fade_type: Fade Type
+  hold_start_type: Hold Start Type
+  hold_end_type: Hold End Type
+  metadata: Metadata
+  title: Title
+  designer: Designer
+  artist: Artist
+  jacket: Jacket
+  lane_extension: Lane Extension
+  life_point: Life Point
+  audio: Audio
+  music_file: Music File
+  music_offset: Music Offset
+  volume_master: Master Volume
+  volume_bgm: BGM Volume
+  volume_se: SE Volume
+  playback_speed: Playback Speed
+  statistics: Statistics
+  hispeeds: Hi-Speeds
+  taps: Taps
+  flicks: Flicks
+  holds: Holds
+  steps: Hold Mids
+  guides: Guides
+  traces: Traces
+  total: Total
+  combo: Combo
+  goto_measure: Go To Measure
+  division: %d Division
+  division_affix: %d Division
+  custom: Custom
+  snap_mode: Snapping
+  snap_mode_relative: Relative Snap
+  snap_mode_absolute: Absolute Snap
+  snap_mode_individual_absolute: Individual Absolute Snap
+  zoom: Zoom
+  show_step_outlines: Show Hold Mid Outlines
+  hide_step_outlines_during_playback: Hide Hold Mid Outlines during playback
+  draw_waveform: Show Waveform
+  stop_playback_at_music_end: Stop playback at music end
+  edit_bpm: Edit Tempo
+  tick: Tick
+  remove: Remove
+  edit_time_signature: Edit Time Signature
+  measure: Measure
+  skill: Skill
+  skill_effect: Effect
+  skill_effect_score: Score Boost
+  skill_effect_heal: Heal
+  skill_effect_perfect: Perfect Lock
+  skill_level: Level
+  increase_note_size: Increase Note Size
+  decrease_note_size: Decrease Note Size
+  hi_speed: Hi-Speed
+  edit_hi_speed: Edit Hi-Speed
+  hi_speed_speed: Speed
+  hi_speed_skip_beat: Skip
+  hi_speed_ease: Ease
+  hi_speed_ease_none: None
+  hi_speed_ease_linear: Linear
+  hi_speed_hide_notes: Hide notes
+  fade_none: No Fade
+  fade_in: Fade In
+  fade_out: Fade Out
+  fade_custom: Fade Custom
+  fade_classic: Fade Classic
+  guide_color: Guide Color
+  guide_neutral: Neutral
+  guide_red: Red
+  guide_blue: Blue
+  guide_green: Green
+  guide_yellow: Yellow
+  guide_purple: Purple
+  guide_cyan: Cyan
+  guide_black: Black
+  layer: Layer
+  edit_skill: Edit Skill Trigger
+  edit_fever: Edit FEVER Trigger
+  edit_none: Edit
+  edit_event: Edit Event
+  beat: Beat
+  lane: Lane
+  width: Width
+  advanced: Advanced
+  note_properties_note: Note Properties
+  note_properties_hi_speed: Hi-Speed Properties
+  note_properties_hold_note: Hold Note Properties
+  note_properties_guide: Guide Properties
+  note_properties_not_selected: No notes or hi-speeds are selected
+  note_properties_mixed_value: --Mixed--
+  translated_by: "Translated by: %s"
+  zoom_tooltip: Ctrl-click to edit value
+  timeline_context_not_selected: No timeline openned or selected
+  extended_score: Extended Score
+  note_select_tool_tip: Ctrl to select or Alt to deselect
+
+# preset manager
+  presets: Presets
+  no_presets: No presets available
+  preset_name: Name
+  description: Description
+  create_preset: Create Preset
+  search: Search...
+  confirm: Confirm
+
+# layer manager
+  layers: Layers
+  layer_name: Name
+  create_layer: Create Layer
+  show_all_layers: Show All Layers
+  layer_rename: Layer Rename
+  layer_up: Move Up
+  layer_down: Move Down
+  layer_merge: Merge Layer
+  layer_delete: Delete Layer
+  layer_hide: Hide Layer
+  layer_show: Show Layer
+  layer_change_order: Change Layer Order
+  layer_order_tooltip: Drag to reorder
+  layer_merge_warning: There are hispeeds overlaps, they'll be deleted. Do you want to merge anyways?
+
+# waypoint manager
+  waypoints: Waypoints
+  create_waypoint: Create Waypoint
+  edit_waypoint: Edit Waypoint
+  waypoint_name: Name
+  insert_skill: Insert Skill
+  set_fever_start: Set Fever Start
+  set_fever_end: Set Fever End
+
+# commands
+  action: Action
+  keys: Keys
+  add: Add
+  cmd_key_listen: Waiting for input...
+  new_chart: New Chart
+  toggle_playback: Play / Pause
+  cancel_paste: Cancel Paste
+  stop: Stop
+  previous_tick: Previous Tick
+  next_tick: Next Tick
+  timeline_select: Timeline - Select
+  timeline_tap: Timeline - Insert Tap
+  timeline_hold: Timeline - Insert Hold
+  timeline_hold_step: Timeline - Insert Hold Mid
+  timeline_flick: Timeline - Insert Flick
+  timeline_critical: Timeline - Insert Critical
+  timeline_trace: Timeline - Insert Trace
+  timeline_guide: Timeline - Insert Guide
+  timeline_damage: Timeline - Insert Damage
+  timeline_dummy: Timeline - Insert Fake
+  timeline_bpm: Timeline - Insert BPM
+  timeline_time_signature: Timeline - Insert Time Signature
+  timeline_hi_speed: Timeline - Insert Hi-Speed Change
+  zoom_in: Zoom In
+  zoom_out: Zoom Out

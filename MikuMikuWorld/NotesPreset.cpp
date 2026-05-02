@@ -1,5 +1,5 @@
-#include "NotesPreset.h"
 #include "Application.h"
+#include "NotesPreset.h"
 #include "File.h"
 #include "IO.h"
 #include "JsonIO.h"
@@ -14,71 +14,62 @@ namespace MikuMikuWorld
 {
 	NotesPreset::NotesPreset(id_t _id, std::string _name) : ID{ _id }, name{ _name } {}
 
-	NotesPreset::NotesPreset() : ID{ static_cast<id_t>(-1) }, name{ "" }, description{ "" } {}
-
-	Result NotesPreset::read(const std::string& filepath)
+	Result NotesPreset::read(const FilePath& filepath)
 	{
-		std::wstring wFilename = IO::mbToWideStr(filepath);
-		if (!std::filesystem::exists(wFilename))
-			return Result(ResultStatus::Error, "The preset file " + filepath + " does not exist.");
+		if (!std::filesystem::exists(filepath))
+			return Result(ResultStatus::Error,
+			              "The preset file '" + IO::toString(filepath) + "' does not exist.");
 
-		std::ifstream file(wFilename);
+		std::ifstream file(filepath);
 
 		file >> data;
 		file.close();
 
-		filename = IO::File::getFilenameWithoutExtension(filepath);
+		filename = IO::toString(IO::File::getFilenameWithoutExtension(filepath));
 		if (data.find("name") != data.end())
 			name = data["name"];
 
 		if (data.find("description") != data.end())
 			description = data["description"];
 
-		if (data.find("notes") == data.end() && data.find("holds") == data.end() &&
-		    data.find("damages") == data.end())
+		if (is_paste_data_empty(data))
 			return Result(ResultStatus::Warning,
-			              "The preset " + name + " does not contain any notes data. Skipping...");
+			              "The preset '" + name + "' does not contain any notes data. Skipping...");
 
 		return Result::Ok();
 	}
 
-	void NotesPreset::write(std::string filepath, bool overwrite)
+	void NotesPreset::write(FilePath filepath)
 	{
-		std::wstring wFilename = IO::mbToWideStr(filepath);
-		if (!overwrite)
-		{
-			int count = 1;
-			std::wstring suffix = L".json";
+		int count = 1;
+		auto baseFilename = IO::toString(IO::File::getFilenameWithoutExtension(filepath));
 
-			while (std::filesystem::exists(wFilename + suffix))
-				suffix = L"(" + std::to_wstring(count++) + L").json";
-
-			wFilename += suffix;
-		}
+		while (IO::File::exists(filepath))
+			filepath = IO::stringToPath(IO::formatString("%s(%d).json", baseFilename, count));
 
 		data["name"] = name;
 		data["description"] = description;
 
-		std::ofstream file(wFilename);
+		std::ofstream file(filepath);
 
-		file << std::setw(2) << data;
+		file << data;
 		file.flush();
 		file.close();
 	}
 
-	void PresetManager::loadPresets(const std::string& path)
+	void PresetManager::loadPresets(const FilePath& libPath)
 	{
-		std::wstring wPath = IO::mbToWideStr(path);
-		if (!std::filesystem::exists(wPath))
+		if (!std::filesystem::exists(libPath))
 			return;
 
-		std::vector<std::string> filenames;
-		for (const auto& file : std::filesystem::directory_iterator(wPath))
+		std::vector<FilePath> filenames;
+		for (const auto& file : std::filesystem::directory_iterator(libPath))
 		{
 			// look only for json files and ignore any dot files present
-			std::wstring wFilename = file.path().filename().wstring();
-			if (file.path().extension().wstring() == L".json" && wFilename[0] != L'.')
-				filenames.push_back(IO::wideStringToMb(file.path().wstring()));
+			std::string extension = IO::toString(file.path().extension());
+			std::string filename = IO::toString(file.path().filename());
+			if (extension == ".json" && !IO::startsWith(filename, "."))
+				filenames.push_back(file.path());
 		}
 
 		std::mutex m2;
@@ -87,24 +78,30 @@ namespace MikuMikuWorld
 		std::vector<Result> warnings;
 		std::vector<Result> errors;
 
-		std::for_each(std::execution::par, filenames.begin(), filenames.end(),
-		              [this, &warnings, &errors, &m2](const auto& filename)
-		              {
-			              int id = nextPresetID++;
+		auto readPreset = [this, &warnings, &errors, &m2](const auto& filepath)
+		{
+			int id = nextPresetID++;
 
-			              NotesPreset preset(id, "");
-			              Result result = preset.read(filename);
-			              {
-				              std::lock_guard<std::mutex> lock{ m2 };
+			NotesPreset preset(id, "");
+			Result result = preset.read(filepath);
+			{
+				std::lock_guard<std::mutex> lock{ m2 };
 
-				              if (result.getStatus() == ResultStatus::Success)
-					              presets.emplace(id, std::move(preset));
-				              else if (result.getStatus() == ResultStatus::Warning)
-					              warnings.push_back(result);
-				              else if (result.getStatus() == ResultStatus::Error)
-					              errors.push_back(result);
-			              }
-		              });
+				switch (result.getStatus())
+				{
+				case ResultStatus::Success:
+					presets.emplace(id, std::move(preset));
+					break;
+				case ResultStatus::Warning:
+					warnings.push_back(result);
+					break;
+				case ResultStatus::Error:
+					errors.push_back(result);
+					break;
+				}
+			}
+		};
+		std::for_each(std::execution::par, filenames.begin(), filenames.end(), readPreset);
 
 		if (errors.size())
 		{
@@ -126,62 +123,48 @@ namespace MikuMikuWorld
 		}
 	}
 
-	void PresetManager::savePresets(const std::string& path)
+	void PresetManager::savePresets(const FilePath& libPath)
 	{
 		namespace fs = std::filesystem;
 
-		std::wstring wPath = IO::mbToWideStr(path);
-		fs::path libPath{ wPath };
-		if (!std::filesystem::exists(wPath))
-			std::filesystem::create_directory(wPath);
+		if (!IO::File::exists(libPath))
+			fs::create_directory(libPath);
 
 		for (const std::string& filename : deletePresets)
 		{
-			std::wstring wFullPath = IO::mbToWideStr((libPath / filename).string()) + L".json";
-			if (std::filesystem::exists(wFullPath))
-				std::filesystem::remove(wFullPath);
+			auto path = libPath / IO::stringToPath(filename + ".json");
+			if (IO::File::exists(path))
+				fs::remove(path);
 		}
 
-		std::for_each(std::execution::par, createPresets.begin(), createPresets.end(),
-		              [this, &libPath](int id)
-		              {
-			              if (presets.find(id) != presets.end())
-			              {
-				              NotesPreset& preset = presets.at(id);
+		auto writePreset = [this, &libPath](int id)
+		{
+			auto it = presets.find(id);
+			if (it == presets.end())
+				return;
+			NotesPreset& preset = presets.at(id);
 
-				              // filename without extension
-				              // we will add the extension later after determining what the final
-				              // filename should be
-				              std::string filename =
-				                  (libPath / fixFilename(preset.getName())).u8string();
-				              preset.write(filename, false);
-			              }
-		              });
+			auto filepath = IO::toString(fixFilename(preset.getName()));
+			preset.write(IO::toString(libPath / filepath.append(".json")));
+		};
+		std::for_each(std::execution::par, createPresets.begin(), createPresets.end(), writePreset);
 	}
 
-	void PresetManager::createPreset(const Score& score,
-	                                 const std::unordered_set<id_t>& selectedNotes,
-	                                 const std::unordered_set<id_t>& selectedHiSpeedChanges,
-	                                 const std::string& name, const std::string& desc)
+	void PresetManager::createPreset(const ScoreContext& context, const std::string& name,
+	                                 const std::string& desc)
 	{
-		if (!(selectedNotes.size() + selectedHiSpeedChanges.size()) || !name.size())
+		if (!context.hasAnySelected() || name.empty())
 			return;
 
-		NotesPreset preset(nextPresetID++, name);
+		int ID = nextPresetID++;
+		createPresets.push_back(ID);
+		NotesPreset& preset = presets.emplace(ID, NotesPreset(ID, name)).first->second;
 		preset.name = name;
 		preset.description = desc;
 
-		int baseTick =
-		    score.notes
-		        .at(*std::min_element(
-		            selectedNotes.begin(), selectedNotes.end(), [&score](int id1, int id2)
-		            { return score.notes.at(id1).tick < score.notes.at(id2).tick; }))
-		        .tick;
-		preset.data =
-		    jsonIO::noteSelectionToJson(score, selectedNotes, selectedHiSpeedChanges, baseTick);
-
-		presets[preset.getID()] = preset;
-		createPresets.push_back(preset.getID());
+		tick_t baseTick = context.getMinTickFromSelection();
+		selected_score_to_json(preset.data, context.score, context.selectedNotes,
+		                       context.selectedHiSpeedChanges, baseTick, context.selectedLayer);
 	}
 
 	void PresetManager::removePreset(int id)
@@ -209,14 +192,11 @@ namespace MikuMikuWorld
 		return result;
 	}
 
-	void PresetManager::applyPreset(int presetId, ScoreContext& context)
+	void PresetManager::applyPreset(int presetId, PasteData& pasteData)
 	{
-		if (presets.find(presetId) == presets.end())
+		auto it = presets.find(presetId);
+		if (it == presets.end())
 			return;
-
-		const json data = presets.at(presetId).data;
-		if (jsonIO::arrayHasData(data, "notes") || jsonIO::arrayHasData(data, "holds") ||
-		    jsonIO::arrayHasData(data, "damages") || jsonIO::arrayHasData(data, "hiSpeedChanges"))
-			context.doPasteData(data, false);
+		pasteData.load(it->second.data);
 	}
 }
