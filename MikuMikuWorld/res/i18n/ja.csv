@@ -1,4 +1,4 @@
-# code: ja
+く# code: ja
 # key, value
 
 language_name, 日本語
@@ -214,7 +214,7 @@ snap_mode_relative, 相対スナップ
 snap_mode_absolute, 絶対スナップ
 snap_mode_individual_absolute, 個別絶対スナップ
 zoom, ズーム
-#- zoom_sensitivity,
+zoom_sensitivity,ズーム感度
 show_step_outlines, 中継点に枠線を表示
 hide_step_outlines_during_playback, 再生中にステップアウトラインを非表示にする
 draw_waveform, 波形を表示
