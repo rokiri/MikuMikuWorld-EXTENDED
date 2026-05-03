@@ -114,3 +114,11 @@ jobs:
           STATUS: ${{ steps.check.outputs.coverage_zh }}%
           COLOR: ${{ steps.check.outputs.coverage_zh == '100.0' && 'green' || 'orange' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Translation Coverage: zh-tw"
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          NAME: coverage-zh-tw
+          LABEL: 'Chinese (Traditional)'
+          STATUS: ${{ steps.check.outputs.coverage_zh-tw }}%
+          COLOR: ${{ steps.check.outputs.coverage_zh-tw == '100.0' && 'green' || 'orange' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

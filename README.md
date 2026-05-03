@@ -11,6 +11,7 @@
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-tr)](./MikuMikuWorld/res/i18n/tr.csv)
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-pt)](./MikuMikuWorld/res/i18n/pt.csv)
 [![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-zh)](./MikuMikuWorld/res/i18n/zh.csv)
+[![](https://byob.yarr.is/UntitledCharts/MikuMikuWorld4UC/coverage-zh-tw)](./MikuMikuWorld/res/i18n/zh-tw.csv)
 
 Fork of [MikuMikuWorld](https://github.com/crash5band/MikuMikuWorld) for [UntitledCharts](https://untitledcharts.com/).
 
@@ -38,7 +39,7 @@ In addition to the original features of MikuMikuWorld, the following features ar
 
 If you want to contribute a translation, please see [the guide](./TRANSLATION.md).
 
-- 日本語 (Japanese) by [@sevenc_nanashi](https://github.com/sevenc-nanashi) and [@MI11435](https://github.com/MI11435)
+- 日本語 (Japanese) by @sevenc_nanashi and [@MI11435](https://github.com/MI11435)
 - Español (Spanish) by @mi.honesta.reaccion
 - Русский (Russian) by [@\_notfallen\_](https://github.com/notfallen-dev) and Ababik (ababikmeoww)
 - Tiếng Việt (Vietnamese) by @uwulovecrosshand and [@SweetSea](https://github.com/SweetSea-ButImNotSweet)
