@@ -1,6 +1,10 @@
----
+# code: zh-tw
+# key, value
+
 language_name: 中文(繁體)
-translator: TEmPTaTiON(@269Seahorse)
+translator: "TEmPTaTiON(@269Seahorse)"
+
+# menu bar
 file: 檔案
 new: 新增
 open: 開啟
@@ -23,17 +27,21 @@ debug: 除錯
 create_auto_save: 建立自動儲存
 help: 說明
 about: 關於
+
+# dialogs
 file_not_found: 找不到檔案
 file_not_found_msg1: 找不到檔案：
 file_not_found_msg2: 檔案可能已被移動、重新命名或刪除
 remove_recent_file_not_found: 是否要從最近的檔案清單中移除？
+"yes": 是
+"no": 否
 unsaved_changes: 未儲存的變更
 ask_save: 是否儲存變更？
 warn_unsaved: 任何未儲存的變更將會遺失。
 save_changes: 儲存變更
 discard_changes: 放棄變更
 update_available: 有可用的更新！
-update_available_description: 新版本 %s 已可用。是否要在瀏覽器中開啟？
+update_available_description: "新版本 %s 已可用。是否要在瀏覽器中開啟？"
 score_file: 譜面檔案
 export_successful: 匯出成功
 unknown_file_format: 未知的檔案格式
@@ -89,6 +97,8 @@ notes_skin: 音符外觀
 notes_se: 音符音效
 show_tick_in_properties: 在音符屬性視窗中顯示刻度
 warn_score_extension_disable: 停用擴充功能將會移除相關資料。您要繼續嗎？
+
+# score editor
 options: 選項
 chart_properties: 譜面屬性
 note_properties: 音符屬性
@@ -258,12 +268,14 @@ note_properties_hi_speed: 高速屬性
 note_properties_hold_note: 長按音符屬性
 note_properties_guide: 引導屬性
 note_properties_not_selected: 未選取任何音符或高速
-note_properties_mixed_value: "--混合--"
-translated_by: '翻譯者: %s'
+note_properties_mixed_value: --混合--
+translated_by: "翻譯者: %s"
 zoom_tooltip: Ctrl + 點擊以編輯數值
 timeline_context_not_selected: 未開啟或選取時間軸
 extended_score: 擴展譜面
 note_select_tool_tip: Ctrl 鍵以選取或 Alt 鍵以取消選取
+
+# preset manager
 presets: 預設
 no_presets: 沒有可用的預設
 preset_name: 名稱
@@ -271,6 +283,8 @@ description: 描述
 create_preset: 建立預設
 search: 搜尋...
 confirm: 確認
+
+# layer manager
 layers: 圖層
 layer_name: 名稱
 create_layer: 建立圖層
@@ -285,6 +299,8 @@ layer_show: 顯示圖層
 layer_change_order: 變更圖層順序
 layer_order_tooltip: 拖曳以重新排序
 layer_merge_warning: 存在高速重疊，它們將被刪除。無論如何都要合併嗎？
+
+# waypoint manager
 waypoints: 路徑點
 create_waypoint: 建立路徑點
 edit_waypoint: 編輯路徑點
@@ -292,6 +308,8 @@ waypoint_name: 名稱
 insert_skill: 插入技能
 set_fever_start: 設定 Fever 開始
 set_fever_end: 設定 Fever 結束
+
+# commands
 action: 動作
 keys: 按鍵
 add: 新增
@@ -317,5 +335,3 @@ timeline_time_signature: 時間軸 - 插入拍號
 timeline_hi_speed: 時間軸 - 插入高速變更
 zoom_in: 放大
 zoom_out: 縮小
-'true': 是
-'false': 否

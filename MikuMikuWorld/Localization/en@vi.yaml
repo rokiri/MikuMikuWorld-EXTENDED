@@ -33,8 +33,8 @@ file_not_found: Không tìm thấy tệp
 file_not_found_msg1: Không tìm thấy tệp
 file_not_found_msg2: !
 remove_recent_file_not_found: Bạn có muốn xóa khỏi danh sách tệp gần đây không?
-yes: Có
-no: Không
+"yes": Có
+"no": Không
 unsaved_changes: Thay đổi chưa được lưu
 ask_save: Bạn có muốn lưu thay đổi gần đây không?
 warn_unsaved: Bất kì thay đổi chưa lưu sẽ bị mất.

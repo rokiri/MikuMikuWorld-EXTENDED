@@ -37,8 +37,8 @@ file_not_found: 文件未找到
 file_not_found_msg1: 无法找到文件：
 file_not_found_msg2: 文件可能已被移动、重命名或删除
 remove_recent_file_not_found: 从最近文件中移除
-yes: 是
-no: 否
+"yes": 是
+"no": 否
 unsaved_changes: 未保存的更改
 ask_save: 是否保存更改？
 warn_unsaved: 您的更改尚未保存

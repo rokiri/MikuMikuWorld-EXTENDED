@@ -33,8 +33,8 @@ file_not_found: File not found
 file_not_found_msg1: The file
 file_not_found_msg2: was not found
 remove_recent_file_not_found: Do you want to remove it from the recent files list?
-yes: Yes
-no: No
+"yes": "Yes"
+"no": "No"
 unsaved_changes: Unsaved Changes
 ask_save: Save current changes?
 warn_unsaved: Any unsaved changes will be lost.

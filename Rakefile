@@ -238,7 +238,35 @@ task "convert_locales_yaml" do
 
       value = val || ""
 
+      yaml_keywords = %w[
+        y Y yes Yes YES
+        n N no No NO
+        true True TRUE
+        false False FALSE
+        on On ON
+        off Off OFF
+        null Null NULL
+        ~
+      ]
+
       # Determine if quoting is needed
+      needs_quote_key =
+        key.start_with?(" ") ||
+        key.end_with?(" ") ||
+        key.include?(":") ||
+        key.include?("#") ||
+        key.include?('"') ||
+        key.include?("\n") ||
+        key.match?(/^[\-\?\@\`\[\]\{\}\,\&\*\!\|\>\'\"\%\#\s]/) || # YAML special leading chars
+        yaml_keywords.include?(key) ||
+        key.match?(/\A[-+]?\d+(\.\d+)?\z/) ||
+        key.match?(/\A[-+]?\d+e[-+]?\d+\z/i)
+
+      if needs_quote_key
+        escaped_key = key.gsub('"', '\"')
+        key = "\"#{escaped_key}\""
+      end
+
       needs_quote =
         value.start_with?(" ") ||
         value.end_with?(" ") ||
@@ -247,7 +275,10 @@ task "convert_locales_yaml" do
         value.include?('"') ||
         value.include?('%') ||
         value.include?('@') ||
-        value.include?("\n")
+        value.include?("\n") ||
+        yaml_keywords.include?(value) ||
+        value.match?(/\A[-+]?\d+(\.\d+)?\z/) ||      # integers / floats
+        value.match?(/\A[-+]?\d+e[-+]?\d+\z/i)       # scientific notation
 
       if needs_quote
         escaped = value.gsub('"', '\"')
@@ -350,9 +381,20 @@ task "convert_locales_csv" do
       end
 
       # Remove wrapping quotes ONLY if we added them
+      if key.start_with?('"') && key.end_with?('"')
+        inner = key[1..-2]
+        key = inner.gsub('\"', '"')
+      elsif key.start_with?("'") && key.end_with?("'")
+        inner = key[1..-2]
+        key = inner.gsub("\\'", "'")
+      end
+      
       if value.start_with?('"') && value.end_with?('"')
         inner = value[1..-2]
         value = inner.gsub('\"', '"')
+      elsif value.start_with?("'") && value.end_with?("'")
+        inner = value[1..-2]
+        value = inner.gsub('\'', "'")
       end
 
       csv_line = "#{key},#{value}"
