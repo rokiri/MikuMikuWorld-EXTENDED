@@ -175,32 +175,23 @@ desc "Convert i18n files to YAML format"
 task "convert_locales_yaml" do
   input_dir  = "./MikuMikuWorld/res/i18n"
   output_dir = "./MikuMikuWorld/Localization"
+  base_lang = "en"
 
   FileUtils.mkdir_p(output_dir)
 
   Dir.glob(File.join(input_dir, "*.csv"), File::FNM_DOTMATCH).each do |file_path|
     lines = File.readlines(file_path, encoding: "utf-8")
 
+    lang_code = File.basename(file_path, ".csv")
+
     if lines.empty?
       puts "Skipping empty file: #{file_path}"
       next
     end
 
-    # Extract language code
-    first_line = lines[0].strip
-    match = first_line.match(/^#\s*code:\s*([A-Za-z0-9_-]+)/)
-
-    unless match
-      puts "Missing language code in #{file_path}, skipping..."
-      next
-    end
-
-    lang_code = match[1]
-
     output = []
-    output << "#{lang_code}:"
 
-    lines[1..].each do |line|
+    lines.each do |line|
       raw = line.chomp
 
       # Preserve empty line
@@ -217,7 +208,7 @@ task "convert_locales_yaml" do
       
         if key
           key = key # preserve spacing as-is
-          yaml_line = "  #{key}: "
+          yaml_line = "#{key}: "
           output << yaml_line
         else
           output << raw # fallback safety
@@ -263,7 +254,7 @@ task "convert_locales_yaml" do
         value = "\"#{escaped}\""
       end
 
-      yaml_line = "  #{key}: #{value}"
+      yaml_line = "#{key}: #{value}"
 
       if comment
         yaml_line += "##{comment}"  # keep original spacing
@@ -272,9 +263,15 @@ task "convert_locales_yaml" do
       output << yaml_line
     end
 
+    output_filename = if base_lang != lang_code then
+      "#{base_lang}@#{lang_code}.yaml"
+    else
+      "#{lang_code}.yaml"
+    end
+
     output_file = File.join(
       output_dir,
-      File.basename(file_path, ".csv") + ".yaml"
+      output_filename
     )
 
     File.write(output_file, output.join("\n"), encoding: "utf-8")
@@ -287,10 +284,21 @@ desc "Convert YAML i18n files back to CSV format"
 task "convert_locales_csv" do
   input_dir  = "./MikuMikuWorld/Localization"
   output_dir = "./MikuMikuWorld/res/i18n"
+  base_lang = "en"
 
   FileUtils.mkdir_p(output_dir)
 
   Dir.glob(File.join(input_dir, "*.yaml"), File::FNM_DOTMATCH).each do |file_path|
+    filename = File.basename(file_path)
+
+    # Match: en@ru.yaml
+    match = filename.match(/^#{base_lang}@([A-Za-z0-9_-]+)\.yaml$/)
+
+    unless match
+      puts "Skipping non-matching file: #{filename}"
+      next
+    end
+
     is_template = File.basename(file_path).include?(".template")
     lines = File.readlines(file_path, encoding: "utf-8")
 
@@ -299,21 +307,11 @@ task "convert_locales_csv" do
       next
     end
 
-    # Extract language code from first line (e.g. "en:")
-    first_line = lines[0].chomp
-    match = first_line.match(/^([A-Za-z0-9_-]+):$/)
-
-    unless match
-      puts "Invalid YAML root in #{file_path}, skipping..."
-      next
-    end
-
     lang_code = match[1]
 
     output = []
-    output << "# code: #{lang_code}"
 
-    lines[1..].each do |line|
+    lines.each do |line|
       raw = line.chomp
 
       # Empty
@@ -368,7 +366,7 @@ task "convert_locales_csv" do
 
     output_file = File.join(
       output_dir,
-      File.basename(file_path, ".yaml") + ".csv"
+      "#{lang_code}.csv"
     )
 
     File.write(output_file, output.join("\n"), encoding: "utf-8")
