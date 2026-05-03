@@ -85,7 +85,7 @@ ja:
   return_to_last_tick: " 元の位置に戻る"
   cursor_auto_scroll: " 自動スクロール"
   cursor_auto_scroll_amount: " 自動スクロール量"
-  division_type: 
+  division_type: " 分割タイプ"
   background: " 背景"
   background_image: 背景画像
   draw_background: 背景画像を描く
@@ -112,7 +112,7 @@ ja:
   dummy: " フェイク"
   hold_dummy: " フェイクスライド"
   hold_critical: " クリティカルスライド"
-  hold_separator: 
+  hold_separator: " スライド分離"
   trace: " トレース"
   guide: " ガイド"
   damage: " ダメージ"
@@ -214,10 +214,11 @@ ja:
   snap_mode_absolute: " 絶対スナップ"
   snap_mode_individual_absolute: " 個別絶対スナップ"
   zoom: " ズーム"
+  zoom_sensitivity: ズーム感度
   show_step_outlines: " 中継点に枠線を表示"
-  hide_step_outlines_during_playback: 
+  hide_step_outlines_during_playback: " 再生中にステップアウトラインを非表示にする"
   draw_waveform: " 波形を表示"
-  stop_playback_at_music_end: 
+  stop_playback_at_music_end: " 楽曲の終わりで再生を停止する"
   edit_bpm: " BPMを編集"
   tick: " Tick"
   remove: " 削除"

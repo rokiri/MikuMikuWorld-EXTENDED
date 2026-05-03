@@ -41,7 +41,7 @@ en:
   save_changes: Save Changes
   discard_changes: Discard Changes
   update_available: New version available!
-  update_available_description: %s is available. Do you want to open in the browser?
+  update_available_description: "%s is available. Do you want to open in the browser?"
   score_file: Score file
   export_successful: The export completed successfully
   unknown_file_format: Unknown file format
@@ -206,14 +206,15 @@ en:
   total: Total
   combo: Combo
   goto_measure: Go To Measure
-  division: %d Division
-  division_affix: %d Division
+  division: "%d Division"
+  division_affix: "%d Division"
   custom: Custom
   snap_mode: Snapping
   snap_mode_relative: Relative Snap
   snap_mode_absolute: Absolute Snap
   snap_mode_individual_absolute: Individual Absolute Snap
   zoom: Zoom
+  zoom_sensitivity: Zoom Sensitivity
   show_step_outlines: Show Hold Mid Outlines
   hide_step_outlines_during_playback: Hide Hold Mid Outlines during playback
   draw_waveform: Show Waveform

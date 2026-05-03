@@ -6,7 +6,7 @@ zh:
 #I will make updates online during my free time.
 
   language_name: 中文(简体)
-  translator: 观绯Guanfei(@_guanfei_)
+  translator: "观绯Guanfei(@_guanfei_)"
 
 # menu bar
   file: 文件
@@ -45,7 +45,7 @@ zh:
   save_changes: 保存更改
   discard_changes: 放弃更改
   update_available: 有可用更新
-  update_available_description: 新版本%s已可用。是否立即下载？
+  update_available_description: "新版本%s已可用。是否立即下载？"
   score_file: 谱面文件
   export_successful: 
   unknown_file_format: 
@@ -210,14 +210,15 @@ zh:
   total: 总计
   combo: 连击
   goto_measure: 跳转到小节
-  division: %d分割
-  division_affix: %d分割词缀
+  division: "%d分割"
+  division_affix: "%d分割词缀"
   custom: 自定义
   snap_mode: 吸附模式
   snap_mode_relative: 相对吸附
   snap_mode_absolute: 绝对吸附
   snap_mode_individual_absolute: 单独绝对吸附
   zoom: 缩放
+  zoom_sensitivity: 
   show_step_outlines: 显示步骤轮廓
   hide_step_outlines_during_playback: 
   draw_waveform: 绘制波形

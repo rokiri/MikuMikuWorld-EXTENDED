@@ -254,6 +254,8 @@ task "convert_locales_yaml" do
         value.include?(":") ||
         value.include?("#") ||
         value.include?('"') ||
+        value.include?('%') ||
+        value.include?('@') ||
         value.include?("\n")
 
       if needs_quote

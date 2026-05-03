@@ -2,7 +2,7 @@ vi:
 # key, value
 
   language_name: " Tiếng Việt"
-  translator: @SweetSea
+  translator: "@SweetSea"
 
 # menu bar
   file: Tệp
@@ -41,7 +41,7 @@ vi:
   save_changes: Lưu thay đổi
   discard_changes: Hủy bỏ thay đổi
   update_available: Có phiên bản mới!
-  update_available_description: Đã có phiên bản %s. Bạn có muốn mở trình duyệt để tải về không?
+  update_available_description: "Đã có phiên bản %s. Bạn có muốn mở trình duyệt để tải về không?"
   score_file: Tệp score
   export_successful: Đã xuất thành công
   unknown_file_format: Phần mềm không đọc được định dạng của tệp này
@@ -206,14 +206,15 @@ vi:
   total: Tổng
   combo: Combo
   goto_measure: Đi đến tiết nhịp
-  division: %d Division
-  division_affix: %d Division
+  division: "%d Division"
+  division_affix: "%d Division"
   custom: Tự chỉnh
   snap_mode: Căn chỉnh
   snap_mode_relative: Dính Tương đối
   snap_mode_absolute: Dính Tuyệt đối
   snap_mode_individual_absolute: Dính Tuyệt đối Riêng
   zoom: Zoom
+  zoom_sensitivity: 
   show_step_outlines: Hiện Step Outlines
   hide_step_outlines_during_playback: 
   draw_waveform: Hiện Waveform

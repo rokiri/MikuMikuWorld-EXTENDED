@@ -214,6 +214,7 @@ en:
   snap_mode_absolute: 
   snap_mode_individual_absolute: 
   zoom: 
+  zoom_sensitivity: 
   show_step_outlines: 
   hide_step_outlines_during_playback: 
   draw_waveform: 

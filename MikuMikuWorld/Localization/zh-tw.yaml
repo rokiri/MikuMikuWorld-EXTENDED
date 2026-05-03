@@ -2,7 +2,7 @@ zh-tw:
 # key, value
 
   language_name: 中文(繁體)
-  translator: TEmPTaTiON(@269Seahorse)
+  translator: "TEmPTaTiON(@269Seahorse)"
 
 # menu bar
   file: 檔案
@@ -41,7 +41,7 @@ zh-tw:
   save_changes: 儲存變更
   discard_changes: 放棄變更
   update_available: 有可用的更新！
-  update_available_description: 新版本 %s 已可用。是否要在瀏覽器中開啟？
+  update_available_description: "新版本 %s 已可用。是否要在瀏覽器中開啟？"
   score_file: 譜面檔案
   export_successful: 匯出成功
   unknown_file_format: 未知的檔案格式
@@ -206,14 +206,15 @@ zh-tw:
   total: 總計
   combo: Combo
   goto_measure: 跳轉到小節
-  division: %d 分割
-  division_affix: %d 分割
+  division: "%d 分割"
+  division_affix: "%d 分割"
   custom: 自訂
   snap_mode: 吸附模式
   snap_mode_relative: 相對吸附
   snap_mode_absolute: 絕對吸附
   snap_mode_individual_absolute: 單獨絕對吸附
   zoom: 縮放
+  zoom_sensitivity: 
   show_step_outlines: 顯示長按中繼點輪廓
   hide_step_outlines_during_playback: 
   draw_waveform: 顯示波形

@@ -214,6 +214,7 @@ pt-br:
   snap_mode_absolute: " Modo de encaixe absoluto"
   snap_mode_individual_absolute: " Modo de encaixe individual absoluto"
   zoom: " Zoom"
+  zoom_sensitivity: 
   show_step_outlines: " Mostrar contorno de steps"
   hide_step_outlines_during_playback: 
   draw_waveform: " Mostrar waveform"
