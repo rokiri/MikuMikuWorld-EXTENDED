@@ -33,8 +33,8 @@ file_not_found: 找不到檔案
 file_not_found_msg1: 找不到檔案：
 file_not_found_msg2: 檔案可能已被移動、重新命名或刪除
 remove_recent_file_not_found: 是否要從最近的檔案清單中移除？
-yes: 是
-no: 否
+"yes": 是
+"no": 否
 unsaved_changes: 未儲存的變更
 ask_save: 是否儲存變更？
 warn_unsaved: 任何未儲存的變更將會遺失。
@@ -85,7 +85,7 @@ smooth_scroll_time: 平滑捲動時間
 return_to_last_tick: 暫停時返回上一個刻度
 cursor_auto_scroll: 游標自動捲動
 cursor_auto_scroll_amount: 游標從時間軸自動捲動的百分比
-division_type: 
+division_type: 顯示分割類型
 background: 背景
 background_image: 背景圖片
 draw_background: 繪製背景圖片
@@ -112,7 +112,7 @@ critical: Critical
 dummy: 假音符
 hold_dummy: 假長按
 hold_critical: Critical 長按
-hold_separator: 
+hold_separator: 長按分離
 trace: 軌跡
 guide: 引導
 damage: 傷害
@@ -214,11 +214,11 @@ snap_mode_relative: 相對吸附
 snap_mode_absolute: 絕對吸附
 snap_mode_individual_absolute: 單獨絕對吸附
 zoom: 縮放
-zoom_sensitivity: 
+zoom_sensitivity: 縮放靈敏度
 show_step_outlines: 顯示長按中繼點輪廓
-hide_step_outlines_during_playback: 
+hide_step_outlines_during_playback: 回放過程中隱藏中繼點輪廓
 draw_waveform: 顯示波形
-stop_playback_at_music_end: 
+stop_playback_at_music_end: 音樂結束時停止回放
 edit_bpm: 編輯 BPM
 tick: 刻度
 remove: 移除
