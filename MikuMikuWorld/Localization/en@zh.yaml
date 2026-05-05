@@ -39,6 +39,7 @@ file_not_found_msg2: 文件可能已被移动、重命名或删除
 remove_recent_file_not_found: 从最近文件中移除
 "yes": 是
 "no": 否
+property_enable: 
 unsaved_changes: 未保存的更改
 ask_save: 是否保存更改？
 warn_unsaved: 您的更改尚未保存
@@ -291,6 +292,7 @@ confirm: 确认
 # layer manager
 layers: 图层
 layer_name: 
+layer_force_note_speed: 
 create_layer: 创建图层
 show_all_layers: 显示所有图层
 layer_rename: 重命名图层

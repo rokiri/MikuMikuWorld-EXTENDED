@@ -35,6 +35,7 @@ file_not_found_msg2:
 remove_recent_file_not_found: 
 "yes": 
 "no": 
+property_enable: 
 unsaved_changes: 
 ask_save: 
 warn_unsaved: 
@@ -287,6 +288,7 @@ confirm:
 # layer manager
 layers: 
 layer_name: 
+layer_force_note_speed: 
 create_layer: 
 show_all_layers: 
 layer_rename: 

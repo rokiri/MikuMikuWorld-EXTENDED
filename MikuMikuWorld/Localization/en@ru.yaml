@@ -37,6 +37,7 @@ file_not_found_msg2: " Он не был найден"
 remove_recent_file_not_found: " Вы хотите удалить его из недавних файлов?"
 "yes": " Да"
 "no": " Нет"
+property_enable: 
 unsaved_changes: " Несохранённые изменения"
 ask_save: " Сохранить несохранённые изменения?"
 warn_unsaved: " Любые несохранённые изменения исчезнут."
@@ -87,6 +88,7 @@ smooth_scroll_time: " Время плавной прокрутки"
 return_to_last_tick: " Вернуться к последнему тику на паузе"
 cursor_auto_scroll: " Авто-прокрутка курсора"
 cursor_auto_scroll_amount: " Процент авто-прокрутки курсора с таймлайна"
+division_type: 
 background: " Задний фон"
 background_image: " Фотография заднего фона"
 draw_background: " Нарисовать фотографию заднего фона"
@@ -288,6 +290,7 @@ confirm: " Подтвердить"
 # layer manager / менеджер слоёв
 layers: " Слой"
 layer_name: " Имя"
+layer_force_note_speed: 
 create_layer: " Создать слой"
 show_all_layers: " Показать все слои"
 layer_rename: " Переименовать слой"

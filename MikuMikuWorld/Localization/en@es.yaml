@@ -37,6 +37,7 @@ file_not_found_msg2: " no se ha encontrado"
 remove_recent_file_not_found: " Quieres eliminarlo de los archivos recientes?"
 "yes": " Sí"
 "no": " No"
+property_enable: 
 unsaved_changes: " Tienes cambios sin guardar"
 ask_save: " Quieres guardar los cambios?"
 warn_unsaved: " Los cambios no guardados se perderán."
@@ -289,6 +290,7 @@ confirm: " Confirmar"
 # layer manager / editor de capas
 layers: " Capas"
 layer_name: " Nombre"
+layer_force_note_speed: 
 create_layer: " Crear capa"
 show_all_layers: " Mostrar todas las capas"
 layer_rename: " Renombrar capa"

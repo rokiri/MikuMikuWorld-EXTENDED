@@ -35,6 +35,7 @@ file_not_found_msg2, bulunamadi
 remove_recent_file_not_found, En son açilanlar listesinden kaldirmak istiyor musunuz?
 yes, Evet
 no, Hayir
+#- property_enable,
 unsaved_changes, Kaydedilmemis degisiklikler
 ask_save, Degisiklikler kaydedilsin mi?
 warn_unsaved, Kaydedilmeyen degisiklikler kaybolacaktir.
@@ -287,6 +288,7 @@ confirm, Onayla
 # layer manager
 layers, Katmanlar
 layer_name, Isim
+#- layer_force_note_speed,
 create_layer, Katman Olustur
 show_all_layers, Tüm Katmanlari Göster
 layer_rename, Katmani Yeniden Adlandir

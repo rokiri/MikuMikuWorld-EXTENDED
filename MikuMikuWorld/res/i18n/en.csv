@@ -35,6 +35,7 @@ file_not_found_msg2,was not found
 remove_recent_file_not_found,Do you want to remove it from the recent files list?
 yes,Yes
 no,No
+property_enable,Enable
 unsaved_changes,Unsaved Changes
 ask_save,Save current changes?
 warn_unsaved,Any unsaved changes will be lost.
@@ -287,6 +288,7 @@ confirm,Confirm
 # layer manager
 layers,Layers
 layer_name,Name
+layer_force_note_speed,Force Note Speed
 create_layer,Create Layer
 show_all_layers,Show All Layers
 layer_rename,Layer Rename

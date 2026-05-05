@@ -35,6 +35,7 @@ file_not_found_msg2: " não foi encontrado"
 remove_recent_file_not_found: " Quer deletá-lo dos arquivos recentes?"
 "yes": " Sim"
 "no": " Não"
+property_enable: 
 unsaved_changes: " Você tem alterações não salvas"
 ask_save: " Deseja salvar as alterações?"
 warn_unsaved: " As alterações não salvas serão perdidas."
@@ -287,6 +288,7 @@ confirm: " Confirmar"
 # layer manager / Gerenciador de camadas
 layers: " Camadas"
 layer_name: " Nome"
+layer_force_note_speed: 
 create_layer: " Criar camada"
 show_all_layers: " Mostrar todas as camadas"
 layer_rename: " Renomear camada"

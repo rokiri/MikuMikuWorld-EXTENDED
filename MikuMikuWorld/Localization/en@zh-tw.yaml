@@ -35,6 +35,7 @@ file_not_found_msg2: 檔案可能已被移動、重新命名或刪除
 remove_recent_file_not_found: 是否要從最近的檔案清單中移除？
 "yes": 是
 "no": 否
+property_enable: 
 unsaved_changes: 未儲存的變更
 ask_save: 是否儲存變更？
 warn_unsaved: 任何未儲存的變更將會遺失。
@@ -287,6 +288,7 @@ confirm: 確認
 # layer manager
 layers: 圖層
 layer_name: 名稱
+layer_force_note_speed: 
 create_layer: 建立圖層
 show_all_layers: 顯示所有圖層
 layer_rename: 重新命名圖層

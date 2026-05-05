@@ -35,6 +35,7 @@ file_not_found_msg2,!
 remove_recent_file_not_found,Bạn có muốn xóa khỏi danh sách tệp gần đây không?
 yes,Có
 no,Không
+#- property_enable,
 unsaved_changes,Thay đổi chưa được lưu
 ask_save,Bạn có muốn lưu thay đổi gần đây không?
 warn_unsaved,Bất kì thay đổi chưa lưu sẽ bị mất.
@@ -287,6 +288,7 @@ confirm,Xác nhận
 # layer manager
 layers,Layers
 layer_name,Tên
+#- layer_force_note_speed,
 create_layer,Tạo Layer
 show_all_layers,Hiện tất cả Layer
 layer_rename,Sửa tên Layer
