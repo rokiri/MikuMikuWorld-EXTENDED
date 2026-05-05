@@ -190,7 +190,9 @@ namespace MikuMikuWorld
 	  private:
 		std::string popupModalName{};
 		std::string editLayerName{};
-		int renameIndex = -1;
+		int editIndex = -1;
+		float editNoteSpeed;
+		bool editForceNoteSpeed;
 
 		DialogResult updateDialog();
 		static bool canLayerMerge(const Score& score, id_t index);

@@ -492,7 +492,7 @@ namespace MikuMikuWorld
 
 			size_t layerIdx = score.layers.size();
 			Layer& layer = score.layers.emplace_back(
-			    layerIdx ? "#" + std::to_string(layerIdx) : "default", id_t(layerIdx));
+			    id_t(layerIdx), layerIdx ? "#" + std::to_string(layerIdx) : "default");
 			layer.hiSpeedChanges.clear();
 			if (!fromGroupEntity(groupEntity, layer))
 			{
@@ -704,7 +704,8 @@ namespace MikuMikuWorld
 
 	LevelDataEntity PySekaiEngine::toGroupEntity(const Layer& layer)
 	{
-		return { "#TIMESCALE_GROUP", { { "editorName", layer.name } } };
+		return { "#TIMESCALE_GROUP",
+			     { { "editorName", layer.name }, { "forceNoteSpeed", layer.forceNoteSpeed } } };
 	}
 
 	LevelDataEntity PySekaiEngine::toTimeScaleEntity(const HiSpeed& hispeed,
@@ -1023,6 +1024,9 @@ namespace MikuMikuWorld
 	bool PySekaiEngine::fromGroupEntity(const LevelDataEntity& groupEntity, Layer& layer)
 	{
 		groupEntity.tryGetDataValue("editorName", layer.name);
+		groupEntity.tryGetDataValue("forceNoteSpeed", layer.forceNoteSpeed);
+		if (!isWithinRange(layer.forceNoteSpeed, 1, 12))
+			layer.forceNoteSpeed = 0.0f;
 		return true;
 	}
 

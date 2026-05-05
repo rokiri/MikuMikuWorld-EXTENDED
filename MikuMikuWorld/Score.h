@@ -13,11 +13,16 @@ namespace MikuMikuWorld
 	struct Layer
 	{
 		std::string name;
-		HiSpeedCollection hiSpeedChanges;
+		float forceNoteSpeed = 0.0f;
 		bool hidden = false;
+		HiSpeedCollection hiSpeedChanges;
 
-		Layer(std::string_view name) : name(name) {}
-		Layer(std::string_view name, int id) : name(name)
+		Layer(std::string_view name, float forceNoteSpeed = 0.0f)
+		    : name(name), forceNoteSpeed(forceNoteSpeed)
+		{
+		}
+		Layer(id_t id, std::string_view name, float forceNoteSpeed = 0.0f)
+		    : name(name), forceNoteSpeed(forceNoteSpeed)
 		{
 			hiSpeedChanges.emplace(0, HiSpeed{ 0, id });
 		}

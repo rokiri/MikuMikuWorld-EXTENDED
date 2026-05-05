@@ -48,6 +48,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(removeRecentFileNotFound, "remove_recent_file_not_found");
 	MMW_TEXT(yes);
 	MMW_TEXT(no);
+	MMW_TEXT(enable, "property_enable");
 	MMW_TEXT(unsavedChanges, "unsaved_changes");
 	MMW_TEXT(askSave, "ask_save");
 	MMW_TEXT(warnUnsaved, "warn_unsaved");
@@ -300,6 +301,7 @@ namespace MikuMikuWorld::Text
 	// layer manager
 	MMW_TEXT(layers);
 	MMW_TEXT(layerName, "layer_name");
+	MMW_TEXT(layerForceNoteSpeed, "layer_force_note_speed");
 	MMW_TEXT(createLayer, "create_layer");
 	MMW_TEXT(showAllLayers, "show_all_layers");
 	MMW_TEXT(layerRename, "layer_rename");

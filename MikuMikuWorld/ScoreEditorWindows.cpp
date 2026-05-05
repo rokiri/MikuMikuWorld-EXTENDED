@@ -2198,8 +2198,10 @@ namespace MikuMikuWorld
 				ImGui::SameLine();
 				if (UI::transparentButton(ICON_FA_PENCIL_ALT, toolButtonSize))
 				{
-					renameIndex = layerId;
+					editIndex = layerId;
 					editLayerName = layer.name;
+					editForceNoteSpeed = isWithinRange(layer.forceNoteSpeed, 1, 12);
+					editNoteSpeed = editForceNoteSpeed ? layer.forceNoteSpeed : 6.f;
 					popupModalName = UI::modalTitle(Text::layerRename);
 					openPopup = true;
 				}
@@ -2250,8 +2252,10 @@ namespace MikuMikuWorld
 		ImGui::BeginDisabled(!context.metadata.isExtendedScore);
 		if (ImGui::Button(localize(Text::createLayer), { -1, ImGui::GetFrameHeightWithSpacing() }))
 		{
-			renameIndex = -1;
+			editIndex = -1;
 			editLayerName = IO::formatString("#%d", context.score.layers.size());
+			editForceNoteSpeed = false;
+			editNoteSpeed = 6.f;
 			popupModalName = UI::modalTitle(Text::createLayer);
 			openPopup = true;
 		}
@@ -2292,20 +2296,24 @@ namespace MikuMikuWorld
 
 		if (updateDialog() == DialogResult::Ok)
 		{
-			if (renameIndex >= 0)
+			if (editIndex >= 0)
 			{
-				std::string& layerName = context.score.layers[renameIndex].name;
-				renameIndex = -1;
-				if (layerName != editLayerName)
-				{
-					layerName = editLayerName;
-					context.pushHistory(localize(Text::layerRename));
-				}
+				bool edited = false;
+				Layer& layer = context.score.layers[editIndex];
+				edited = layer.name != editLayerName ||
+				         (isWithinRange(layer.forceNoteSpeed, 1, 12) != editForceNoteSpeed) ||
+				         (editForceNoteSpeed && layer.forceNoteSpeed != editNoteSpeed);
+				layer.name = editLayerName;
+				layer.forceNoteSpeed = editForceNoteSpeed ? editNoteSpeed : 0.0f;
+				editIndex = -1;
+				if (edited)
+					context.pushHistory("Layer edit");
 			}
 			else
 			{
 				id_t layerId = static_cast<int>(context.score.layers.size());
-				context.score.layers.push_back(Layer{ editLayerName, layerId });
+				float noteSpeed = editForceNoteSpeed ? editNoteSpeed : 0.0f;
+				context.score.layers.push_back(Layer{ layerId, editLayerName, noteSpeed });
 				context.pushHistory(localize(Text::createLayer));
 			}
 		}
@@ -2317,7 +2325,7 @@ namespace MikuMikuWorld
 
 		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetWorkCenter(), ImGuiCond_Always,
 		                        { 0.5f, 0.5f });
-		ImGui::SetNextWindowSize({ 450, 180 }, ImGuiCond_Always);
+		ImGui::SetNextWindowSize({ 450, 200 }, ImGuiCond_Always);
 		ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID);
 		if (ImGui::BeginPopupModal(popupModalName.c_str(), NULL, ImGuiWindowFlags_NoResize))
 		{
@@ -2331,6 +2339,20 @@ namespace MikuMikuWorld
 			    editLayerName.size())
 				result = DialogResult::Ok;
 			ImGui::SetItemDefaultFocus();
+
+			ImGui::Text("%s", (const char*)localize(Text::layerForceNoteSpeed));
+			const char* enableText = localize(Text::enable);
+			float textSpacing = 8;
+			ImGui::SetNextItemWidth(-ImGui::GetFrameHeightWithSpacing() - textSpacing -
+			                        ImGui::CalcTextSize(enableText).x);
+			ImGui::BeginDisabled(!editForceNoteSpeed);
+			ImGui::SliderFloat("###note_speed", &editNoteSpeed, 1, 12, "%.2f");
+			ImGui::EndDisabled();
+			ImGui::SameLine(0, textSpacing);
+			ImGui::Text(enableText);
+			ImGui::SameLine();
+			ImGui::Checkbox("###force_note_speed", &editForceNoteSpeed);
+
 			ImVec2 btnSz{ (ImGui::GetContentRegionAvail().x - spacing.x) / 2,
 				          ImGui::GetFrameHeight() };
 			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y -

@@ -21,7 +21,8 @@ namespace MikuMikuWorld
 	// Version 1: Revert version to int32, support dummy note, dummy hold
 	// Version 2: Support hispeed easing, skip, hides note; down flicks
 	// Version 3: Note data structure refactor; skill effects; hispeed hidenotes; sound effect
-	const int UC_MMWS_VERSION = 3;
+	// Version 4: Force note speed
+	const int UC_MMWS_VERSION = 4;
 	const char* UC_MMWS_SIGNATURE = "UCMMWS";
 
 	enum LegacyNoteType
@@ -82,6 +83,7 @@ namespace MikuMikuWorld
 		inline bool supportSoundEffect() const { return untitledVersion >= 3; }
 		inline bool supportLifePoint() const { return untitledVersion >= 3; }
 		inline bool supportHoldLayer() const { return untitledVersion >= 3; }
+		inline bool supportForceNoteSpeed() const { return untitledVersion >= 4; }
 
 		inline bool isImplicitExtended() const { return cyanvasVersion > 0 || untitledVersion > 0; }
 		inline HoldStepLayer getImplicitLayer(const HoldNoteStep& step) const
@@ -399,7 +401,8 @@ namespace MikuMikuWorld
 			for (int i = 0; i < layerCount; ++i)
 			{
 				std::string name = reader.readString();
-				score.layers.push_back(Layer{ name });
+				float noteSpeed = version.supportForceNoteSpeed() ? reader.readSingle() : 0.0f;
+				score.layers.push_back(Layer{ name, noteSpeed });
 			}
 		}
 
@@ -685,6 +688,7 @@ namespace MikuMikuWorld
 		for (const auto& layer : score.layers)
 		{
 			writer.writeString(layer.name);
+			writer.writeSingle(layer.forceNoteSpeed);
 		}
 
 		uint32_t waypointsAddress = writer.getStreamPosition();
