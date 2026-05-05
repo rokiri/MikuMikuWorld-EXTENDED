@@ -2296,7 +2296,7 @@ namespace MikuMikuWorld
 			{
 				std::string& layerName = context.score.layers[renameIndex].name;
 				renameIndex = -1;
-				if (layerName == editLayerName)
+				if (layerName != editLayerName)
 				{
 					layerName = editLayerName;
 					context.pushHistory(localize(Text::layerRename));
