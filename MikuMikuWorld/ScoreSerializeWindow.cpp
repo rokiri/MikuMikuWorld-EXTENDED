@@ -74,9 +74,9 @@ namespace MikuMikuWorld
 			serializer = std::make_unique<UscSerializer>(getConfig().minifyOutput);
 			break;
 		// SUS masih disabled karena SusSerializer masih #ifdef COMPILE_ME
-		// case SerializeFormat::SusFormat:
-		//	serializer = std::make_unique<SusSerializer>();
-		//	break;
+		case SerializeFormat::SusFormat:
+		serializer = std::make_unique<SusSerializer>();
+		break;
 		case SerializeFormat::LvlDataFormat:
 			serializer =
 			    std::make_unique<SonolusSerializer>(std::make_unique<PySekaiEngine>(), true, false);

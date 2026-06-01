@@ -2,7 +2,6 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
-#ifdef COMPILE_ME
 
 namespace MikuMikuWorld
 {
@@ -34,7 +33,7 @@ namespace MikuMikuWorld
 		float length;
 	};
 
-	struct HiSpeed
+	struct SusHiSpeed
 	{
 		int tick;
 		float speed;
@@ -43,7 +42,7 @@ namespace MikuMikuWorld
 	struct HiSpeedGroup
 	{
 		std::string name;
-		std::vector<HiSpeed> hiSpeeds;
+		std::vector<SusHiSpeed> hiSpeeds;
 	};
 
 	struct SUSMetadata
@@ -73,5 +72,3 @@ namespace MikuMikuWorld
 		bool sideLane;
 	};
 }
-
-#endif

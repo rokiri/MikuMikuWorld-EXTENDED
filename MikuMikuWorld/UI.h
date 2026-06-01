@@ -9,7 +9,7 @@
 #include "NoteTypes.h"
 #include <vector>
 
-#define APP_NAME "MikuMikuWorld for UntitledCharts"
+#define APP_NAME "MikuMikuWorld EXTENDED"
 
 namespace MikuMikuWorld
 {

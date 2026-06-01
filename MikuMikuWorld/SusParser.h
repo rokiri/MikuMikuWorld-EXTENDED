@@ -3,8 +3,6 @@
 #include <regex>
 #include <string>
 
-#ifdef COMPILE_ME
-
 namespace MikuMikuWorld
 {
 	struct SusLineData
@@ -25,8 +23,8 @@ namespace MikuMikuWorld
 	  private:
 		int ticksPerBeat;
 		int measureOffset;
-		int laneOffset;
-		bool sideLane;
+		int laneOffset = 0;
+		bool sideLane = false;
 		float waveOffset;
 		std::string title;
 		std::string artist;
@@ -49,5 +47,3 @@ namespace MikuMikuWorld
 		void processCommand(std::string& line);
 	};
 }
-
-#endif

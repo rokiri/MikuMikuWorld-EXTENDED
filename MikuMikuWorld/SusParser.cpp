@@ -1,4 +1,3 @@
-#ifdef COMPILE_ME
 #include "SusParser.h"
 #include "File.h"
 #include "IO.h"
@@ -317,7 +316,8 @@ namespace MikuMikuWorld
 				group.hiSpeeds.push_back({ measureTicks + tick, speed });
 			}
 			std::stable_sort(group.hiSpeeds.begin(), group.hiSpeeds.end(),
-			                 [](const HiSpeed& a, const HiSpeed& b) { return a.tick < b.tick; });
+			                 [](const SusHiSpeed& a, const SusHiSpeed& b)
+			                 { return a.tick < b.tick; });
 
 			hiSpeedGroups.push_back(group);
 		}
@@ -393,5 +393,3 @@ namespace MikuMikuWorld
 			        bpms,     barLengths, hiSpeedGroups, laneOffset, sideLane };
 	}
 }
-
-#endif
