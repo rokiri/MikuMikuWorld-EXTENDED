@@ -221,14 +221,14 @@ namespace MikuMikuWorld
 		case SerializeFormat::LegacyNativeFormat:
 			deserializer = std::make_unique<NativeScoreSerializer>();
 			break;
-		// FIX: USC deserializer diaktifkan
+		// USC
 		case SerializeFormat::UscFormat:
 			deserializer = std::make_unique<UscSerializer>();
 			break;
-		// SUS masih disabled
-		// case SerializeFormat::SusFormat:
-		//	deserializer = std::make_unique<SusSerializer>();
-		//	break;
+		// SUS
+		case SerializeFormat::SusFormat:
+		deserializer = std::make_unique<SusSerializer>();
+		break;
 		case SerializeFormat::LvlDataFormat:
 			deserializer = std::make_unique<SonolusSerializer>(std::make_unique<PySekaiEngine>());
 			break;

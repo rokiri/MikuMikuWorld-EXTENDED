@@ -200,9 +200,34 @@ namespace MikuMikuWorld
 		id_t nextNoteID = 0;
 		id_t nextHoldID = 0;
 
+		Score score;
+		score.fever = Fever{ -1, -1 };
+
 		// --- Standalone notes ---
 		for (const auto& tap : sus.taps)
 		{
+			// Skill trigger: type 4, lane 0, width 1
+			if (tap.lane == 0 && tap.width == 1 && tap.type == 4)
+			{
+				score.skills.insert(Skill{ tap.tick, SkillEffect::Score, 1 });
+				continue;
+			}
+
+			// Fever: lane 15, width 1
+			if (tap.lane == 15 && tap.width == 1)
+			{
+				if (tap.type == 1)
+				{
+					score.fever.startTick = tap.tick;
+					continue;
+				}
+				if (tap.type == 2)
+				{
+					score.fever.endTick = tap.tick;
+					continue;
+				}
+			}
+
 			if (!sus.sideLane && (tap.lane - 2 < MIN_LANE || tap.lane - 2 > MAX_LANE))
 				continue;
 
@@ -374,7 +399,6 @@ namespace MikuMikuWorld
 		slideFillFunc(sus.slides, false);
 		slideFillFunc(sus.guides, true);
 
-		Score score;
 		score.notes = std::move(notes);
 		score.holdNotes = std::move(holds);
 
@@ -577,13 +601,16 @@ namespace MikuMikuWorld
 
 		// Skill triggers: type 4, lane 0, width 1
 		for (const auto& skill : score.skills)
-			taps.push_back(SUSNote{ skill.tick, 0, 1, 4 });
+			taps.push_back(SUSNote{ skill.tick, 0, 1, 4,
+			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
 
 		// Fever start/end
 		if (score.fever.startTick != -1)
-			taps.push_back(SUSNote{ score.fever.startTick, 15, 1, 1 });
+			taps.push_back(SUSNote{ score.fever.startTick, 15, 1, 1,
+			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
 		if (score.fever.endTick != -1)
-			taps.push_back(SUSNote{ score.fever.endTick, 15, 1, 2 });
+			taps.push_back(SUSNote{ score.fever.endTick, 15, 1, 2,
+			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
 
 		// Build HiSpeedGroups using SusHiSpeed (SUS.h type)
 		std::vector<HiSpeedGroup> hiSpeedGroups;
