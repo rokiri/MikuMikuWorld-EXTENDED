@@ -5,10 +5,35 @@
 
 using json = nlohmann::json;
 
-#ifdef COMPILE_ME
-
 namespace MikuMikuWorld
 {
+	// -------------------------------------------------------------------------
+	// Helpers
+	// -------------------------------------------------------------------------
+
+	static EaseType parseEase(const std::string& ease)
+	{
+		if (ease == "in")
+			return EaseType::EaseIn;
+		if (ease == "out")
+			return EaseType::EaseOut;
+		if (ease == "inout")
+			return EaseType::EaseInOut;
+		if (ease == "outin")
+			return EaseType::EaseOutIn;
+		return EaseType::Linear;
+	}
+
+	// A hold is a guide when its first separator has the Guide flag
+	static bool holdIsGuide(const HoldNote& hold)
+	{
+		return !hold.separators.empty() && hold.separators.front().isGuide();
+	}
+
+	// -------------------------------------------------------------------------
+	// Public interface
+	// -------------------------------------------------------------------------
+
 	void UscSerializer::serialize(const SerializingScore& data, std::string filename)
 	{
 		json usc = scoreToUsc(data);
@@ -26,586 +51,462 @@ namespace MikuMikuWorld
 		return uscToScore(usc);
 	}
 
+	// -------------------------------------------------------------------------
+	// scoreToUsc
+	// -------------------------------------------------------------------------
+
 	json UscSerializer::scoreToUsc(const SerializingScore& data)
 	{
 		const Score& score = data.score;
 		const ScoreMetadata& metadata = data.metadata;
+
 		json vusc;
 		json usc;
-
 		usc["offset"] = metadata.musicOffset / -1000.0f;
 
 		std::vector<json> objects;
 
-		for (const auto& bpm : score.tempoChanges)
+		// --- BPM changes ---
+		for (const auto& [tick, tempo] : score.tempoChanges)
 		{
 			json obj;
 			obj["type"] = "bpm";
-			obj["beat"] = bpm.tick / (double)TICKS_PER_QUARTER;
-			obj["bpm"] = bpm.bpm;
+			obj["beat"] = tick / (double)TICKS_PER_QUARTER;
+			obj["bpm"] = tempo.quarterPerMinute;
 			objects.push_back(obj);
 		}
 
-		for (int i = 0; i < score.layers.size(); ++i)
+		// --- TimeScaleGroups (one per layer) ---
+		for (int i = 0; i < (int)score.layers.size(); ++i)
 		{
 			json timeScaleGroup;
 			timeScaleGroup["type"] = "timeScaleGroup";
-			std::vector<json> timeScaleObjects;
-			for (const auto& [_, hs] : score.hiSpeedChanges)
+
+			std::vector<json> changes;
+			for (const auto& [tick, hs] : score.layers[i].hiSpeedChanges)
 			{
-				if (hs.layer != i)
-				{
-					continue;
-				}
-				json obj;
-				obj["beat"] = hs.tick / (double)TICKS_PER_QUARTER;
-				obj["timeScale"] = hs.speed;
-				timeScaleObjects.push_back(obj);
+				json ch;
+				ch["beat"] = tick / (double)TICKS_PER_QUARTER;
+				ch["timeScale"] = hs.speed;
+				changes.push_back(ch);
 			}
-			timeScaleGroup["changes"] = timeScaleObjects;
+
+			timeScaleGroup["changes"] = changes;
 			objects.push_back(timeScaleGroup);
 		}
 
+		// --- Standalone notes (not part of a hold) ---
 		for (const auto& [_, note] : score.notes)
 		{
-			if (note.getType() == NoteType::Tap)
+			if (note.isHold())
+				continue;
+
+			if (note.type == NoteType::Tap)
 			{
 				json obj;
 				obj["type"] = "single";
 				obj["beat"] = note.tick / (double)TICKS_PER_QUARTER;
-				obj["size"] = note.width / 2.0;
-				obj["lane"] = note.lane - 6 + (note.width / 2.0);
-				obj["critical"] = note.critical;
-				obj["trace"] = note.friction;
+				obj["size"] = note.width / 2.0f;
+				obj["lane"] = note.lane - 6.0f + (note.width / 2.0f);
+				obj["critical"] = note.isCrit();
+				obj["trace"] = note.isTrace();
+				obj["timeScaleGroup"] = (int)note.layer;
+
 				if (note.flick != FlickType::None)
 				{
 					obj["direction"] = note.flick == FlickType::Default ? "up"
 					                   : note.flick == FlickType::Left  ? "left"
 					                                                    : "right";
 				}
-				obj["timeScaleGroup"] = note.layer;
-				if (note.dummy)
+				if (note.isDummy())
 					obj["dummy"] = true;
+
 				objects.push_back(obj);
 			}
-			else if (note.getType() == NoteType::Damage)
+			else if (note.type == NoteType::Damage)
 			{
 				json obj;
 				obj["type"] = "damage";
 				obj["beat"] = note.tick / (double)TICKS_PER_QUARTER;
-				obj["size"] = note.width / 2.0;
-				obj["lane"] = note.lane - 6 + (note.width / 2.0);
-				obj["timeScaleGroup"] = note.layer;
-				if (note.dummy)
+				obj["size"] = note.width / 2.0f;
+				obj["lane"] = note.lane - 6.0f + (note.width / 2.0f);
+				obj["timeScaleGroup"] = (int)note.layer;
+
+				if (note.isDummy())
 					obj["dummy"] = true;
+
 				objects.push_back(obj);
 			}
 		}
-		for (const auto& [_, note] : score.holdNotes)
+
+		// --- Hold notes ---
+		for (const auto& [_, hold] : score.holdNotes)
 		{
-			json obj;
-			if (note.isGuide())
+			if (hold.steps.size() < 2)
+				continue;
+
+			const Note& startNote = score.notes.at(hold.steps.front());
+			const Note& endNote = score.notes.at(hold.steps.back());
+
+			if (holdIsGuide(hold))
 			{
+				// ---- guide ----
+				json obj;
 				obj["type"] = "guide";
-				auto& start = score.notes.at(note.start.ID);
-				obj["color"] = guideColors[(int)note.guideColor];
-				obj["fade"] = note.fadeType == FadeType::None ? "none"
-				              : note.fadeType == FadeType::In ? "in"
+
+				const HoldNoteStep& firstSep = hold.separators.front();
+				obj["color"] = guideColors[(int)firstSep.guideColor];
+				obj["fade"] = hold.fadeType == FadeType::None ? "none"
+				              : hold.fadeType == FadeType::In ? "in"
 				                                              : "out";
 
-				std::vector<json> steps;
-				steps.reserve(note.steps.size() + 1);
-
-				json startStep;
-				startStep["beat"] = start.tick / (double)TICKS_PER_QUARTER;
-				startStep["size"] = start.width / 2.0;
-				startStep["lane"] = start.lane - 6 + (start.width / 2.0);
-				startStep["ease"] = easeTypes[(int)note.start.ease];
-				startStep["timeScaleGroup"] = start.layer;
-				if (start.dummy)
-					startStep["dummy"] = true;
-				steps.push_back(startStep);
-
-				for (const auto& step : note.steps)
+				std::vector<json> midpoints;
+				for (int si = 0; si < (int)hold.steps.size(); ++si)
 				{
+					const Note& n = score.notes.at(hold.steps[si]);
 					json stepObj;
-					auto& stepNote = score.notes.at(step.ID);
-					stepObj["beat"] = stepNote.tick / (double)TICKS_PER_QUARTER;
-					stepObj["size"] = stepNote.width / 2.0;
-					stepObj["lane"] = stepNote.lane - 6 + (stepNote.width / 2.0);
-					stepObj["ease"] = easeTypes[(int)step.ease];
-					stepObj["timeScaleGroup"] = stepNote.layer;
-					steps.push_back(stepObj);
+					stepObj["beat"] = n.tick / (double)TICKS_PER_QUARTER;
+					stepObj["size"] = n.width / 2.0f;
+					stepObj["lane"] = n.lane - 6.0f + (n.width / 2.0f);
+					stepObj["timeScaleGroup"] = (int)n.layer;
+					stepObj["ease"] =
+					    (si == (int)hold.steps.size() - 1) ? "linear" : easeTypes[(int)n.ease];
+					if (si == 0 && n.isDummy())
+						stepObj["dummy"] = true;
+
+					midpoints.push_back(stepObj);
 				}
-
-				json endStep;
-				auto& end = score.notes.at(note.end);
-				endStep["beat"] = end.tick / (double)TICKS_PER_QUARTER;
-				endStep["size"] = end.width / 2.0;
-				endStep["lane"] = end.lane - 6 + (end.width / 2.0);
-				endStep["ease"] = "linear";
-				endStep["timeScaleGroup"] = end.layer;
-				steps.push_back(endStep);
-
-				obj["midpoints"] = steps;
+				obj["midpoints"] = midpoints;
 				objects.push_back(obj);
-				continue;
 			}
-			obj["type"] = "slide";
-			auto& start = score.notes.at(note.start.ID);
-			obj["critical"] = start.critical;
-
-			std::vector<json> steps;
-			steps.reserve(note.steps.size() + 1);
-			json startStep;
-			startStep["type"] = "start";
-			startStep["beat"] = start.tick / (double)TICKS_PER_QUARTER;
-			startStep["size"] = start.width / 2.0;
-			startStep["lane"] = start.lane - 6 + (start.width / 2.0);
-			startStep["critical"] = start.critical;
-			startStep["ease"] = easeTypes[(int)note.start.ease];
-			startStep["judgeType"] = note.startType == HoldNoteType::Hidden ? "none"
-			                         : start.friction                       ? "trace"
-			                                                                : "normal";
-			startStep["timeScaleGroup"] = start.layer;
-			steps.push_back(startStep);
-
-			for (const auto& step : note.steps)
+			else
 			{
-				json stepObj;
-				auto& stepNote = score.notes.at(step.ID);
-				stepObj["type"] = step.type == HoldStepType::Skip ? "attach" : "tick";
-				stepObj["beat"] = stepNote.tick / (double)TICKS_PER_QUARTER;
-				stepObj["size"] = stepNote.width / 2.0;
-				stepObj["lane"] = stepNote.lane - 6 + (stepNote.width / 2.0);
-				if (step.type != HoldStepType::Hidden)
+				// ---- slide ----
+				json obj;
+				obj["type"] = "slide";
+				obj["critical"] = startNote.isCrit();
+
+				std::vector<json> connections;
+				for (int si = 0; si < (int)hold.steps.size(); ++si)
 				{
-					stepObj["critical"] = stepNote.critical;
+					const Note& n = score.notes.at(hold.steps[si]);
+					json stepObj;
+					stepObj["beat"] = n.tick / (double)TICKS_PER_QUARTER;
+					stepObj["size"] = n.width / 2.0f;
+					stepObj["lane"] = n.lane - 6.0f + (n.width / 2.0f);
+					stepObj["timeScaleGroup"] = (int)n.layer;
+
+					if (si == 0)
+					{
+						stepObj["type"] = "start";
+						stepObj["critical"] = n.isCrit();
+						stepObj["ease"] = easeTypes[(int)n.ease];
+						stepObj["judgeType"] = n.isHidden()  ? "none"
+						                       : n.isTrace() ? "trace"
+						                                     : "normal";
+					}
+					else if (si == (int)hold.steps.size() - 1)
+					{
+						stepObj["type"] = "end";
+						stepObj["critical"] = n.isCrit();
+						stepObj["judgeType"] = n.isHidden()  ? "none"
+						                       : n.isTrace() ? "trace"
+						                                     : "normal";
+						if (n.flick != FlickType::None)
+						{
+							stepObj["direction"] = n.flick == FlickType::Default ? "up"
+							                       : n.flick == FlickType::Left  ? "left"
+							                                                     : "right";
+						}
+					}
+					else
+					{
+						stepObj["type"] = n.isAttached() ? "attach" : "tick";
+						stepObj["ease"] = easeTypes[(int)n.ease];
+						if (!n.isHidden())
+							stepObj["critical"] = n.isCrit();
+					}
+
+					connections.push_back(stepObj);
 				}
-				stepObj["ease"] = easeTypes[(int)step.ease];
-				stepObj["timeScaleGroup"] = stepNote.layer;
-				steps.push_back(stepObj);
+				obj["connections"] = connections;
+				objects.push_back(obj);
 			}
-
-			json endStep;
-			auto& end = score.notes.at(note.end);
-			endStep["type"] = "end";
-			endStep["beat"] = end.tick / (double)TICKS_PER_QUARTER;
-			endStep["size"] = end.width / 2.0;
-			endStep["lane"] = end.lane - 6 + (end.width / 2.0);
-			endStep["critical"] = end.critical;
-			endStep["judgeType"] = note.endType == HoldNoteType::Hidden ? "none"
-			                       : end.friction                       ? "trace"
-			                                                            : "normal";
-			if (end.flick != FlickType::None)
-			{
-				endStep["direction"] = end.flick == FlickType::Default ? "up"
-				                       : end.flick == FlickType::Left  ? "left"
-				                                                       : "right";
-			}
-			endStep["timeScaleGroup"] = end.layer;
-			steps.push_back(endStep);
-
-			obj["connections"] = steps;
-			objects.push_back(obj);
 		}
 
 		usc["objects"] = objects;
-
 		vusc["version"] = 2;
 		vusc["usc"] = usc;
 		return vusc;
 	}
 
+	// -------------------------------------------------------------------------
+	// uscToScore
+	// -------------------------------------------------------------------------
+
 	SerializingScore UscSerializer::uscToScore(const json& vusc)
 	{
 		Score score;
 		ScoreMetadata metadata;
+
 		if (vusc["version"] != 2)
-		{
-			throw std::runtime_error("Invalid version");
-		}
-		json usc = vusc["usc"];
+			throw std::runtime_error("Invalid USC version");
+
+		const json& usc = vusc["usc"];
+
 		score.layers.clear();
-		score.hiSpeedChanges.clear();
 		score.tempoChanges.clear();
 
 		metadata.musicOffset = usc["offset"].get<float>() * -1000.0f;
 
+		// Counters — same pattern as NativeScoreSerializer
+		id_t nextNoteID = 0;
+		id_t nextHoldID = 0;
+
 		for (const auto& obj : usc["objects"].get<std::vector<json>>())
 		{
-			if (obj["type"] == "bpm")
+			const std::string objType = obj["type"].get<std::string>();
+
+			if (objType == "bpm")
 			{
-				score.tempoChanges.push_back(Tempo{
-				    (int)(obj["beat"].get<double>() * TICKS_PER_QUARTER), obj["bpm"].get<float>() });
+				tick_t tick = (tick_t)(obj["beat"].get<double>() * TICKS_PER_QUARTER);
+				score.tempoChanges[tick] = Tempo{ tick, obj["bpm"].get<float>() };
 			}
-			else if (obj["type"] == "timeScaleGroup")
+			else if (objType == "timeScaleGroup")
 			{
-				int index = score.layers.size();
-				score.layers.push_back(Layer{ IO::formatString("#%d", index) });
+				int layerIndex = (int)score.layers.size();
+				Layer newLayer(IO::formatString("#%d", layerIndex));
+
 				for (const auto& change : obj["changes"])
 				{
-					id_t id = Note::getNextID();
-					score.hiSpeedChanges[id] =
-					    HiSpeedChange{ id, (int)(change["beat"].get<double>() * TICKS_PER_QUARTER),
-						               change["timeScale"].get<float>(), index };
+					tick_t tick = (tick_t)(change["beat"].get<double>() * TICKS_PER_QUARTER);
+					HiSpeed hs;
+					hs.tick = tick;
+					hs.layer = layerIndex;
+					hs.speed = change["timeScale"].get<float>();
+					newLayer.hiSpeedChanges[tick] = hs;
 				}
+
+				score.layers.push_back(std::move(newLayer));
 			}
-			else if (obj["type"] == "single")
+			else if (objType == "single")
 			{
-				Note note(NoteType::Tap);
-				note.tick = obj["beat"].get<double>() * TICKS_PER_QUARTER;
-				note.width = obj["size"].get<float>() * 2;
-				note.lane = obj["lane"].get<float>() + 6 - obj["size"].get<float>();
-				note.critical = obj["critical"].get<bool>();
-				note.friction = obj["trace"].get<bool>();
+				Note note;
+				note.type = NoteType::Tap;
+				note.tick = (tick_t)(obj["beat"].get<double>() * TICKS_PER_QUARTER);
+				note.width = obj["size"].get<float>() * 2.0f;
+				note.lane = obj["lane"].get<float>() + 6.0f - obj["size"].get<float>();
+				note.layer = obj["timeScaleGroup"].get<id_t>();
+				note.ID = nextNoteID++;
+
+				if (obj["critical"].get<bool>())
+					note.flag = setFlag(note.flag, NoteFlag::Critical);
+				if (obj["trace"].get<bool>())
+					note.flag = setFlag(note.flag, NoteFlag::Trace);
+				if (obj.contains("dummy") && obj["dummy"].get<bool>())
+					note.flag = setFlag(note.flag, NoteFlag::Dummy);
+
 				if (obj.contains("direction"))
 				{
-					std::string dir = obj["direction"].get<std::string>();
+					const std::string dir = obj["direction"].get<std::string>();
 					note.flick = dir == "up"     ? FlickType::Default
 					             : dir == "left" ? FlickType::Left
 					                             : FlickType::Right;
 				}
-				else
-				{
-					note.flick = FlickType::None;
-				}
-				note.layer = obj["timeScaleGroup"].get<int>();
-				if (obj.contains("dummy"))
-					note.dummy = obj["dummy"].get<bool>();
-				else
-					note.dummy = false;
-				note.ID = Note::getNextID();
+
 				score.notes[note.ID] = note;
 			}
-			else if (obj["type"] == "damage")
+			else if (objType == "damage")
 			{
-				Note note(NoteType::Damage);
-				note.tick = obj["beat"].get<double>() * TICKS_PER_QUARTER;
-				note.width = obj["size"].get<float>() * 2;
-				note.lane = obj["lane"].get<float>() + 6 - obj["size"].get<float>();
-				note.layer = obj["timeScaleGroup"].get<int>();
-				note.ID = Note::getNextID();
+				Note note;
+				note.type = NoteType::Damage;
+				note.tick = (tick_t)(obj["beat"].get<double>() * TICKS_PER_QUARTER);
+				note.width = obj["size"].get<float>() * 2.0f;
+				note.lane = obj["lane"].get<float>() + 6.0f - obj["size"].get<float>();
+				note.layer = obj["timeScaleGroup"].get<id_t>();
+				note.ID = nextNoteID++;
+
+				if (obj.contains("dummy") && obj["dummy"].get<bool>())
+					note.flag = setFlag(note.flag, NoteFlag::Dummy);
+
 				score.notes[note.ID] = note;
 			}
-			else if (obj["type"] == "guide")
+			else if (objType == "guide")
 			{
 				HoldNote hold;
+				hold.ID = nextHoldID;
 
-				auto color = obj["color"].get<std::string>();
-
-				if (color == "neutral")
-				{
-					hold.guideColor = GuideColor::Neutral;
-				}
-				else if (color == "red")
-				{
-					hold.guideColor = GuideColor::Red;
-				}
+				const std::string color = obj["color"].get<std::string>();
+				GuideColor gc = GuideColor::Neutral;
+				if (color == "red")
+					gc = GuideColor::Red;
 				else if (color == "green")
-				{
-					hold.guideColor = GuideColor::Green;
-				}
+					gc = GuideColor::Green;
 				else if (color == "blue")
-				{
-					hold.guideColor = GuideColor::Blue;
-				}
+					gc = GuideColor::Blue;
 				else if (color == "yellow")
-				{
-					hold.guideColor = GuideColor::Yellow;
-				}
+					gc = GuideColor::Yellow;
 				else if (color == "purple")
-				{
-					hold.guideColor = GuideColor::Purple;
-				}
+					gc = GuideColor::Purple;
 				else if (color == "cyan")
-				{
-					hold.guideColor = GuideColor::Cyan;
-				}
+					gc = GuideColor::Cyan;
 				else if (color == "black")
+					gc = GuideColor::Black;
+
+				const std::string fadeStr = obj["fade"].get<std::string>();
+				hold.fadeType = fadeStr == "none" ? FadeType::None
+				                : fadeStr == "in" ? FadeType::In
+				                                  : FadeType::Out;
+
+				const auto& midpoints = obj["midpoints"];
+				for (int i = 0; i < (int)midpoints.size(); ++i)
 				{
-					hold.guideColor = GuideColor::Black;
-				}
-				hold.fadeType = obj["fade"].get<std::string>() == "none" ? FadeType::None
-				                : obj["fade"].get<std::string>() == "in" ? FadeType::In
-				                                                         : FadeType::Out;
+					const auto& step = midpoints[i];
 
-				for (int i = 0; i < obj["midpoints"].size(); i++)
+					Note n;
+					n.type = NoteType::Tap;
+					n.tick = (tick_t)(step["beat"].get<double>() * TICKS_PER_QUARTER);
+					n.width = step["size"].get<float>() * 2.0f;
+					n.lane = step["lane"].get<float>() + 6.0f - step["size"].get<float>();
+					n.layer = step["timeScaleGroup"].get<id_t>();
+					n.holdID = nextHoldID;
+					n.ID = nextNoteID++;
+					n.ease = parseEase(jsonIO::tryGetValue(step, "ease", std::string("linear")));
+
+					if (step.contains("dummy") && step["dummy"].get<bool>())
+						n.flag = setFlag(n.flag, NoteFlag::Dummy);
+
+					score.notes[n.ID] = n;
+					hold.steps.push_back(n.ID);
+				}
+
+				// First separator carries Guide flag + color (same as NativeSerializer)
+				if (!hold.steps.empty())
 				{
-					const auto& step = obj["midpoints"][i];
-					if (i == 0)
-					{
-						Note startNote(NoteType::Hold);
-						startNote.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
-						startNote.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
-						startNote.layer = step["timeScaleGroup"].get<int>();
-						startNote.ID = Note::getNextID();
-						startNote.width = step["size"].get<float>() * 2;
-						score.notes[startNote.ID] = startNote;
-						hold.start.ID = startNote.ID;
-
-						std::string ease = jsonIO::tryGetValue(step, "ease", std::string("linear"));
-						if (ease == "in")
-						{
-							hold.start.ease = EaseType::EaseIn;
-						}
-						else if (ease == "out")
-						{
-							hold.start.ease = EaseType::EaseOut;
-						}
-						else if (ease == "inout")
-						{
-							hold.start.ease = EaseType::EaseInOut;
-						}
-						else if (ease == "outin")
-						{
-							hold.start.ease = EaseType::EaseOutIn;
-						}
-						else
-						{
-							hold.start.ease = EaseType::Linear;
-						}
-						hold.startType = HoldNoteType::Guide;
-					}
-					else if (i == obj["midpoints"].size() - 1)
-					{
-						Note endNote(NoteType::HoldEnd);
-						endNote.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
-						endNote.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
-						endNote.layer = step["timeScaleGroup"].get<int>();
-						endNote.ID = Note::getNextID();
-						endNote.parentID = hold.start.ID;
-						endNote.width = step["size"].get<float>() * 2;
-						score.notes[endNote.ID] = endNote;
-						hold.end = endNote.ID;
-						hold.endType = HoldNoteType::Guide;
-					}
-					else
-					{
-						HoldStep s;
-						Note mid(NoteType::HoldMid);
-						mid.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
-						mid.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
-						mid.layer = step["timeScaleGroup"].get<int>();
-						mid.ID = Note::getNextID();
-						mid.parentID = hold.start.ID;
-						mid.width = step["size"].get<float>() * 2;
-						score.notes[mid.ID] = mid;
-						s.ID = mid.ID;
-
-						std::string ease = jsonIO::tryGetValue(step, "ease", std::string("linear"));
-						if (ease == "in")
-						{
-							s.ease = EaseType::EaseIn;
-						}
-						else if (ease == "out")
-						{
-							s.ease = EaseType::EaseOut;
-						}
-						else if (ease == "inout")
-						{
-							s.ease = EaseType::EaseInOut;
-						}
-						else if (ease == "outin")
-						{
-							s.ease = EaseType::EaseOutIn;
-						}
-						else
-						{
-							s.ease = EaseType::Linear;
-						}
-						s.type = HoldStepType::Hidden;
-						hold.steps.push_back(s);
-					}
+					HoldNoteStep sep;
+					sep.ID = hold.steps.front();
+					sep.flag = HoldNoteFlag::Guide;
+					sep.guideColor = gc;
+					hold.separators.push_back(sep);
 				}
-				score.holdNotes[hold.start.ID] = hold;
+
+				hold.sortSteps(score.notes);
+				score.holdNotes[nextHoldID++] = hold;
 			}
-			else if (obj["type"] == "slide")
+			else if (objType == "slide")
 			{
 				HoldNote hold;
+				hold.ID = nextHoldID;
 				hold.fadeType = FadeType::None;
 
 				auto connections = obj["connections"].get<std::vector<json>>();
+
+				// Sort: start first, end last, mids by beat
 				std::stable_sort(connections.begin(), connections.end(),
 				                 [](const json& a, const json& b)
 				                 {
-					                 if (a["type"] == "start")
-					                 {
+					                 const std::string at = a["type"], bt = b["type"];
+					                 if (at == "start")
 						                 return true;
-					                 }
-					                 else if (b["type"] == "start")
-					                 {
+					                 if (bt == "start")
 						                 return false;
-					                 }
-					                 else if (a["type"] == "end")
-					                 {
+					                 if (at == "end")
 						                 return false;
-					                 }
-					                 else if (b["type"] == "end")
-					                 {
+					                 if (bt == "end")
 						                 return true;
-					                 }
-					                 return a["beat"].get<double>() < b["beat"].get<float>();
+					                 return a["beat"].get<double>() < b["beat"].get<double>();
 				                 });
 
 				bool isCritical = false;
+
 				for (const auto& step : connections)
 				{
-					auto type = step["type"].get<std::string>();
-					if (type == "start")
-					{
-						Note startNote(NoteType::Hold);
-						startNote.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
-						startNote.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
-						startNote.layer = step["timeScaleGroup"].get<int>();
-						startNote.critical = step["critical"].get<bool>();
-						isCritical = startNote.critical;
-						startNote.width = step["size"].get<float>() * 2;
-						if (step["judgeType"].get<std::string>() == "trace")
-						{
-							startNote.friction = true;
-							hold.startType = HoldNoteType::Normal;
-						}
-						else if (step["judgeType"].get<std::string>() == "none")
-						{
-							hold.startType = HoldNoteType::Hidden;
-						}
-						else
-						{
-							hold.startType = HoldNoteType::Normal;
-						}
-						startNote.ID = Note::getNextID();
-						score.notes[startNote.ID] = startNote;
-						hold.start.ID = startNote.ID;
+					const std::string st = step["type"].get<std::string>();
 
-						std::string ease = jsonIO::tryGetValue(step, "ease", std::string("linear"));
-						if (ease == "in")
+					Note n;
+					n.type = NoteType::Tap;
+					n.tick = (tick_t)(step["beat"].get<double>() * TICKS_PER_QUARTER);
+					n.width = step["size"].get<float>() * 2.0f;
+					n.lane = step["lane"].get<float>() + 6.0f - step["size"].get<float>();
+					n.layer = step["timeScaleGroup"].get<id_t>();
+					n.holdID = nextHoldID;
+					n.ID = nextNoteID++;
+
+					if (st == "start")
+					{
+						isCritical = step["critical"].get<bool>();
+						if (isCritical)
+							n.flag = setFlag(n.flag, NoteFlag::Critical);
+
+						n.ease =
+						    parseEase(jsonIO::tryGetValue(step, "ease", std::string("linear")));
+
+						const std::string jt = step["judgeType"].get<std::string>();
+						if (jt == "trace")
+							n.flag = setFlag(n.flag, NoteFlag::Trace);
+						if (jt == "none")
+							n.flag = setFlag(n.flag, NoteFlag::Hidden);
+					}
+					else if (st == "end")
+					{
+						if (isCritical || step["critical"].get<bool>())
+							n.flag = setFlag(n.flag, NoteFlag::Critical);
+
+						const std::string jt = step["judgeType"].get<std::string>();
+						if (jt == "trace")
+							n.flag = setFlag(n.flag, NoteFlag::Trace);
+						if (jt == "none")
+							n.flag = setFlag(n.flag, NoteFlag::Hidden);
+
+						if (step.contains("direction"))
 						{
-							hold.start.ease = EaseType::EaseIn;
-						}
-						else if (ease == "out")
-						{
-							hold.start.ease = EaseType::EaseOut;
-						}
-						else if (ease == "inout")
-						{
-							hold.start.ease = EaseType::EaseInOut;
-						}
-						else if (ease == "outin")
-						{
-							hold.start.ease = EaseType::EaseOutIn;
-						}
-						else
-						{
-							hold.start.ease = EaseType::Linear;
+							const std::string dir = step["direction"].get<std::string>();
+							n.flick = dir == "up"     ? FlickType::Default
+							          : dir == "left" ? FlickType::Left
+							                          : FlickType::Right;
 						}
 					}
-					else if (type == "end")
+					else // "tick" or "attach"
 					{
-						Note endNote(NoteType::HoldEnd);
-						endNote.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
-						endNote.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
-						endNote.layer = step["timeScaleGroup"].get<int>();
-						endNote.width = step["size"].get<float>() * 2;
-						endNote.critical = isCritical || step["critical"].get<bool>();
-						endNote.flick = step.contains("direction")
-						                    ? step["direction"].get<std::string>() == "up"
-						                          ? FlickType::Default
-						                      : step["direction"].get<std::string>() == "left"
-						                          ? FlickType::Left
-						                          : FlickType::Right
-						                    : FlickType::None;
-						endNote.ID = Note::getNextID();
-						endNote.parentID = hold.start.ID;
+						if (isCritical)
+							n.flag = setFlag(n.flag, NoteFlag::Critical);
 
-						if (step["judgeType"].get<std::string>() == "trace")
-						{
-							endNote.friction = true;
-							hold.endType = HoldNoteType::Normal;
-						}
-						else if (step["judgeType"].get<std::string>() == "none")
-						{
-							hold.endType = HoldNoteType::Hidden;
-						}
-						else
-						{
-							hold.endType = HoldNoteType::Normal;
-						}
-						score.notes[endNote.ID] = endNote;
-						hold.end = endNote.ID;
+						n.ease =
+						    parseEase(jsonIO::tryGetValue(step, "ease", std::string("linear")));
+
+						if (st == "attach")
+							n.flag = setFlag(n.flag, NoteFlag::Attached);
+						else if (!step.contains("critical")) // tick with no critical = hidden
+							n.flag = setFlag(n.flag, NoteFlag::Hidden);
 					}
-					else
-					{
-						HoldStep s;
-						Note mid(NoteType::HoldMid);
-						mid.tick = step["beat"].get<double>() * TICKS_PER_QUARTER;
-						mid.lane = step["lane"].get<float>() + 6 - step["size"].get<float>();
-						mid.width = step["size"].get<float>() * 2;
-						mid.layer = step["timeScaleGroup"].get<int>();
-						mid.critical = isCritical;
-						mid.ID = Note::getNextID();
-						mid.parentID = hold.start.ID;
-						score.notes[mid.ID] = mid;
-						s.ID = mid.ID;
 
-						std::string ease = jsonIO::tryGetValue(step, "ease", std::string("linear"));
-						if (ease == "in")
-						{
-							s.ease = EaseType::EaseIn;
-						}
-						else if (ease == "out")
-						{
-							s.ease = EaseType::EaseOut;
-						}
-						else if (ease == "inout")
-						{
-							s.ease = EaseType::EaseInOut;
-						}
-						else if (ease == "outin")
-						{
-							s.ease = EaseType::EaseOutIn;
-						}
-						else
-						{
-							s.ease = EaseType::Linear;
-						}
-
-						if (type == "tick")
-						{
-							if (step.contains("critical"))
-							{
-								s.type = HoldStepType::Normal;
-							}
-							else
-							{
-								s.type = HoldStepType::Hidden;
-							}
-						}
-						else if (type == "attach")
-						{
-							s.type = HoldStepType::Skip;
-						}
-						hold.steps.push_back(s);
-					}
+					score.notes[n.ID] = n;
+					hold.steps.push_back(n.ID);
 				}
 
-				score.holdNotes[hold.start.ID] = hold;
+				// First separator = normal (no Guide flag), inherits critical from start
+				if (!hold.steps.empty())
+				{
+					HoldNoteStep sep;
+					sep.ID = hold.steps.front();
+					sep.flag = isCritical ? HoldNoteFlag::Critical : HoldNoteFlag::Normal;
+					hold.separators.push_back(sep);
+				}
+
+				hold.sortSteps(score.notes);
+				score.holdNotes[nextHoldID++] = hold;
 			}
 		}
 
-		if (score.layers.size() == 0)
-		{
-			score.layers.push_back(Layer{ "#0" });
-		}
-		if (score.tempoChanges.size() == 0)
-		{
-			score.tempoChanges.push_back(Tempo{ 0, 120 });
-		}
+		// Fallback defaults
+		if (score.layers.empty())
+			score.layers.emplace_back("#0");
+
+		if (score.tempoChanges.empty())
+			score.tempoChanges[0] = Tempo{ 0, 120.0f };
 
 		return { score, metadata };
 	}
 
-	Result UscSerializer::canSerialize(const SerializingScore& data) { return true; }
+	Result UscSerializer::canSerialize(const SerializingScore& data) { return Result::Ok(); }
 }
-
-#endif

@@ -1741,7 +1741,7 @@ namespace MikuMikuWorld
 
 		if (context.metadata.isExtendedScore)
 		{
-			const char* shortEffect[] = { "S", "H", "AP" };
+			const char* shortEffect[] = { "Sc", "Hl", "PL" };
 			std::string text = IO::formatString("%s [%s.%d]", (const char*)localize(Text::skill),
 			                                    shortEffect[(int)skill.effect], (int)skill.level);
 			return eventControl(drawList, text.c_str(), skillColor, x, y, enabled);
