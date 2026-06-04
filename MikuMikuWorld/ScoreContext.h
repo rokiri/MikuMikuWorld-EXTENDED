@@ -7,6 +7,8 @@
 #include "JsonIO.h"
 #include "Score.h"
 #include "ScoreStats.h"
+#include "PreviewData.h"
+#include "Tempo.h"
 #include <unordered_set>
 #include <atomic>
 
@@ -20,12 +22,8 @@ namespace MikuMikuWorld
 	};
 	enum class SnapMode : uint8_t
 	{
-		// Snap notes to their own division
 		Relative,
-		// Snap the current notes to the nearest division
-		// move other notes with the offset
 		Absolute,
-		// Snap each notes to their nearest division
 		IndividualAbsolute,
 		SnapModeMax
 	};
@@ -95,33 +93,20 @@ namespace MikuMikuWorld
 	enum class SelectionFlag : uint16_t
 	{
 		None,
-		// Has any notes that can be set trace
 		CanTrace = 1 << 0,
-		// Has any notes that can be set critical
 		CanCritical = 1 << 1,
-		// Has any notes that have Flick Type
 		CanFlick = 1 << 2,
-		// Has any notes that can be set dummy
 		CanDummy = 1 << 3,
-		// Has any notes inside a active hold note
 		HasHoldNote = 1 << 4,
-		// Has any notes inside a guide note
 		HasGuideNote = 1 << 5,
-		// Has any notes between the hold start and end notes
 		HasAnyHoldMid = 1 << 6,
-		// Has any notes where HoldNoteStep.ID == note.ID
 		HasAnyHoldNoteStep = 1 << 7,
-		// Has any hold start + hold mid not attached
 		CanEase = 1 << 8,
-		// Has any notes that have guide alpha property enabled
 		HasGuideAlphaNote = 1 << 9,
-		// Has any notes that can set guide alpha property
 		CanSetGuideAlphaNote = 1 << 10,
 		CanConnectHold = 1 << 11,
 		CanSoundEffect = 1 << 12,
-		// Flag for properties window
 		DirtyProperty = 1 << 15,
-
 	};
 
 	struct ScoreContext
@@ -149,11 +134,19 @@ namespace MikuMikuWorld
 		id_t nextNoteID = 0;
 		id_t nextHoldID = 0;
 
+		tick_t currentTick{ 0 };
+		Engine::DrawData scorePreviewDrawData{};
+
+		inline secs_t getTimeAtCurrentTick() const
+		{
+			return accumulateDuration(currentTick, score.tempoChanges);
+		}
+
 		id_t selectedLayer = 0;
 		NoteViewCollection selectedNotes;
 		HiSpeedRefCollection selectedHiSpeedChanges;
 		std::vector<Note*> hoveringNotes;
-		NoteOrderedCollection notesOrderedView; // fast lookup
+		NoteOrderedCollection notesOrderedView;
 		WaypointOrderedCollection waypointOrderedView;
 
 		float minNoteWidth() const noexcept;
@@ -213,11 +206,6 @@ namespace MikuMikuWorld
 
 		void connectHoldsInSelection();
 		void splitHoldInSelection();
-		/**
-		 * @brief Convert normal holds or guide notes within selection into traces
-		 * @param division Current division. Used to determine the ticks between two trace notes
-		 * @param deleteOrigin Delete the original hold notes or not
-		 */
 		void convertHoldToTraces(int quarterDivision, bool deleteHold, bool update = true);
 
 		void lerpHiSpeeds(int quarterDivision, EaseType ease);
@@ -232,13 +220,10 @@ namespace MikuMikuWorld
 		void pushHistory(std::string_view description);
 
 		Note* insertNote(const Note& note, id_t holdID = -1, bool update = true);
-		// Will affect any view that referencing the note, like selection
-		// Please make a copy if you need to erase them while iterating
 		void eraseNote(Note& note, bool update = true);
 		std::tuple<HoldNote&, Note&, Note&> insertHold(const Note& startNote, const Note& endNote,
 		                                               const HoldNote& hold, bool update = true);
 		void eraseHold(HoldNote& hold, bool update = true);
-		// Connects two holds together
 		id_t connectHolds(id_t currHoldID, id_t nextHoldID, bool update = true);
 		std::pair<id_t, id_t> splitHoldAt(HoldNote& hold, size_t index, bool update = true);
 		void insertTempoChange(const Tempo& tempo);

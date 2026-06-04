@@ -61,6 +61,23 @@ namespace MikuMikuWorld
 		std::string notesSkin;
 		std::string seProfilePath;
 
+		// Score Preview settings
+		float pvNoteSpeed{ 8.0f };
+		float pvBackgroundBrightness{ 0.5f };
+		float pvStageOpacity{ 1.0f };
+		float pvStageCover{ 0.0f };
+		float pvHoldAlpha{ 0.85f };
+		float pvGuideAlpha{ 0.7f };
+		bool pvLockAspectRatio{ true };
+		bool pvMirrorScore{ false };
+		bool pvSimultaneousLine{ true };
+		bool pvDrawToolbar{ true };
+		bool pvLaneEffect{ true };
+		bool pvNoteEffect{ true };
+		bool pvNoteGlow{ true };
+		bool pvFlickAnimation{ true };
+		bool pvHoldAnimation{ true };
+
 		// Miscellaneous
 		std::chrono::system_clock::time_point lastUpdateCheck;
 		std::string latestFetchAppVersion;

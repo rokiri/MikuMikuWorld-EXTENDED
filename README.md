@@ -23,6 +23,18 @@ In addition to the original features of MikuMikuWorld, the following features ar
 // MMW++
 - usc export capabilities
 
+## Translations
+
+- 日本語 (Japanese) by @sevenc_nanashi and [@MI11435](https://github.com/MI11435)
+- Español (Spanish) by @mi.honesta.reaccion
+- Русский (Russian) by [@\_notfallen\_](https://github.com/notfallen-dev) and Ababik (ababikmeoww)
+- Tiếng Việt (Vietnamese) by @uwulovecrosshand and [@SweetSea](https://github.com/SweetSea-ButImNotSweet)
+- 한국어 (Korean) by @fjordic and [@TK50P](https://github.com/TK50P)
+- Türkçe (Turkish) by [@sctech-tr](https://github.com/sctech-tr)
+- Português do Brasil (Brazillian Portuguese) by @\_\_noradrenaline and Myllo (@mynameismyllo)
+- 中文(简体) (Chinese Simplified) by [@\_guanfei\_](https://github.com/GuanFeiHK)
+- 中文(繁體) (Chinese Traditional) by [(@269Seahorse)](https://github.com/269Seahorse)
+- Bahasa Indonesia (Indonesian) by [@rokiri](https://github.com/rokiri) (me)
 ## Requirements
 
 - 64-bit Windows 10 or higher\*.

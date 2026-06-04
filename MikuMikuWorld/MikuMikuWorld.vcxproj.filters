@@ -179,6 +179,9 @@
     <ClCompile Include="Audio\Waveform.cpp">
       <Filter>Audio</Filter>
     </ClCompile>
+    <ClCompile Include="ScorePreview\PreviewData.cpp">
+      <Filter>ScorePreview</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SUS.h">
@@ -391,6 +394,12 @@
     <ClInclude Include="Text.h">
       <Filter>UI\Include</Filter>
     </ClInclude>
+    <ClInclude Include="ScorePreview\PreviewData.h">
+      <Filter>ScorePreview</Filter>
+    </ClInclude>
+    <ClInclude Include="ScorePreview\PreviewEngine.h">
+      <Filter>ScorePreview</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Imgui">
@@ -494,6 +503,9 @@
     </Filter>
     <Filter Include="Score\Include\Sonolus">
       <UniqueIdentifier>{9b776396-064f-403d-b32e-976b8e032dd6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ScorePreview">
+      <UniqueIdentifier>{cf206e12-691f-4dc3-aa6d-00b67d1ce423}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

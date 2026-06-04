@@ -119,7 +119,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_ENABLE_EXTENDED_ALIGNED_STORAGE;_DEBUG;DEBUG;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>../Depends/DirectXMath-master;../Depends/glad/include;../Depends/GLFW/include;../Depends/stb_image;../Depends/miniaudio;../Depends/json;../Depends/stb_vorbis;../Depends/openssl/include;../Depends;../Depends/zlib/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Depends/zlib/include;$(ProjectDir)ScorePreview;../Depends/DirectXMath-master;../Depends/glad/include;../Depends/GLFW/include;../Depends/stb_image;../Depends/miniaudio;../Depends/json;../Depends/stb_vorbis;../Depends/openssl/include;../Depends;../Depends/zlib/include$(ProjectDir)ScorePreview</AdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)</ObjectFileName>
     </ClCompile>
     <Link>
@@ -144,7 +144,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_ENABLE_EXTENDED_ALIGNED_STORAGE;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>../Depends/DirectXMath-master;../Depends/glad/include;../Depends/GLFW/include;../Depends/stb_image;../Depends/miniaudio;../Depends/json;../Depends/stb_vorbis;../Depends/openssl/include;../Depends;../Depends/zlib/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Depends/zlib/include;$(ProjectDir)ScorePreview;../Depends/DirectXMath-master;../Depends/glad/include;../Depends/GLFW/include;../Depends/stb_image;../Depends/miniaudio;../Depends/json;../Depends/stb_vorbis;../Depends/openssl/include;../Depends;../Depends/zlib/include</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <Optimization>MaxSpeed</Optimization>
@@ -214,6 +214,7 @@
     <ClCompile Include="ScoreContext.cpp" />
     <ClCompile Include="ScoreEditorTimeline.cpp" />
     <ClCompile Include="ScoreEditorWindows.cpp" />
+    <ClCompile Include="ScorePreview\PreviewData.cpp" />
     <ClCompile Include="ScoreSerializer.cpp" />
     <ClCompile Include="ScoreSerializeWindow.cpp" />
     <ClCompile Include="ScoreStats.cpp" />
@@ -286,6 +287,8 @@
     <ClInclude Include="ScoreEditorTimeline.h" />
     <ClInclude Include="ScoreEditorWindows.h" />
     <ClInclude Include="ScoreEvents.h" />
+    <ClInclude Include="ScorePreview\PreviewData.h" />
+    <ClInclude Include="ScorePreview\PreviewEngine.h" />
     <ClInclude Include="ScoreSerializer.h" />
     <ClInclude Include="ScoreSerializeWindow.h" />
     <ClInclude Include="ScoreStats.h" />

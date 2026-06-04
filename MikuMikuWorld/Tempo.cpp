@@ -40,7 +40,7 @@ namespace MikuMikuWorld
 		secs_t total = 0;
 
 		auto last = tempos.upper_bound(tick);
-		if (last == tempos.begin()) // probably negative tick
+		if (last == tempos.begin())
 			++last;
 		for (auto pv = tempos.begin(), it = std::next(pv); it != last; pv = it, ++it)
 		{
@@ -161,6 +161,42 @@ namespace MikuMikuWorld
 		total += (measure - prevMeasure) * beatsPerMeasure(prevTimeSig);
 
 		return total;
+	}
+
+	secs_t accumulateScaledDuration(tick_t tick, const Score& score, tick_t quarterTicks)
+	{
+		if (score.tempoChanges.empty())
+			return 0.0;
+
+		const HiSpeedCollection* hiSpeeds = nullptr;
+		if (!score.layers.empty())
+			hiSpeeds = &score.layers[0].hiSpeedChanges;
+
+		if (!hiSpeeds || hiSpeeds->empty())
+			return accumulateDuration(tick, score.tempoChanges, quarterTicks);
+
+		secs_t scaledTotal = 0.0;
+		tick_t prevTick = 0;
+		float currentSpeed = 1.0f;
+
+		for (const auto& [hsTick, hs] : *hiSpeeds)
+		{
+			if (hsTick >= tick)
+				break;
+
+			secs_t segDuration = accumulateDuration(hsTick, score.tempoChanges, quarterTicks) -
+			                     accumulateDuration(prevTick, score.tempoChanges, quarterTicks);
+			scaledTotal += segDuration * currentSpeed;
+
+			prevTick = hsTick;
+			currentSpeed = hs.speed;
+		}
+
+		secs_t segDuration = accumulateDuration(tick, score.tempoChanges, quarterTicks) -
+		                     accumulateDuration(prevTick, score.tempoChanges, quarterTicks);
+		scaledTotal += segDuration * currentSpeed;
+
+		return scaledTotal;
 	}
 
 	TimeSignature& getTimeSignAt(Score& score, measure_t measure)

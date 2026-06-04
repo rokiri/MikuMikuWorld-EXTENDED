@@ -6,7 +6,6 @@
 
 namespace MikuMikuWorld
 {
-	// SUS lane constants (standard PJSK/Sonolus 12-lane system)
 	constexpr float MIN_LANE = 0.0f;
 	constexpr float MAX_LANE = 11.0f;
 	constexpr float MAX_NOTE_WIDTH = 12.0f;
@@ -14,9 +13,6 @@ namespace MikuMikuWorld
 
 namespace MikuMikuWorld
 {
-	// -------------------------------------------------------------------------
-	// Helpers — defined before use
-	// -------------------------------------------------------------------------
 
 	static bool holdIsGuide(const HoldNote& hold)
 	{
@@ -45,9 +41,6 @@ namespace MikuMikuWorld
 		return { 4, 4 };
 	}
 
-	// -------------------------------------------------------------------------
-	// Public interface
-	// -------------------------------------------------------------------------
 
 	void SusSerializer::serialize(const SerializingScore& data, std::string filename)
 	{
@@ -110,10 +103,6 @@ namespace MikuMikuWorld
 
 		return Result::Ok();
 	}
-
-	// -------------------------------------------------------------------------
-	// susToScore
-	// -------------------------------------------------------------------------
 
 	SerializingScore SusSerializer::susToScore(const SUS& sus)
 	{
@@ -203,17 +192,14 @@ namespace MikuMikuWorld
 		Score score;
 		score.fever = Fever{ -1, -1 };
 
-		// --- Standalone notes ---
 		for (const auto& tap : sus.taps)
 		{
-			// Skill trigger: type 4, lane 0, width 1
 			if (tap.lane == 0 && tap.width == 1 && tap.type == 4)
 			{
 				score.skills.insert(Skill{ tap.tick, SkillEffect::Score, 1 });
 				continue;
 			}
 
-			// Fever: lane 15, width 1
 			if (tap.lane == 15 && tap.width == 1)
 			{
 				if (tap.type == 1)
@@ -259,7 +245,6 @@ namespace MikuMikuWorld
 			notes[n.ID] = n;
 		}
 
-		// --- Slides / Guides ---
 		auto slideFillFunc = [&](const SUSNoteStream& slideStream, bool isGuideSlides)
 		{
 			for (const auto& slide : slideStream)
@@ -291,7 +276,7 @@ namespace MikuMikuWorld
 
 					switch (susNote.type)
 					{
-					case 1: // start
+					case 1:
 					{
 						Note n;
 						n.type = NoteType::Tap;
@@ -325,7 +310,7 @@ namespace MikuMikuWorld
 					}
 					break;
 
-					case 2: // end
+					case 2:
 					{
 						Note n;
 						n.type = NoteType::Tap;
@@ -360,8 +345,8 @@ namespace MikuMikuWorld
 					}
 					break;
 
-					case 3: // mid normal
-					case 5: // mid hidden
+					case 3:
+					case 5:
 					{
 						Note n;
 						n.type = NoteType::Tap;
@@ -426,7 +411,6 @@ namespace MikuMikuWorld
 				Layer layer(IO::formatString("#%d", gi));
 				for (const auto& hs : sus.hiSpeedGroups[gi].hiSpeeds)
 				{
-					// Use MikuMikuWorld::HiSpeed (from ScoreEvents.h), not SUS::SusHiSpeed
 					MikuMikuWorld::HiSpeed h;
 					h.tick = hs.tick;
 					h.layer = gi;
@@ -440,9 +424,6 @@ namespace MikuMikuWorld
 		return { score, metadata };
 	}
 
-	// -------------------------------------------------------------------------
-	// scoreToSus
-	// -------------------------------------------------------------------------
 
 	SUS SusSerializer::scoreToSus(const SerializingScore& data)
 	{
@@ -599,12 +580,12 @@ namespace MikuMikuWorld
 			barlengths.push_back(
 			    BarLength{ ts.measure, ((float)ts.numerator / (float)ts.denominator) * 4.0f });
 
-		// Skill triggers: type 4, lane 0, width 1
+	
 		for (const auto& skill : score.skills)
 			taps.push_back(SUSNote{ skill.tick, 0, 1, 4,
 			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
 
-		// Fever start/end
+
 		if (score.fever.startTick != -1)
 			taps.push_back(SUSNote{ score.fever.startTick, 15, 1, 1,
 			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
@@ -612,7 +593,7 @@ namespace MikuMikuWorld
 			taps.push_back(SUSNote{ score.fever.endTick, 15, 1, 2,
 			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
 
-		// Build HiSpeedGroups using SusHiSpeed (SUS.h type)
+
 		std::vector<HiSpeedGroup> hiSpeedGroups;
 		for (int i = 0; i < (int)score.layers.size(); ++i)
 		{

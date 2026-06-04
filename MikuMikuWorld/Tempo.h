@@ -30,6 +30,9 @@ namespace MikuMikuWorld
 	beat_t accumulateBeats(measure_t measure, const TimeSignatureCollection& ts);
 
 	struct Score;
+	secs_t accumulateScaledDuration(tick_t tick, const Score& score,
+	                                tick_t quarterTicks = TICKS_PER_QUARTER);
+
 	TimeSignature& getTimeSignAt(Score& score, measure_t measure);
 	Tempo& getTempoAt(Score& score, tick_t tick);
 	HiSpeed* getHiSpeedAt(Score& score, tick_t tick, id_t layer);
