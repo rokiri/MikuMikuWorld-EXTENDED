@@ -5,38 +5,53 @@
 #include <cstdint>
 #include <map>
 #include <string>
-#include <set>
+#include <unordered_map>
 #include <vector>
 
 namespace MikuMikuWorld
 {
+	id_t getNextSkillID();
+	id_t getNextHiSpeedID();
+
+	struct SkillTrigger
+	{
+		id_t ID;
+		int tick;
+	};
+
+	struct Fever
+	{
+		int startTick;
+		int endTick;
+	};
+
 	struct Layer
 	{
 		std::string name;
-		float forceNoteSpeed = 0.0f;
 		bool hidden = false;
-		HiSpeedCollection hiSpeedChanges;
 
-		Layer(std::string_view name, float forceNoteSpeed = 0.0f)
-		    : name(name), forceNoteSpeed(forceNoteSpeed)
-		{
-		}
-		Layer(id_t id, std::string_view name, float forceNoteSpeed = 0.0f)
-		    : name(name), forceNoteSpeed(forceNoteSpeed)
-		{
-			hiSpeedChanges.emplace(0, HiSpeed{ 0, id });
-		}
+		// --- フォルダ機能用の拡張 ---
+		bool isFolder = false;    // 自分が「フォルダ」であるかどうか
+		bool inFolder = false;    // 自分が直上のフォルダに「属している」かどうか
+		bool isCollapsed = false; // フォルダが折りたたまれているかどうか（UI用）
 	};
-	using LayerCollection = std::vector<Layer>;
 
 	struct Waypoint
 	{
-		id_t ID;
-		tick_t tick;
 		std::string name;
+		int tick;
 	};
-	using WaypointCollection = std::map<id_t, Waypoint>;
-	using WaypointOrderedCollection = std::multimap<tick_t, Waypoint*>;
+	
+	struct HiSpeedChange
+	{
+		id_t ID;
+		int tick;
+		float speed;
+		int layer = 0;
+		float skips = 0;
+		HiSpeedEaseType ease;
+		bool hideNotes;
+	};
 
 	struct ScoreMetadata
 	{
@@ -45,22 +60,25 @@ namespace MikuMikuWorld
 		std::string author;
 		std::string musicFile;
 		std::string jacketFile;
-		float musicOffset = 0.0f;
+		float musicOffset;
 
 		int laneExtension = 0;
-		int baseLifePoint = 1000;
-		bool isExtendedScore = true;
 	};
 
-	struct Score : public NotesContext
+	struct Score
 	{
-	  public:
-		TempoCollection tempoChanges{ {} };           // always have 1 tempo change
-		TimeSignatureCollection timeSignatures{ {} }; // always have 1 timesign change
-		SkillTriggerCollection skills;
+		ScoreMetadata metadata;
+		std::unordered_map<id_t, Note> notes;
+		std::unordered_map<id_t, HoldNote> holdNotes;
+		std::vector<Tempo> tempoChanges;
+		std::map<int, TimeSignature> timeSignatures;
+		std::unordered_map<id_t, HiSpeedChange> hiSpeedChanges;
+		std::unordered_map<id_t, SkillTrigger> skills;
 		Fever fever;
 
-		LayerCollection layers{ Layer{ "default", 0 } };
-		WaypointCollection waypoints;
+		std::vector<Layer> layers{ { Layer{ "default" } } };
+		std::vector<Waypoint> waypoints;
+
+		Score();
 	};
 }

@@ -2,8 +2,46 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <stdexcept>
+#include "ImGui/imgui_internal.h"
+#include <random>
 #include <type_traits>
+
+// Macro to allow usage of flags operators with types enums
+#define DECLARE_ENUM_FLAG_OPERATORS(EnumType)                                                      \
+	inline constexpr EnumType operator|(EnumType lhs, EnumType rhs)                                \
+	{                                                                                              \
+		return static_cast<EnumType>(static_cast<std::underlying_type_t<EnumType>>(lhs) |          \
+		                             static_cast<std::underlying_type_t<EnumType>>(rhs));          \
+	}                                                                                              \
+	inline constexpr EnumType operator&(EnumType lhs, EnumType rhs)                                \
+	{                                                                                              \
+		return static_cast<EnumType>(static_cast<std::underlying_type_t<EnumType>>(lhs) &          \
+		                             static_cast<std::underlying_type_t<EnumType>>(rhs));          \
+	}                                                                                              \
+	inline constexpr EnumType operator^(EnumType lhs, EnumType rhs)                                \
+	{                                                                                              \
+		return static_cast<EnumType>(static_cast<std::underlying_type_t<EnumType>>(lhs) ^          \
+		                             static_cast<std::underlying_type_t<EnumType>>(rhs));          \
+	}                                                                                              \
+	inline constexpr EnumType operator~(EnumType value)                                            \
+	{                                                                                              \
+		return static_cast<EnumType>(~static_cast<std::underlying_type_t<EnumType>>(value));       \
+	}                                                                                              \
+	inline constexpr EnumType& operator|=(EnumType& lhs, EnumType rhs)                             \
+	{                                                                                              \
+		lhs = lhs | rhs;                                                                           \
+		return lhs;                                                                                \
+	}                                                                                              \
+	inline constexpr EnumType& operator&=(EnumType& lhs, EnumType rhs)                             \
+	{                                                                                              \
+		lhs = lhs & rhs;                                                                           \
+		return lhs;                                                                                \
+	}                                                                                              \
+	inline constexpr EnumType& operator^=(EnumType& lhs, EnumType rhs)                             \
+	{                                                                                              \
+		lhs = lhs ^ rhs;                                                                           \
+		return lhs;                                                                                \
+	}
 
 namespace MikuMikuWorld
 {
@@ -11,7 +49,41 @@ namespace MikuMikuWorld
 	{
 	  public:
 		static std::string getCurrentDateTime();
+		static std::string getSystemLocale();
+		static std::string getDivisionString(int div);
+		static std::vector<std::string> splitString(const std::string& base, const char delimiter);
+		static float centerImGuiItem(const float width);
+		static void ImGuiCenteredText(const std::string& str);
+		static void ImGuiCenteredText(const char* str);
 	};
+
+	class Random
+	{
+	public:
+		float get(float min, float max);
+		float get();
+		void setSeed(int seed);
+
+	private:
+		std::linear_congruential_engine<uint32_t, 1812433253U, 367, 2147483647> gen;
+		std::uniform_real_distribution<> dist{ 0, 1 };
+	};
+
+	class RandN
+	{
+	public:
+		float nextFloat();
+		float nextFloatRange(float min, float max);
+		uint32_t nextUInt32();
+		void setSeed(uint32_t seed);
+
+	private:
+		static const uint32_t MT19937 = 1812433253;
+		uint32_t x{}, y{}, z{}, w{};
+		uint32_t xorShift();
+	};
+
+	extern Random globalRandom;
 
 	enum class ResultStatus
 	{
@@ -38,42 +110,47 @@ namespace MikuMikuWorld
 
 	constexpr static const char* boolToString(bool value) { return value ? "true" : "false"; }
 
-	template <typename, typename = void> struct size_type_trait
+	template <typename ArrayType> static size_t arrayLength(const ArrayType& arr)
 	{
-		using type = std::size_t;
-	};
+		static_assert(std::is_array_v<ArrayType>);
+		return (sizeof(arr) / sizeof(arr[0]));
+	}
+
+	template <typename Array>
+	static inline bool isArrayIndexInBounds(size_t index, const Array& arr)
+	{
+		return index >= 0 && index < arrayLength(arr);
+	}
 
 	template <typename T>
-	struct size_type_trait<T, std::void_t<typename std::remove_reference_t<T>::size_type>>
+	static inline bool isArrayIndexInBounds(size_t index, const std::vector<T>& arr)
 	{
-		using type = typename std::remove_reference_t<T>::size_type;
-	};
-
-	template <typename ArrayType, typename IndexType,
-	          typename SizeType = typename size_type_trait<ArrayType>::type>
-	static auto arrayGetItemSafe(ArrayType& arr, IndexType idx) -> decltype(*std::begin(arr))
-	{
-		SizeType index = static_cast<SizeType>(idx);
-		if (index < 0 || index >= std::size(arr))
-			throw std::range_error("Index out of range!");
-		return *std::next(std::begin(arr), index);
+		return index >= 0 && index < arr.size();
 	}
 
-	template <typename Cont>
-	static inline bool isArrayIndexInBounds(size_t index, const Cont& arr)
+	template <typename Type>
+	static size_t findArrayItem(const Type& item, const Type array[], size_t length)
 	{
-		return index >= 0 && index < std::size(arr);
+		for (int i = 0; i < length; i++)
+		{
+			if (array[i] == item)
+				return i;
+		}
+
+		return -1;
 	}
 
-	template <typename ArrayType, typename ValueType, typename RetType>
-	static RetType arrayFindOrDefault(ArrayType& arr, ValueType&& val, RetType def)
+	static size_t findArrayItem(const char* item, const char* const array[], size_t length)
 	{
-		typename size_type_trait<ArrayType>::type i = 0;
-		for (auto&& item : arr)
-			if (item == val)
-				return static_cast<RetType>(i);
-			else
-				++i;
-		return def;
+		for (int i = 0; i < length; i++)
+		{
+			if (!strcmp(item, array[i]))
+				return i;
+		}
+
+		return -1;
 	}
+
+	void drawShadedText(ImDrawList* drawList, ImVec2 textPos, float fontSize, ImU32 fontColor,
+	                    const char* text);
 }

@@ -1,208 +1,201 @@
-#include "Renderer.h"
+﻿#include "Renderer.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <algorithm>
-
-namespace DirectX
-{
-	static XMVECTOR XMLoadFloat4Ref(const XMFLOAT4& v) { return XMLoadFloat4(&v); }
-}
+#include <cstddef>
 
 namespace MikuMikuWorld
 {
-	constexpr size_t maxQuads = 100;
-
-	Renderer::Renderer() : vBuffer{ maxQuads * 4 }
+	Renderer::Renderer() : vBuffer{ VertexBuffer(maxQuads) }
 	{
 		vBuffer.setup();
-		draws.reserve(64);
-		vertices.reserve(maxQuads * 4);
-		draws.emplace_back();
-		setColors(Color{ 1, 1, 1, 1 });
+		vBuffer.bind();
+		quads.reserve(maxQuads);
+		init();
 	}
 
-	void Renderer::newDrawConfig(int channel, int texID, int texMaskID)
+	void Renderer::init()
 	{
-		DrawConfig& config =
-		    draws.back().length != 0 ? draws.emplace_back(draws.back()) : draws.back();
-		config.offset += config.length;
-		config.length = 0;
-		config.channel = channel;
-		if (texID >= 0)
-			config.texID = texID;
-		if (texMaskID >= 0)
-			config.texMaskID = texMaskID;
+		vPos[0] = DirectX::XMVECTOR{ 0.5f, 0.5f, 0.0f, 1.0f };
+		vPos[1] = DirectX::XMVECTOR{ 0.5f, -0.5f, 0.0f, 1.0f };
+		vPos[2] = DirectX::XMVECTOR{ -0.5f, -0.5f, 0.0f, 1.0f };
+		vPos[3] = DirectX::XMVECTOR{ -0.5f, 0.5f, 0.0f, 1.0f };
 	}
 
-	void Renderer::bindTexture(const DrawConfig& config)
+	void Renderer::setAnchor(AnchorType type)
 	{
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, config.texMaskID);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, config.texID);
+		float top = 0.0f;
+		float bottom = -1.0f;
+		float left = 0.0f;
+		float right = 1.0f;
+
+		switch ((uint8_t)type / 3)
+		{
+		case 1:
+			top = 0.5f;
+			bottom = -0.5f;
+			break;
+		case 2:
+			top = 1.0f;
+			bottom = 0.0f;
+			break;
+		default:
+			break;
+		}
+
+		switch ((uint8_t)type % 3)
+		{
+		case 1:
+			left = -0.5f;
+			right = 0.5f;
+			break;
+		case 2:
+			left = -1.0f;
+			right = 0.0f;
+			break;
+		default:
+			break;
+		}
+
+		vPos[0] = DirectX::XMVECTOR{ right, top, 0.0f, 1.0f };
+		vPos[1] = DirectX::XMVECTOR{ right, bottom, 0.0f, 1.0f };
+		vPos[2] = DirectX::XMVECTOR{ left, bottom, 0.0f, 1.0f };
+		vPos[3] = DirectX::XMVECTOR{ left, top, 0.0f, 1.0f };
 	}
 
-	void Renderer::unbindTexture()
+	void Renderer::setUVCoords(const Texture& tex, float x1, float x2, float y1, float y2)
 	{
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		setUVCoords(tex, x1, x2, y1, y2, 0.0f);
 	}
 
-	int Renderer::getChannelID() const { return draws.back().channel; }
-
-	void Renderer::setChannelID(int id)
+	void Renderer::setUVCoords(const Texture& tex, float x1, float x2, float y1, float y2, float blend)
 	{
-		if (draws.back().channel != id)
-			newDrawConfig(id);
+		float left = x1 / tex.getWidth();
+		float right = x2 / tex.getWidth();
+		float top = y1 / tex.getHeight();
+		float bottom = y2 / tex.getHeight();
+
+		uvCoords[0] = DirectX::XMVECTOR{ right, top, blend, 0.0f };
+		uvCoords[1] = DirectX::XMVECTOR{ right, bottom, blend, 0.0f };
+		uvCoords[2] = DirectX::XMVECTOR{ left, bottom, blend, 0.0f };
+		uvCoords[3] = DirectX::XMVECTOR{ left, top, blend, 0.0f };
 	}
 
-	void Renderer::setTexture(const Texture& tex, const Sprite& spr)
-	{
-		auto&& [uv1, uv3] = tex.getCoords(spr);
-		setTexture(tex.getID(), uv1, uv3);
-	}
-
-	void Renderer::setTexture(const Texture& tex, const Sprite& spr, const Texture& mask,
-	                          const Sprite& maskSpr)
-	{
-		auto&& [uv1, uv3] = tex.getCoords(spr);
-		auto&& [muv1, muv3] = mask.getCoords(maskSpr);
-		setTexture(tex.getID(), mask.getID(), uv1, uv3, muv1, muv3);
-	}
-
-	void Renderer::setTexture(int texID, const Vector2& uv1, const Vector2& uv3)
-	{
-		Vector2 uv2 = { uv3.x, uv1.y }, uv4 = { uv1.x, uv3.y };
-		std::array<DirectX::XMFLOAT4, 4> uvs = {};
-		uvs[0] = { uv1.x, uv1.y, 0.f, 0.f };
-		uvs[1] = { uv2.x, uv2.y, 0.f, 0.f };
-		uvs[2] = { uv3.x, uv3.y, 0.f, 0.f };
-		uvs[3] = { uv4.x, uv4.y, 0.f, 0.f };
-		setTexture(texID, uvs);
-	}
-
-	void Renderer::setTexture(int texID, const std::array<DirectX::XMFLOAT4, 4>& uvs)
-	{
-		if (draws.back().texID != texID)
-			newDrawConfig(getChannelID(), texID);
-		std::transform(uvs.begin(), uvs.end(), uvCoords.begin(), DirectX::XMLoadFloat4Ref);
-	}
-
-	void Renderer::setTexture(int texID, int maskID, const Vector2& uv1, const Vector2& uv3,
-	                          const Vector2& muv1, const Vector2& muv3)
-	{
-		Vector2 uv2 = { uv3.x, uv1.y }, uv4 = { uv1.x, uv3.y };
-		Vector2 muv2 = { muv3.x, muv1.y }, muv4 = { muv1.x, muv3.y };
-		std::array<DirectX::XMFLOAT4, 4> uvs = {};
-		uvs[0] = { uv1.x, uv1.y, muv1.x, muv1.y };
-		uvs[1] = { uv2.x, uv2.y, muv2.x, muv2.y };
-		uvs[2] = { uv3.x, uv3.y, muv3.x, muv3.y };
-		uvs[3] = { uv4.x, uv4.y, muv4.x, muv4.y };
-		setTexture(texID, maskID, uvs);
-	}
-
-	void Renderer::setTexture(int texID, int maskID, const std::array<DirectX::XMFLOAT4, 4>& uvs)
-	{
-		if (draws.back().texID != texID || draws.back().texMaskID != maskID)
-			newDrawConfig(getChannelID(), texID, maskID);
-		std::transform(uvs.begin(), uvs.end(), uvCoords.begin(), DirectX::XMLoadFloat4Ref);
-	}
-
-	void Renderer::setColors(const Color& color) { setColors(color, color, color, color); }
-
-	void Renderer::setColors(const Color& c1, const Color& c2, const Color& c3, const Color& c4)
-	{
-		std::array<DirectX::XMFLOAT4, 4> colors = {};
-		colors[0] = { c1.r, c2.g, c3.b, c1.a };
-		colors[1] = { c2.r, c2.g, c3.b, c2.a };
-		colors[2] = { c3.r, c2.g, c3.b, c3.a };
-		colors[3] = { c4.r, c2.g, c3.b, c4.a };
-		setColors(colors);
-	}
-
-	void Renderer::setColors(const std::array<DirectX::XMFLOAT4, 4>& colors)
-	{
-		std::transform(colors.begin(), colors.end(), vColor.begin(), DirectX::XMLoadFloat4Ref);
-	}
-
-	static std::array<DirectX::XMFLOAT4, 4> getVPosAnchor(AnchorType type)
-	{
-		int row = (int)type / 3; // 0 = top, 1 = middle, 2 = bottom
-		int col = (int)type % 3; // 0 = left, 1 = center, 2 = right
-
-		// Compute offsets so that anchor maps to (0,0)
-		float offsetX = (float)col * 0.5f; // 0, 0.5, 1
-		float offsetY = (float)row * 0.5f; // 0, 0.5, 1
-
-		// Shift to range [-1, 0] or [-0.5, 0.5] or [0, 1]
-		float left = -offsetX;
-		float right = left + 1.0f;
-
-		float top = offsetY;
-		float bottom = top - 1.0f;
-
-		std::array<DirectX::XMFLOAT4, 4> vPos = {};
-		vPos[0] = { left, top, 0.0f, 1.0f };
-		vPos[1] = { right, top, 0.0f, 1.0f };
-		vPos[2] = { right, bottom, 0.0f, 1.0f };
-		vPos[3] = { left, bottom, 0.0f, 1.0f };
-		return vPos;
-	}
-
-	static DirectX::XMMATRIX getModelMatrix(const Vector2& pos, const float rot, const Vector2& sz)
+	DirectX::XMMATRIX Renderer::getModelMatrix(const Vector2& pos, const float rot, const Vector2& sz)
 	{
 		DirectX::XMMATRIX model = DirectX::XMMatrixIdentity();
 		model *= DirectX::XMMatrixScaling(sz.x, sz.y, 1.0f);
 		model *= DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(rot));
 		model *= DirectX::XMMatrixTranslation(pos.x, pos.y, 0.0f);
-
 		return model;
 	}
 
-	void Renderer::drawSprite(const Vector2& pos, Degree rot, const Vector2& size,
-	                          AnchorType anchor)
+	void Renderer::drawSprite(const Vector2& pos, float rot, const Vector2& sz, AnchorType anchor,
+	                          const Texture& tex, int spr, const Color& tint, int z)
 	{
-		DirectX::XMMATRIX model = getModelMatrix(pos, rot, size);
-		std::array<DirectX::XMFLOAT4, 4> positions = getVPosAnchor(anchor);
-		drawQuad(positions, model);
+		const Sprite& s = tex.sprites[spr];
+		drawSprite(pos, rot, sz, anchor, tex, s.getX(), s.getX() + s.getWidth(), s.getY(),
+		           s.getY() + s.getHeight(), tint, z);
 	}
 
-	void Renderer::drawRectangle(const Vector2& pos, const Vector2& size)
+	void Renderer::drawSprite(const Vector2& pos, float rot, const Vector2& sz, AnchorType anchor,
+	                          const Texture& tex, float x1, float x2, float y1, float y2,
+	                          const Color& tint, int z)
 	{
-		Vector2 p1{ pos };
-		Vector2 p2{ pos.x + size.x, pos.y };
-		Vector2 p3{ pos + size };
-		Vector2 p4{ pos.x, pos.y + size.y };
-		drawQuad(p1, p2, p3, p4);
+		DirectX::XMMATRIX model = getModelMatrix(pos, rot, sz);
+		DirectX::XMVECTOR color{ tint.r, tint.g, tint.b, tint.a };
+		setUVCoords(tex, x1, x2, y1, y2);
+		setAnchor(anchor);
+		pushQuad(vPos, uvCoords, model, color, tex.getID(), z);
 	}
 
 	void Renderer::drawQuad(const Vector2& p1, const Vector2& p2, const Vector2& p3,
-	                        const Vector2& p4)
+	                        const Vector2& p4, const Texture& tex, float x1, float x2, float y1,
+	                        float y2, const Color& tint, int z)
 	{
-		std::array<DirectX::XMFLOAT4, 4> positions = {};
-		positions[0] = { p1.x, p1.y, 0.0f, 1.0f };
-		positions[1] = { p2.x, p2.y, 0.0f, 1.0f };
-		positions[2] = { p3.x, p3.y, 0.0f, 1.0f };
-		positions[3] = { p4.x, p4.y, 0.0f, 1.0f };
-		std::transform(positions.begin(), positions.end(), vPos.begin(), DirectX::XMLoadFloat4Ref);
-		pushQuad();
+		setUVCoords(tex, x1, x2, y1, y2);
+		vPos[0] = DirectX::XMVECTOR{ p4.x, p4.y, 0.0f, 1.0f };
+		vPos[1] = DirectX::XMVECTOR{ p2.x, p2.y, 0.0f, 1.0f };
+		vPos[2] = DirectX::XMVECTOR{ p1.x, p1.y, 0.0f, 1.0f };
+		vPos[3] = DirectX::XMVECTOR{ p3.x, p3.y, 0.0f, 1.0f };
+		DirectX::XMVECTOR color{ tint.r, tint.g, tint.b, tint.a };
+		pushQuad(vPos, uvCoords, DirectX::XMMatrixIdentity(), color, tex.getID(), z);
 	}
 
-	void Renderer::drawQuad(const std::array<DirectX::XMFLOAT4, 4>& pos, const DirectX::XMMATRIX& m)
+	void Renderer::drawQuadWithBlend(const DirectX::XMMATRIX& m, const Texture& tex, const Sprite& s,
+	                                 const Color& tint, int z, float blend)
 	{
-		std::transform(pos.begin(), pos.end(), vPos.begin(), [&](const DirectX::XMFLOAT4& v)
-		               { return DirectX::XMVector2Transform(DirectX::XMLoadFloat4Ref(v), m); });
-		pushQuad();
+		setAnchor(AnchorType::MiddleCenter);
+		setUVCoords(tex, s.getX(), s.getX() + s.getWidth(), s.getY(), s.getY() + s.getHeight(), blend);
+		DirectX::XMVECTOR color{ tint.r, tint.g, tint.b, tint.a };
+		pushQuad(vPos, uvCoords, m, color, tex.getID(), z);
 	}
 
-	void Renderer::pushQuad()
+	void Renderer::drawQuadWithBlend(const DirectX::XMMATRIX& m, const Texture& tex, int splitX, int splitY,
+	                                 int frame, const Color& tint, int z, float blend, int flipUVs)
 	{
-		for (int i = 0; i < 4; i++)
-			vertices.emplace_back(Vertex{ vPos[i], vColor[i], uvCoords[i] });
+		setAnchor(AnchorType::MiddleCenter);
 
-		draws.back().length += 4;
+		int row = frame / splitX;
+		int col = frame % splitX;
+		int w = tex.getWidth() / splitX;
+		int h = tex.getHeight() / splitY;
+
+		float x1 = col * w;
+		float x2 = x1 + w;
+		float y1 = row * h;
+		float y2 = y1 + h;
+
+		float left = x1 / tex.getWidth();
+		float right = x2 / tex.getWidth();
+		float top = y1 / tex.getHeight();
+		float bottom = y2 / tex.getHeight();
+
+		if (flipUVs)
+		{
+			uvCoords[1] = DirectX::XMVECTOR{ right, top, blend, 0.0f };
+			uvCoords[2] = DirectX::XMVECTOR{ right, bottom, blend, 0.0f };
+			uvCoords[3] = DirectX::XMVECTOR{ left, bottom, blend, 0.0f };
+			uvCoords[0] = DirectX::XMVECTOR{ left, top, blend, 0.0f };
+		}
+		else
+		{
+			uvCoords[0] = DirectX::XMVECTOR{ right, top, blend, 0.0f };
+			uvCoords[1] = DirectX::XMVECTOR{ right, bottom, blend, 0.0f };
+			uvCoords[2] = DirectX::XMVECTOR{ left, bottom, blend, 0.0f };
+			uvCoords[3] = DirectX::XMVECTOR{ left, top, blend, 0.0f };
+		}
+
+		DirectX::XMVECTOR color{ tint.r, tint.g, tint.b, tint.a };
+		pushQuad(vPos, uvCoords, m, color, tex.getID(), z);
+	}
+
+	void Renderer::drawRectangle(Vector2 position, Vector2 size, const Texture& tex, float x1,
+	                             float x2, float y1, float y2, Color tint, int z)
+	{
+		Vector2 p1{ position.x, position.y };
+		Vector2 p2{ position.x + size.x, position.y };
+		Vector2 p3{ position.x + size.x, position.y + size.y };
+		Vector2 p4{ position.x, position.y + size.y };
+		drawQuad(p4, p3, p1, p2, tex, x1, x2, y1, y2, tint, z);
+	}
+
+	void Renderer::pushQuad(const std::array<DirectX::XMVECTOR, 4>& pos,
+	                        const std::array<DirectX::XMVECTOR, 4>& uv, const DirectX::XMMATRIX& m,
+	                        const DirectX::XMVECTOR& col, int tex, int z)
+	{
+		Quad q;
+		q.matrix = m;
+		q.texture = tex;
+		q.zIndex = z;
+		for (int i = 0; i < 4; ++i)
+		{
+			q.vertices[i].position = pos[i];
+			q.vertices[i].color = col;
+			q.vertices[i].uv = uv[i];
+		}
+
+		quads.push_back(q);
 		++numQuads;
 		numVertices += 4;
 		numIndices += 6;
@@ -215,16 +208,18 @@ namespace MikuMikuWorld
 		numQuads = 0;
 	}
 
+	void Renderer::bindTexture(int tex)
+	{
+		texID = tex;
+		glBindTexture(GL_TEXTURE_2D, texID);
+	}
+
 	void Renderer::beginBatch()
 	{
 		batchStarted = true;
 		vBuffer.resetBufferPos();
-		vertices.clear();
+		quads.clear();
 		resetRenderStats();
-		if (draws.size() > 1)
-			draws.erase(draws.begin(), std::prev(draws.end()));
-		draws.back().offset = 0;
-		draws.back().length = 0;
 	}
 
 	void Renderer::endBatch()
@@ -233,46 +228,177 @@ namespace MikuMikuWorld
 		numBatchQuads = numQuads;
 
 		batchStarted = false;
-		if (!vertices.size())
+		if (!quads.size())
 			return;
 
-		std::stable_sort(draws.begin(), draws.end(), [](const DrawConfig& d1, const DrawConfig& d2)
-		                 { return d1.channel < d2.channel; });
+		std::stable_sort(quads.begin(), quads.end(),
+		                 [](const Quad& q1, const Quad& q2) { return q1.zIndex < q2.zIndex; });
 
 		vBuffer.bind();
-		for (size_t i = 0; i < draws.size(); i++)
+		bindTexture(quads[0].texture);
+		int vertexCount = 0;
+
+		for (const auto& q : quads)
 		{
-			DrawConfig& config = draws[i];
-			if (i != 0)
+			if (texID != q.texture || vertexCount + 4 >= vBuffer.getCapacity())
 			{
-				DrawConfig& lastConfig = draws[i - 1];
-				if (config.texID != lastConfig.texID || config.texMaskID != lastConfig.texMaskID)
-				{
-					vBuffer.uploadBuffer();
-					vBuffer.flushBuffer();
-					vBuffer.resetBufferPos();
-				}
+				vBuffer.uploadBuffer();
+				vBuffer.flushBuffer();
+				vBuffer.resetBufferPos();
+				vertexCount = 0;
+				bindTexture(q.texture);
 			}
-			bindTexture(config);
-			size_t pushed = 0;
-			do
-			{
-				pushed += vBuffer.pushBuffer(vertices.data() + config.offset + pushed,
-				                             config.length - pushed);
-				if (pushed < config.length)
-				{
-					vBuffer.uploadBuffer();
-					vBuffer.flushBuffer();
-					vBuffer.resetBufferPos();
-				}
-			} while (pushed < config.length);
+
+			vBuffer.pushBuffer(q);
+			vertexCount += 4;
 		}
+
 		vBuffer.uploadBuffer();
 		vBuffer.flushBuffer();
-		vBuffer.resetBufferPos();
+		batchStarted = false;
+	}
 
-		vertices.clear();
-		unbindTexture();
+	void Renderer::endBatchWithBlending(int srcRGB, int dstRGB, int srcA, int dstA)
+	{
+		GLboolean blending = glIsEnabled(GL_BLEND);
+		if (!blending)
+			glEnable(GL_BLEND);
 
+		GLint oldSrcRGB, oldDstRGB, oldSrcAlpha, oldDstAlpha;
+		glGetIntegerv(GL_BLEND_SRC_RGB, &oldSrcRGB);
+		glGetIntegerv(GL_BLEND_DST_RGB, &oldDstRGB);
+		glGetIntegerv(GL_BLEND_SRC_ALPHA, &oldSrcAlpha);
+		glGetIntegerv(GL_BLEND_DST_ALPHA, &oldDstAlpha);
+
+		glBlendFuncSeparate(srcRGB, dstRGB, srcA, dstA);
+		endBatch();
+		glBlendFuncSeparate(oldSrcRGB, oldDstRGB, oldSrcAlpha, oldDstAlpha);
+
+		if (!blending)
+			glDisable(GL_BLEND);
+	}
+
+	void Renderer::endBatchWithDepthTest(int depthFunc)
+	{
+		GLboolean depthTest = glIsEnabled(GL_DEPTH_TEST);
+		GLint oldDepthFunc;
+		if (!depthTest)
+			glEnable(GL_DEPTH_TEST);
+
+		glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
+		glDepthFunc(depthFunc);
+		endBatch();
+		glDepthFunc(oldDepthFunc);
+
+		if (!depthTest)
+			glDisable(GL_DEPTH_TEST);
+	}
+
+	void Renderer::pushQuad(const std::array<DirectX::XMFLOAT4, 4>& pos,
+	                        const std::array<DirectX::XMFLOAT4, 4>& uv, const DirectX::XMMATRIX& m,
+	                        const DirectX::XMFLOAT4& col, int tex, int z)
+	{
+		std::array<DirectX::XMVECTOR, 4> vPos;
+		std::array<DirectX::XMVECTOR, 4> vUv;
+		for (int i = 0; i < 4; ++i)
+		{
+			vPos[i] = DirectX::XMLoadFloat4(&pos[i]);
+			vUv[i] = DirectX::XMLoadFloat4(&uv[i]);
+		}
+		DirectX::XMVECTOR vCol = DirectX::XMLoadFloat4(&col);
+		pushQuad(vPos, vUv, m, vCol, tex, z);
+	}
+
+	void Renderer::pushQuad(const std::array<DirectX::XMFLOAT4, 4>& pos,
+	                        const std::array<DirectX::XMFLOAT4, 4>& uv, const DirectX::XMMATRIX& m,
+	                        const std::array<DirectX::XMFLOAT4, 4>& colors, int tex, int z)
+	{
+		std::array<DirectX::XMVECTOR, 4> vPos;
+		std::array<DirectX::XMVECTOR, 4> vUv;
+		std::array<DirectX::XMVECTOR, 4> vCol;
+		for (int i = 0; i < 4; ++i)
+		{
+			vPos[i] = DirectX::XMLoadFloat4(&pos[i]);
+			vUv[i] = DirectX::XMLoadFloat4(&uv[i]);
+			vCol[i] = DirectX::XMLoadFloat4(&colors[i]);
+		}
+
+		Quad q;
+		q.matrix = m;
+		q.texture = tex;
+		q.zIndex = z;
+		for (int i = 0; i < 4; ++i)
+		{
+			q.vertices[i].position = vPos[i];
+			q.vertices[i].color = vCol[i];
+			q.vertices[i].uv = vUv[i];
+		}
+
+		quads.push_back(q);
+		++numQuads;
+		numVertices += 4;
+		numIndices += 6;
+	}
+
+	void Renderer::pushQuadMasked(const std::array<DirectX::XMFLOAT4, 4>& pos,
+	                              const std::array<DirectX::XMFLOAT4, 4>& baseUV,
+	                              const std::array<DirectX::XMFLOAT4, 4>& maskUV,
+	                              const DirectX::XMFLOAT4& col, int tex, int maskTex)
+	{
+		struct MaskVertex
+		{
+			DirectX::XMFLOAT3 position;
+			DirectX::XMFLOAT4 color;
+			DirectX::XMFLOAT2 baseUV;
+			DirectX::XMFLOAT2 maskUV;
+		};
+
+		MaskVertex vertices[4]{};
+		for (int i = 0; i < 4; ++i)
+		{
+			vertices[i].position = { pos[i].x, pos[i].y, pos[i].z };
+			vertices[i].color = col;
+			vertices[i].baseUV = { baseUV[i].x, baseUV[i].y };
+			vertices[i].maskUV = { maskUV[i].x, maskUV[i].y };
+		}
+
+		unsigned int indices[6]{ 0, 1, 2, 2, 3, 0 };
+		unsigned int vao{}, vbo{}, ebo{};
+		glGenVertexArrays(1, &vao);
+		glGenBuffers(1, &vbo);
+		glGenBuffers(1, &ebo);
+
+		glBindVertexArray(vao);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STREAM_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(MaskVertex), (void*)offsetof(MaskVertex, position));
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(MaskVertex), (void*)offsetof(MaskVertex, color));
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(MaskVertex), (void*)offsetof(MaskVertex, baseUV));
+		glEnableVertexAttribArray(3);
+		glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(MaskVertex), (void*)offsetof(MaskVertex, maskUV));
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, maskTex);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+		glDeleteBuffers(1, &ebo);
+		glDeleteBuffers(1, &vbo);
+		glDeleteVertexArrays(1, &vao);
 	}
 }

@@ -1,0 +1,59 @@
+MikuMikuWorld for UntitledCharts by Monchi Notices
+==================================================
+
+This project, also referred to as MMW4UCbyMonchi, is based directly on
+MikuMikuWorld for UntitledCharts.
+
+Attribution Chain
+-----------------
+
+This project inherits work through the following lineage:
+
+MikuMikuWorld
+-> MikuMikuWorld for Chart Cyanvas
+-> MikuMikuWorld for Untitled Sekai
+-> MikuMikuWorld for UntitledCharts
+-> MikuMikuWorld for UntitledCharts by Monchi / MMW4UCbyMonchi
+
+Copyright and License
+---------------------
+
+The original MikuMikuWorld project is licensed under the MIT License.
+See LICENSE for the original license text and copyright notice.
+
+This project includes modifications from downstream forks in the lineage above.
+Attribution is preserved here so individual names do not need to be displayed in
+prominent application UI.
+
+Known copyright notices inherited from project metadata include:
+
+- Copyright (c) 2022 Crash5b
+- Copyright (c) 2024 Nanashi
+
+These notices are preserved for license and attribution compliance.
+They are not intended as current endorsement or involvement in this fork.
+
+Third-Party Licenses
+--------------------
+
+Third-party dependency license texts are kept under the Licenses directory and
+inside dependency directories where applicable. Those files should be preserved
+when redistributing this project.
+
+Translations
+------------
+
+This project includes community translation work inherited from MikuMikuWorld
+for UntitledCharts and related forks. Translation attribution is maintained in
+project documentation rather than in the About dialog.
+
+Translation metadata previously credited the following contributors:
+
+- Japanese: Mint (@MI11435), and one previous contributor who requested not to be named
+- Spanish: ruii (@mi.honesta.reaccion)
+- Russian: Nobody (@_notfallen_)
+- Vietnamese: @uwulovecrosshand
+- Korean: fjordic
+- Turkish: sctech-tr
+- Brazilian Portuguese: nora (__noradrenaline)
+- Chinese: Guanfei (@_guanfei_)

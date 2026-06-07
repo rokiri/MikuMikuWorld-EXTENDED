@@ -45,14 +45,14 @@ namespace MikuMikuWorld
 		}
 
 		return accBarTicks + ((measure - bars[bIndex].measure) * bars[bIndex].ticksPerMeasure) +
-		       ((i * bars[bIndex].ticksPerMeasure) / total);
+			   ((i * bars[bIndex].ticksPerMeasure) / total);
 	}
 
 	SUSNoteStream SusParser::toSlides(const std::vector<SUSNote>& stream)
 	{
 		std::vector<SUSNote> sortedStream = stream;
 		std::stable_sort(sortedStream.begin(), sortedStream.end(),
-		                 [](const SUSNote& n1, const SUSNote& n2) { return n1.tick < n2.tick; });
+						 [](const SUSNote& n1, const SUSNote& n2) { return n1.tick < n2.tick; });
 
 		bool newSlide = true;
 		SUSNoteStream slides;
@@ -79,7 +79,7 @@ namespace MikuMikuWorld
 	}
 
 	std::vector<SUSNote> SusParser::toNotes(const std::string& header, const std::string& data,
-	                                        int measureBase)
+											int measureBase)
 	{
 		std::vector<SUSNote> notes;
 		int measure = measureBase + std::stoul(header.substr(0, 3).c_str(), nullptr, 10);
@@ -90,10 +90,10 @@ namespace MikuMikuWorld
 				continue;
 
 			notes.push_back(SUSNote{ toTicks(measure, i, data.size()),
-			                         (int)std::stoul(header.substr(4, 1), nullptr, 36) + laneOffset,
-			                         (int)std::stoul(data.substr(i + 1, 1), nullptr, 36),
-			                         (int)std::stoul(data.substr(i, 1), nullptr, 36),
-			                         currentHiSpeedGroup });
+									 (int)std::stoul(header.substr(4, 1), nullptr, 36) + laneOffset,
+									 (int)std::stoul(data.substr(i + 1, 1), nullptr, 36),
+									 (int)std::stoul(data.substr(i, 1), nullptr, 36),
+									 currentHiSpeedGroup });
 		}
 
 		return notes;
@@ -161,7 +161,7 @@ namespace MikuMikuWorld
 		for (int i = 0; i < lines.size(); ++i)
 		{
 			std::string line = trim(lines[i]);
-			if (!startsWith(line, "#"))
+			if (line.empty() || !startsWith(line, "#")) // line.empty() ‚ð’Ç‰Á
 				continue;
 
 			if (line.substr(0, 9) == "#HISPEED ")
@@ -198,10 +198,10 @@ namespace MikuMikuWorld
 				std::string data = l.size() > 1 ? trim(l[1]) : "";
 
 				if (header.size() == 5 && header.substr(header.size() - 2) == "02" &&
-				    isDigit(header))
+					isDigit(header))
 				{
 					barLengths.push_back({ measureOffset + atoi(header.substr(0, 3).c_str()),
-					                       (float)atof((data.c_str())) });
+										   (float)atof((data.c_str())) });
 				}
 				else if (header.size() == 5 && startsWith(header, "BPM"))
 				{
@@ -234,13 +234,13 @@ namespace MikuMikuWorld
 			int measure = barLengths[i].bar;
 			int ticksPerMeasure = barLengths[i].length * ticksPerBeat;
 			ticks = ticks + i == 0 ? 0
-			                       : (measure - barLengths[i - 1].bar) * barLengths[i - 1].length *
-			                             ticksPerBeat;
+								   : (measure - barLengths[i - 1].bar) * barLengths[i - 1].length *
+										 ticksPerBeat;
 
 			bars.push_back(Bar{ measure, ticksPerMeasure, ticks });
 		}
 		std::sort(bars.begin(), bars.end(),
-		          [](const Bar& b1, const Bar& b2) { return b1.measure < b2.measure; });
+				  [](const Bar& b1, const Bar& b2) { return b1.measure < b2.measure; });
 
 		// Process BPM changes
 		std::vector<BPM> bpms;
@@ -260,7 +260,7 @@ namespace MikuMikuWorld
 					continue;
 
 				int tick =
-				    toTicks(line.measureOffset + atoi(header.substr(0, 3).c_str()), i, data.size());
+					toTicks(line.measureOffset + atoi(header.substr(0, 3).c_str()), i, data.size());
 				float bpm = 120;
 
 				if (bpmDefinitions.find(subData) != bpmDefinitions.end())
@@ -270,7 +270,7 @@ namespace MikuMikuWorld
 			}
 		}
 		std::sort(bpms.begin(), bpms.end(),
-		          [](const BPM& a, const BPM& b) { return a.tick < b.tick; });
+				  [](const BPM& a, const BPM& b) { return a.tick < b.tick; });
 
 		// process hi-speed changes
 		std::vector<HiSpeedGroup> hiSpeedGroups;
@@ -316,8 +316,7 @@ namespace MikuMikuWorld
 				group.hiSpeeds.push_back({ measureTicks + tick, speed });
 			}
 			std::stable_sort(group.hiSpeeds.begin(), group.hiSpeeds.end(),
-			                 [](const SusHiSpeed& a, const SusHiSpeed& b)
-			                 { return a.tick < b.tick; });
+							 [](const HiSpeed& a, const HiSpeed& b) { return a.tick < b.tick; });
 
 			hiSpeedGroups.push_back(group);
 		}
@@ -352,7 +351,7 @@ namespace MikuMikuWorld
 
 				std::vector<SUSNote> appendNotes = toNotes(header, data, line.measureOffset);
 				slideStreams[channel].insert(slideStreams[channel].end(), appendNotes.begin(),
-				                             appendNotes.end());
+											 appendNotes.end());
 			}
 			else if (header.size() == 5 && header[3] == '5')
 			{
@@ -365,7 +364,7 @@ namespace MikuMikuWorld
 
 				std::vector<SUSNote> appendNotes = toNotes(header, data, line.measureOffset);
 				guideStreams[channel].insert(guideStreams[channel].end(), appendNotes.begin(),
-				                             appendNotes.end());
+											 appendNotes.end());
 			}
 		}
 
@@ -390,6 +389,6 @@ namespace MikuMikuWorld
 		metadata.waveOffset = waveOffset;
 
 		return SUS{ metadata, taps,       directionals,  slides,     guides,
-			        bpms,     barLengths, hiSpeedGroups, laneOffset, sideLane };
+					bpms,     barLengths, hiSpeedGroups, laneOffset, sideLane };
 	}
 }

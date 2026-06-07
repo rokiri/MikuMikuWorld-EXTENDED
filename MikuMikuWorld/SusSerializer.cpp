@@ -2,132 +2,126 @@
 #include "SUS.h"
 #include "SusExporter.h"
 #include "SusParser.h"
-#include "Constants.h"
 
 namespace MikuMikuWorld
 {
-	constexpr float MIN_LANE = 0.0f;
-	constexpr float MAX_LANE = 11.0f;
-	constexpr float MAX_NOTE_WIDTH = 12.0f;
-}
-
-namespace MikuMikuWorld
-{
-
-	static bool holdIsGuide(const HoldNote& hold)
+	void SusSerializer::serialize(const Score& score, std::string filename)
 	{
-		return !hold.separators.empty() && hold.separators.front().isGuide();
-	}
+		SUS sus = scoreToSus(score);
 
-	static std::string noteKey(const SUSNote& note)
-	{
-		return IO::formatString("%d-%d", note.tick, note.lane);
-	}
-
-	static std::string noteKey(const Note& note)
-	{
-		return IO::formatString("%d-%g", note.tick, note.lane);
-	}
-
-	static std::pair<int, int> barLengthToFraction(float length, float fractionDenom)
-	{
-		int factor = 1;
-		for (int i = 2; i < 10; ++i)
-		{
-			if (fmodf(factor * length, 1) == 0)
-				return { (int)(factor * length), (int)std::pow(2, i) };
-			factor *= 2;
-		}
-		return { 4, 4 };
-	}
-
-
-	void SusSerializer::serialize(const SerializingScore& data, std::string filename)
-	{
-		SUS sus = scoreToSus(data);
 		SusExporter exporter{};
 		exporter.dump(sus, filename, exportComment);
 	}
 
-	SerializingScore SusSerializer::deserialize(std::string filename)
+	Score SusSerializer::deserialize(std::string filename)
 	{
 		SUS sus = SusParser().parse(filename);
 		return susToScore(sus);
 	}
 
-	Result SusSerializer::canSerialize(const SerializingScore& data)
+	bool SusSerializer::canSerialize(const Score& score)
 	{
-		const Score& score = data.score;
+		if (score.metadata.laneExtension != 0)
+			return false;
 
-		if (data.metadata.laneExtension != 0)
-			return Result(ResultStatus::Error, "Lane extension not supported in SUS");
+		for (auto& [_, hiSpeed] : score.hiSpeedChanges)
+			if (hiSpeed.layer != 0)
+				return false;
 
-		for (const auto& [_, note] : score.notes)
+		for (auto& [_, note] : score.notes)
 		{
-			if (note.isHold())
-				continue;
-			if (floorf(note.width) != note.width || floorf(note.lane) != note.lane)
-				return Result(ResultStatus::Error,
-				              "Floating point lane/width not supported in SUS");
+			if (floor(note.width) != note.width || floor(note.lane) != note.lane)
+				return false;
 			if (note.layer != 0)
-				return Result(ResultStatus::Error, "Multiple layers not supported in SUS");
-			if (note.isDummy())
-				return Result(ResultStatus::Error, "Dummy notes not supported in SUS");
+				return false;
+			if (note.dummy)
+				return false;
 			float maxWidth = MAX_NOTE_WIDTH - note.lane;
 			if (note.lane < MIN_LANE || note.lane > MAX_LANE || maxWidth < 0 ||
 			    note.width > maxWidth)
-				return Result(ResultStatus::Error, "Note out of lane bounds");
+				return false;
 		}
 
-		for (const auto& [_, hold] : score.holdNotes)
+		for (auto& [_, hold] : score.holdNotes)
 		{
-			if (hold.fadeType != FadeType::Out && hold.fadeType != FadeType::None &&
-			    hold.fadeType != FadeType::Classic)
-				return Result(ResultStatus::Error, "Unsupported fade type in SUS");
-
-			if (holdIsGuide(hold))
-			{
-				const HoldNoteStep& sep = hold.separators.front();
-				if (sep.guideColor != GuideColor::Green && sep.guideColor != GuideColor::Yellow)
-					return Result(ResultStatus::Error,
-					              "Only green/yellow guide colors supported in SUS");
-			}
-
-			for (const id_t stepID : hold.steps)
-			{
-				const Note& n = score.notes.at(stepID);
-				if (n.ease > EaseType::EaseOut)
-					return Result(ResultStatus::Error, "Unsupported ease type in SUS");
-			}
+			if (hold.guideColor != GuideColor::Green && hold.guideColor != GuideColor::Yellow)
+				return false;
+			if (hold.dummy)
+				return false;
+			if (hold.fadeType != FadeType::Out)
+				return false;
+			for (auto& step : hold.steps)
+				if (step.ease > EaseType::EaseOut)
+					return false;
 		}
 
-		return Result::Ok();
+		return true;
 	}
 
-	SerializingScore SusSerializer::susToScore(const SUS& sus)
+	std::string noteKey(const SUSNote& note)
 	{
-		ScoreMetadata metadata;
-		if (sus.metadata.data.count("title"))
-			metadata.title = sus.metadata.data.at("title");
-		if (sus.metadata.data.count("artist"))
-			metadata.artist = sus.metadata.data.at("artist");
-		if (sus.metadata.data.count("designer"))
-			metadata.author = sus.metadata.data.at("designer");
-		metadata.musicOffset = sus.metadata.waveOffset * 1000.0f;
+		return IO::formatString("%d-%d", note.tick, note.lane);
+	}
+
+	std::string noteKey(const Note& note)
+	{
+		return IO::formatString("%d-%d", note.tick, note.lane);
+	}
+
+	std::pair<int, int> barLengthToFraction(float length, float fractionDenom)
+	{
+		int factor = 1;
+		for (int i = 2; i < 10; ++i)
+		{
+			if (fmodf(factor * length, 1) == 0)
+				return std::make_pair<int, int>(factor * length, std::pow(2, i));
+
+			factor *= 2;
+		}
+
+		return std::pair<int, int>(4, 4);
+	}
+
+	Score SusSerializer::susToScore(const SUS& sus)
+	{
+		ScoreMetadata metadata{
+			sus.metadata.data.at("title"),
+			sus.metadata.data.at("artist"),
+			sus.metadata.data.at("designer"),
+			"",
+			"",
+			sus.metadata.waveOffset * 1000 // seconds -> milliseconds
+		};
 
 		std::vector<std::string> hiSpeedGroupNames;
+
 		for (const auto& group : sus.hiSpeedGroups)
 			hiSpeedGroupNames.push_back(group.name);
 
 		std::unordered_map<std::string, FlickType> flicks;
-		std::unordered_set<std::string> criticals, stepIgnore, easeIns, easeOuts;
-		std::unordered_set<std::string> slideKeys, frictions, hiddenHolds;
+		std::unordered_set<std::string> criticals;
+		std::unordered_set<std::string> stepIgnore;
+		std::unordered_set<std::string> easeIns;
+		std::unordered_set<std::string> easeOuts;
+		std::unordered_set<std::string> slideKeys;
+		std::unordered_set<std::string> frictions;
+		std::unordered_set<std::string> hiddenHolds;
 
 		for (const auto& slides : { sus.slides, sus.guides })
 			for (const auto& slide : slides)
+			{
 				for (const auto& note : slide)
-					if (note.type == 1 || note.type == 2 || note.type == 3 || note.type == 5)
+				{
+					switch (note.type)
+					{
+					case 1:
+					case 2:
+					case 3:
+					case 5:
 						slideKeys.insert(noteKey(note));
+					}
+				}
+			}
 
 		for (const auto& dir : sus.directionals)
 		{
@@ -149,6 +143,8 @@ namespace MikuMikuWorld
 			case 5:
 			case 6:
 				easeOuts.insert(key);
+				break;
+			default:
 				break;
 			}
 		}
@@ -181,440 +177,505 @@ namespace MikuMikuWorld
 				hiddenHolds.insert(key);
 				criticals.insert(key);
 				break;
+			default:
+				break;
 			}
 		}
 
-		NoteCollection notes;
-		HoldNoteCollection holds;
-		id_t nextNoteID = 0;
-		id_t nextHoldID = 0;
+		std::unordered_map<id_t, Note> notes;
+		notes.reserve(sus.taps.size());
 
-		Score score;
-		score.fever = Fever{ -1, -1 };
+		std::unordered_map<id_t, HoldNote> holds;
+		holds.reserve(sus.slides.size());
 
-		for (const auto& tap : sus.taps)
+		std::unordered_map<id_t, SkillTrigger> skills;
+		Fever fever{ -1, -1 };
+
+		std::unordered_set<std::string> cyanvasStyleCriticalTraces;
+
+		// Cyanvas extension: disable fever and skills
+
+		for (const auto& note : sus.taps)
 		{
-			if (tap.lane == 0 && tap.width == 1 && tap.type == 4)
-			{
-				score.skills.insert(Skill{ tap.tick, SkillEffect::Score, 1 });
-				continue;
-			}
+			/* if (note.type == 4) */
+			/* { */
+			/* skills.push_back(SkillTrigger{ nextSkillID++, note.tick }); */
+			/* } */
+			/* else if (note.lane == 15 && note.width == 1) */
+			/* { */
+			/* 	if (note.type == 1) */
+			/* 		fever.startTick = note.tick; */
+			/* 	else if (note.type == 2) */
+			/* 		fever.endTick = note.tick; */
+			/* } */
+			/* else if (note.type == 7 || note.type == 8) */
+			/* { */
+			/* 	// Invisible slide tap point */
+			/* 	continue; */
+			/* } */
 
-			if (tap.lane == 15 && tap.width == 1)
-			{
-				if (tap.type == 1)
-				{
-					score.fever.startTick = tap.tick;
-					continue;
-				}
-				if (tap.type == 2)
-				{
-					score.fever.endTick = tap.tick;
-					continue;
-				}
-			}
-
-			if (!sus.sideLane && (tap.lane - 2 < MIN_LANE || tap.lane - 2 > MAX_LANE))
+			if (!sus.sideLane && (note.lane - 2 < MIN_LANE || note.lane - 2 > MAX_LANE))
 				continue;
 
-			const std::string key = noteKey(tap);
-			if (slideKeys.count(key))
+			const std::string key = noteKey(note);
+
+			// Conflict with skip slide steps and hidden holds
+			if (slideKeys.find(key) != slideKeys.end())
 				continue;
 
 			Note n;
-			if (tap.type == 4)
+			if (note.type == 4)
 			{
-				n.type = NoteType::Damage;
+				n = Note(NoteType::Damage, note.tick, note.lane - 2, note.width);
+				n.critical = false;
+				n.friction = false;
+				n.flick = FlickType::None;
 			}
 			else
 			{
-				n.type = NoteType::Tap;
-				if (criticals.count(key))
-					n.flag = setFlag(n.flag, NoteFlag::Critical);
-				if (frictions.count(key) || stepIgnore.count(key))
-					n.flag = setFlag(n.flag, NoteFlag::Trace);
-				n.flick = flicks.count(key) ? flicks[key] : FlickType::None;
+				n = Note(NoteType::Tap, note.tick, note.lane - 2, note.width);
+				n.critical = criticals.find(key) != criticals.end();
+				n.friction = frictions.find(key) != frictions.end() ||
+				             stepIgnore.find(key) != stepIgnore.end();
+				n.flick = flicks.find(key) != flicks.end() ? flicks[key] : FlickType::None;
+				if (n.critical && n.friction)
+				{
+					if (cyanvasStyleCriticalTraces.find(key) != cyanvasStyleCriticalTraces.end())
+					{
+						continue;
+					}
+					cyanvasStyleCriticalTraces.insert(key);
+				}
 			}
-			n.tick = tap.tick;
-			n.lane = (float)(tap.lane - 2);
-			n.width = (float)tap.width;
-			n.layer = (id_t)std::distance(
+			n.layer = std::distance(
 			    hiSpeedGroupNames.begin(),
-			    std::find(hiSpeedGroupNames.begin(), hiSpeedGroupNames.end(), tap.hiSpeedGroup));
-			n.ID = nextNoteID++;
+			    std::find(hiSpeedGroupNames.begin(), hiSpeedGroupNames.end(), note.hiSpeedGroup));
+			n.ID = Note::getNextID();
+
 			notes[n.ID] = n;
 		}
 
-		auto slideFillFunc = [&](const SUSNoteStream& slideStream, bool isGuideSlides)
+		// Not the best way to handle this but it will do the job
+		auto slideFillFunc =
+		    [&](const std::vector<std::vector<SUSNote>>& slides, bool isGuideSlides)
 		{
-			for (const auto& slide : slideStream)
+			for (const auto& slide : slides)
 			{
-				if (slide.size() < 2)
-					continue;
-
 				bool isGuide = isGuideSlides;
 				const std::string key = noteKey(slide[0]);
-				bool critical = criticals.count(key) > 0;
+
+				auto start = std::find_if(slide.begin(), slide.end(), [](const SUSNote& a)
+				                          { return a.type == 1 || a.type == 2; });
+
+				if (start == slide.end() || slide.size() < 2)
+					continue;
+
+				bool critical = criticals.find(key) != criticals.end();
 
 				HoldNote hold;
-				hold.ID = nextHoldID;
+				int startID = Note::getNextID();
+				hold.steps.reserve(slide.size() - 2);
 
-				HoldNoteStep firstSep;
-				firstSep.flag = isGuide ? HoldNoteFlag::Guide : HoldNoteFlag::Normal;
-				if (critical)
-					firstSep.flag = firstSep.flag | HoldNoteFlag::Critical;
-				firstSep.guideColor = GuideColor::Green;
-
-				for (const auto& susNote : slide)
+				for (const auto& note : slide)
 				{
-					const std::string nkey = noteKey(susNote);
-					EaseType ease = EaseType::Linear;
-					if (easeIns.count(nkey))
-						ease = EaseType::EaseIn;
-					if (easeOuts.count(nkey))
-						ease = EaseType::EaseOut;
+					const std::string key = noteKey(note);
 
-					switch (susNote.type)
+					EaseType ease = EaseType::Linear;
+					if (easeIns.find(key) != easeIns.end())
 					{
+						ease = EaseType::EaseIn;
+					}
+					else if (easeOuts.find(key) != easeOuts.end())
+					{
+						ease = EaseType::EaseOut;
+					}
+
+					switch (note.type)
+					{
+						// start
 					case 1:
 					{
-						Note n;
-						n.type = NoteType::Tap;
-						n.tick = susNote.tick;
-						n.lane = (float)(susNote.lane - 2);
-						n.width = (float)susNote.width;
-						n.layer = (id_t)std::distance(hiSpeedGroupNames.begin(),
-						                              std::find(hiSpeedGroupNames.begin(),
-						                                        hiSpeedGroupNames.end(),
-						                                        susNote.hiSpeedGroup));
-						n.holdID = nextHoldID;
-						n.ID = nextNoteID++;
-						n.ease = ease;
-						if (critical)
-							n.flag = setFlag(n.flag, NoteFlag::Critical);
-						if (isGuide)
+						Note n(NoteType::Hold, note.tick, note.lane - 2, note.width);
+						n.critical = critical;
+						n.layer =
+						    std::distance(hiSpeedGroupNames.begin(),
+						                  std::find(hiSpeedGroupNames.begin(),
+						                            hiSpeedGroupNames.end(), note.hiSpeedGroup));
+						n.ID = startID;
+
+						if (isGuide || (hiddenHolds.find(noteKey(note)) != hiddenHolds.end() &&
+						                stepIgnore.find(key) != stepIgnore.end()))
 						{
-							n.flag = setFlag(n.flag, NoteFlag::Hidden);
-							firstSep.guideColor = critical ? GuideColor::Yellow : GuideColor::Green;
+							isGuide = true;
+							if (critical)
+							{
+								hold.guideColor = GuideColor::Yellow;
+							}
+							hold.startType = HoldNoteType::Guide;
 						}
 						else
 						{
-							if (frictions.count(nkey) || stepIgnore.count(nkey))
-								n.flag = setFlag(n.flag, NoteFlag::Trace);
-							if (hiddenHolds.count(nkey))
-								n.flag = setFlag(n.flag, NoteFlag::Hidden);
+							n.friction = frictions.find(noteKey(note)) != frictions.end() ||
+							             stepIgnore.find(key) != stepIgnore.end();
+							hold.startType = hiddenHolds.find(noteKey(note)) != hiddenHolds.end()
+							                     ? HoldNoteType::Hidden
+							                     : HoldNoteType::Normal;
 						}
-						firstSep.ID = n.ID;
+
 						notes[n.ID] = n;
-						hold.steps.push_back(n.ID);
+						hold.start = HoldStep{ n.ID, HoldStepType::Normal, ease };
 					}
 					break;
-
+					// end
 					case 2:
 					{
-						Note n;
-						n.type = NoteType::Tap;
-						n.tick = susNote.tick;
-						n.lane = (float)(susNote.lane - 2);
-						n.width = (float)susNote.width;
-						n.layer = (id_t)std::distance(hiSpeedGroupNames.begin(),
-						                              std::find(hiSpeedGroupNames.begin(),
-						                                        hiSpeedGroupNames.end(),
-						                                        susNote.hiSpeedGroup));
-						n.holdID = nextHoldID;
-						n.ID = nextNoteID++;
-						if (critical || criticals.count(nkey))
-							n.flag = setFlag(n.flag, NoteFlag::Critical);
+						Note n(NoteType::HoldEnd, note.tick, note.lane - 2, note.width);
+						n.critical = (critical ? true : (criticals.find(key) != criticals.end()));
+						n.layer =
+						    std::distance(hiSpeedGroupNames.begin(),
+						                  std::find(hiSpeedGroupNames.begin(),
+						                            hiSpeedGroupNames.end(), note.hiSpeedGroup));
+						n.ID = Note::getNextID();
+						n.parentID = startID;
+
 						if (isGuide)
 						{
-							n.flag = setFlag(n.flag, NoteFlag::Hidden);
-							hold.fadeType =
-							    hiddenHolds.count(nkey) ? FadeType::None : FadeType::Out;
+							hold.endType = HoldNoteType::Guide;
+							hold.fadeType = hiddenHolds.find(noteKey(note)) != hiddenHolds.end()
+							                    ? FadeType::None
+							                    : FadeType::Out;
 						}
 						else
 						{
-							n.flick = flicks.count(nkey) ? flicks[nkey] : FlickType::None;
-							if (frictions.count(nkey) || stepIgnore.count(nkey))
-								n.flag = setFlag(n.flag, NoteFlag::Trace);
-							if (hiddenHolds.count(nkey))
-								n.flag = setFlag(n.flag, NoteFlag::Hidden);
-							hold.fadeType = FadeType::Out;
+							n.flick =
+							    flicks.find(key) != flicks.end() ? flicks[key] : FlickType::None;
+							n.friction = frictions.find(noteKey(note)) != frictions.end() ||
+							             stepIgnore.find(key) != stepIgnore.end();
+							hold.endType = hiddenHolds.find(noteKey(note)) != hiddenHolds.end()
+							                   ? HoldNoteType::Hidden
+							                   : HoldNoteType::Normal;
 						}
+
 						notes[n.ID] = n;
-						hold.steps.push_back(n.ID);
+						hold.end = n.ID;
 					}
 					break;
-
+					// mid
 					case 3:
 					case 5:
 					{
-						Note n;
-						n.type = NoteType::Tap;
-						n.tick = susNote.tick;
-						n.lane = (float)(susNote.lane - 2);
-						n.width = (float)susNote.width;
-						n.layer = (id_t)std::distance(hiSpeedGroupNames.begin(),
-						                              std::find(hiSpeedGroupNames.begin(),
-						                                        hiSpeedGroupNames.end(),
-						                                        susNote.hiSpeedGroup));
-						n.holdID = nextHoldID;
-						n.ID = nextNoteID++;
-						n.ease = ease;
-						if (critical)
-							n.flag = setFlag(n.flag, NoteFlag::Critical);
-						if (susNote.type == 5)
-							n.flag = setFlag(n.flag, NoteFlag::Hidden);
-						if (stepIgnore.count(nkey))
-							n.flag = setFlag(n.flag, NoteFlag::Attached);
+						Note n(NoteType::HoldMid, note.tick, note.lane - 2, note.width);
+						n.critical = critical;
+						n.layer =
+						    std::distance(hiSpeedGroupNames.begin(),
+						                  std::find(hiSpeedGroupNames.begin(),
+						                            hiSpeedGroupNames.end(), note.hiSpeedGroup));
+						n.friction = false;
+						n.ID = Note::getNextID();
+						n.parentID = startID;
+
+						if (n.friction)
+							printf("Note at %d-%d is friction", (int)n.tick, (int)n.lane);
+
+						HoldStepType type =
+						    note.type == 3 ? HoldStepType::Normal : HoldStepType::Hidden;
+						if (stepIgnore.find(key) != stepIgnore.end())
+						{
+							type = HoldStepType::Skip;
+						}
+
 						notes[n.ID] = n;
-						hold.steps.push_back(n.ID);
+						hold.steps.push_back(HoldStep{ n.ID, type, ease });
 					}
 					break;
+					default:
+						break;
 					}
 				}
 
-				if (hold.steps.size() < 2)
+				if (hold.start.ID == 0 || hold.end == 0)
+				{
+					// throw std::runtime_error("Invalid hold note");
 					continue;
-				hold.separators.push_back(firstSep);
-				hold.sortSteps(notes);
-				holds[nextHoldID++] = hold;
+				}
+				holds[startID] = hold;
 			}
 		};
 
 		slideFillFunc(sus.slides, false);
 		slideFillFunc(sus.guides, true);
 
-		score.notes = std::move(notes);
-		score.holdNotes = std::move(holds);
+		std::vector<Tempo> tempos;
+		tempos.reserve(sus.bpms.size());
+		if (sus.bpms.size() == 0)
+			tempos.push_back(Tempo(0, 120));
+		for (const auto& tempo : sus.bpms)
+			tempos.push_back(Tempo(tempo.tick, tempo.bpm));
 
-		if (sus.bpms.empty())
-			score.tempoChanges[0] = Tempo{ 0, 120.0f };
-		else
-			for (const auto& bpm : sus.bpms)
-				score.tempoChanges[bpm.tick] = Tempo{ bpm.tick, bpm.bpm };
-
+		std::map<int, TimeSignature> timeSignatures;
 		for (const auto& sign : sus.barlengths)
 		{
-			auto frac = barLengthToFraction(sign.length, 4.0f);
-			score.timeSignatures[sign.bar] = TimeSignature{ sign.bar, frac.first, frac.second };
+			auto fraction = barLengthToFraction(sign.length, 4.0f);
+			timeSignatures.insert(std::pair<int, TimeSignature>(
+			    sign.bar, TimeSignature{ sign.bar, fraction.first, fraction.second }));
 		}
 
-		score.layers.clear();
-		if (sus.hiSpeedGroups.empty())
+		std::vector<Layer> layers;
+		std::unordered_map<id_t, HiSpeedChange> hiSpeedChanges;
+		int hiSpeedChangesCount = 0;
+		for (const auto& group : sus.hiSpeedGroups)
+			for (const auto& change : group.hiSpeeds)
+				hiSpeedChangesCount++;
+		hiSpeedChanges.reserve(hiSpeedChangesCount);
+		int hiSpeedGroupIndex = -1;
+		for (const auto& speed : sus.hiSpeedGroups)
 		{
-			score.layers.emplace_back("default");
-		}
-		else
-		{
-			for (int gi = 0; gi < (int)sus.hiSpeedGroups.size(); ++gi)
+			hiSpeedGroupIndex++;
+			layers.push_back(Layer{ IO::formatString("#%d", hiSpeedGroupIndex) });
+			for (const auto& change : speed.hiSpeeds)
 			{
-				Layer layer(IO::formatString("#%d", gi));
-				for (const auto& hs : sus.hiSpeedGroups[gi].hiSpeeds)
-				{
-					MikuMikuWorld::HiSpeed h;
-					h.tick = hs.tick;
-					h.layer = gi;
-					h.speed = hs.speed;
-					layer.hiSpeedChanges[hs.tick] = h;
-				}
-				score.layers.push_back(std::move(layer));
+				id_t id = getNextHiSpeedID();
+				hiSpeedChanges[id] = { id, change.tick, change.speed, hiSpeedGroupIndex };
 			}
 		}
+		if (layers.size() == 0)
+			layers.push_back(Layer{ "default" });
 
-		return { score, metadata };
+		Score score;
+		score.metadata = metadata;
+		score.notes = notes;
+		score.holdNotes = holds;
+		score.tempoChanges = tempos;
+		score.timeSignatures = timeSignatures;
+		score.layers = layers;
+		score.hiSpeedChanges = hiSpeedChanges;
+		score.skills = skills;
+		score.fever = fever;
+
+		return score;
 	}
 
-
-	SUS SusSerializer::scoreToSus(const SerializingScore& data)
+	SUS SusSerializer::scoreToSus(const Score& score)
 	{
-		const Score& score = data.score;
-		const ScoreMetadata& metadata = data.metadata;
+		constexpr std::array<int, static_cast<int>(FlickType::FlickTypeCount)> flickToType{ 0, 1, 3,
+			                                                                                4 };
 
-		constexpr int flickToType[] = { 0, 1, 3, 4, 0, 0, 0 };
-		int offset = metadata.laneExtension == 0 ? 2 : metadata.laneExtension;
+		int offset = score.metadata.laneExtension == 0 ? 2 : score.metadata.laneExtension;
 
 		std::vector<SUSNote> taps, directionals;
-		std::vector<std::vector<SUSNote>> slides, guides;
+		std::vector<std::vector<SUSNote>> slides;
+		std::vector<std::vector<SUSNote>> guides;
 		std::vector<BPM> bpms;
 		std::vector<BarLength> barlengths;
+		std::vector<HiSpeed> hiSpeeds;
 
 		std::unordered_map<int, std::string> hiSpeedGroupNames;
-		for (int i = 0; i < (int)score.layers.size(); ++i)
+
+		for (int i = 0; i < score.layers.size(); i++)
 		{
-			char b36[8]{};
+			char b36[36];
 			IO::tostringBaseN(b36, i, 36);
-			std::string s(b36);
-			if (s.size() == 1)
-				s = "0" + s;
-			hiSpeedGroupNames[i] = s;
+
+			std::string b36Str(b36);
+
+			if (b36Str.size() == 1)
+				b36Str = "0" + b36Str;
+
+			hiSpeedGroupNames[i] = b36Str;
 		}
 
 		std::unordered_set<std::string> criticalKeys;
-		for (const auto& [_, note] : score.notes)
+		for (const auto& [id, note] : score.notes)
 		{
-			if (note.isHold())
-				continue;
-
-			if (note.type == NoteType::Tap)
+			if (note.getType() == NoteType::Tap)
 			{
-				int type = note.isTrace() ? 5 : 1;
-				if (note.isCrit())
+				int type = note.friction ? 5 : 1;
+				if (note.critical)
 				{
 					type++;
 					criticalKeys.insert(noteKey(note));
 				}
 				taps.push_back(SUSNote{ note.tick, (int)note.lane + offset, (int)note.width, type,
-				                        hiSpeedGroupNames[(int)note.layer] });
-				if (note.isFlick() && note.flick < FlickType::Down)
+				                        hiSpeedGroupNames[note.layer] });
+
+				if (note.isFlick())
 					directionals.push_back(SUSNote{ note.tick, (int)note.lane + offset,
 					                                (int)note.width,
-					                                flickToType[(int)note.flick] });
+					                                flickToType[static_cast<int>(note.flick)] });
 			}
-			else if (note.type == NoteType::Damage)
-			{
+			if (note.getType() == NoteType::Damage)
 				taps.push_back(SUSNote{ note.tick, (int)note.lane + offset, (int)note.width, 4,
-				                        hiSpeedGroupNames[(int)note.layer] });
-			}
+				                        hiSpeedGroupNames[note.layer] });
 		}
 
-		std::vector<const HoldNote*> sortedHolds;
-		sortedHolds.reserve(score.holdNotes.size());
+		/*
+		    Generally guides can be placed on the same tick and lane (key) as other notes.
+		    If one of those notes or the guide is critical however, it will cause all the notes with
+		   the same key to be critical.
+		*/
+		std::vector<HoldNote> exportHolds;
+		exportHolds.reserve(score.holdNotes.size());
+
 		for (const auto& [_, hold] : score.holdNotes)
-			sortedHolds.push_back(&hold);
-		std::sort(sortedHolds.begin(), sortedHolds.end(),
-		          [&score](const HoldNote* a, const HoldNote* b)
-		          {
-			          return score.notes.at(a->steps.front()).tick <
-			                 score.notes.at(b->steps.front()).tick;
-		          });
+			exportHolds.emplace_back(hold);
 
-		for (const HoldNote* holdPtr : sortedHolds)
+		std::sort(exportHolds.begin(), exportHolds.end(),
+		          [&score](const HoldNote& a, const HoldNote& b)
+		          { return score.notes.at(a.start.ID).tick < score.notes.at(b.start.ID).tick; });
+
+		for (const auto& hold : exportHolds)
 		{
-			const HoldNote& hold = *holdPtr;
-			if (hold.steps.size() < 2)
-				continue;
-
-			const Note& startNote = score.notes.at(hold.steps.front());
-			const Note& endNote = score.notes.at(hold.steps.back());
-			const bool isGuide = holdIsGuide(hold);
-			const bool critical = startNote.isCrit();
-
 			std::vector<SUSNote> slide;
-			slide.reserve(hold.steps.size());
+			slide.reserve(hold.steps.size() + 2);
 
-			slide.push_back(SUSNote{ startNote.tick, (int)startNote.lane + offset,
-			                         (int)startNote.width, 1,
-			                         hiSpeedGroupNames[(int)startNote.layer] });
+			const Note& start = score.notes.at(hold.start.ID);
 
-			if (startNote.ease != EaseType::Linear)
-				directionals.push_back(SUSNote{ startNote.tick, (int)startNote.lane + offset,
-				                                (int)startNote.width,
-				                                startNote.ease == EaseType::EaseIn ? 2 : 6 });
+			slide.push_back(SUSNote{ start.tick, (int)start.lane + offset, (int)start.width, 1,
+			                         hiSpeedGroupNames[start.layer] });
 
-			bool guideAlreadyOnCritical = isGuide && criticalKeys.count(noteKey(startNote)) > 0;
-			int startTapType = startNote.isHidden() ? 7 : startNote.isTrace() ? 5 : 1;
-			bool isYellowGuide =
-			    isGuide && hold.separators.front().guideColor == GuideColor::Yellow;
-			if ((critical || isYellowGuide) && !criticalKeys.count(noteKey(startNote)))
+			bool hasEase = hold.start.ease != EaseType::Linear;
+			bool invisibleTapPoint = hold.startType == HoldNoteType::Hidden ||
+			                         hold.startType != HoldNoteType::Normal && hasEase ||
+			                         hold.startType != HoldNoteType::Normal && start.critical;
+
+			if (hasEase)
+				directionals.push_back(SUSNote{ start.tick, (int)start.lane + offset,
+				                                (int)start.width,
+				                                hold.start.ease == EaseType::EaseIn ? 2 : 6 });
+
+			bool guideAlreadyOnCritical =
+			    hold.isGuide() && criticalKeys.find(noteKey(start)) != criticalKeys.end();
+
+			// We'll use type 1 to indicate it's a normal note
+			int type = invisibleTapPoint ? 7 : start.friction ? 5 : 1;
+			if ((start.critical || hold.guideColor == GuideColor::Yellow) &&
+			    criticalKeys.find(noteKey(start)) == criticalKeys.end())
 			{
-				startTapType++;
-				criticalKeys.insert(noteKey(startNote));
+				type++;
+				criticalKeys.insert(noteKey(start));
 			}
-			if (startTapType != 1 &&
-			    !((startTapType == 7 || startTapType == 8) && guideAlreadyOnCritical))
-				taps.push_back({ startNote.tick, (int)startNote.lane + offset, (int)startNote.width,
-				                 startTapType });
 
-			for (int si = 1; si < (int)hold.steps.size() - 1; ++si)
+			if (type > 1 && !((type == 7 || type == 8) && guideAlreadyOnCritical))
+				taps.push_back({ start.tick, (int)start.lane + offset, (int)start.width, type });
+
+			for (const auto& step : hold.steps)
 			{
-				const Note& mid = score.notes.at(hold.steps[si]);
-				int susType = mid.isHidden() ? 5 : 3;
-				slide.push_back(SUSNote{ mid.tick, (int)mid.lane + offset, (int)mid.width, susType,
-				                         hiSpeedGroupNames[(int)mid.layer] });
-				if (mid.isAttached())
-					taps.push_back(SUSNote{ mid.tick, (int)mid.lane + offset, (int)mid.width, 3 });
-				else if (mid.ease != EaseType::Linear)
+				const Note& midNote = score.notes.at(step.ID);
+
+				slide.push_back(SUSNote{
+				    midNote.tick, (int)midNote.lane + offset, (int)midNote.width,
+				    step.type == HoldStepType::Hidden ? 5 : 3, hiSpeedGroupNames[midNote.layer] });
+				if (step.type == HoldStepType::Skip)
 				{
-					int midTapType = isGuide ? (critical ? 8 : 7) : 1;
 					taps.push_back(
-					    SUSNote{ mid.tick, (int)mid.lane + offset, (int)mid.width, midTapType });
+					    SUSNote{ midNote.tick, (int)midNote.lane + offset, (int)midNote.width, 3 });
+				}
+				else if (step.ease != EaseType::Linear)
+				{
+					int stepTapType = hold.isGuide() ? start.critical ? 8 : 7 : 1;
+					taps.push_back(SUSNote{ midNote.tick, (int)midNote.lane + offset,
+					                        (int)midNote.width, stepTapType });
 					directionals.push_back(SUSNote{
-					    mid.tick, (int)mid.lane + offset, (int)mid.width,
-					    mid.ease == EaseType::EaseIn ? 2 : 6, hiSpeedGroupNames[(int)mid.layer] });
+					    midNote.tick, (int)midNote.lane + offset, (int)midNote.width,
+					    step.ease == EaseType::EaseIn ? 2 : 6, hiSpeedGroupNames[midNote.layer] });
 				}
 			}
 
-			slide.push_back(
-			    SUSNote{ endNote.tick, (int)endNote.lane + offset, (int)endNote.width, 2 });
+			const Note& end = score.notes.at(hold.end);
 
-			if (!isGuide && endNote.isFlick() && !endNote.isHidden() &&
-			    endNote.flick < FlickType::Down)
-				directionals.push_back(SUSNote{ endNote.tick, (int)endNote.lane + offset,
-				                                (int)endNote.width,
-				                                flickToType[(int)endNote.flick] });
+			slide.push_back(SUSNote{ end.tick, (int)end.lane + offset, (int)end.width, 2 });
 
-			int endTapType = endNote.isHidden() ? 7 : endNote.isTrace() ? 5 : 1;
-			if (endNote.isCrit())
+			// Hidden and guide slides do not have flicks
+			if (end.isFlick() && hold.endType == HoldNoteType::Normal)
 			{
-				endTapType++;
-				criticalKeys.insert(noteKey(endNote));
+				directionals.push_back(SUSNote{ end.tick, (int)end.lane + offset, (int)end.width,
+				                                flickToType[static_cast<int>(end.flick)] });
+				// Critical friction notes use type 6 not 2
+				if (end.critical && !start.critical && !end.friction)
+					taps.push_back(SUSNote{ end.tick, (int)end.lane + offset, (int)end.width, 2 });
+			}
+
+			int endType = hold.endType == HoldNoteType::Hidden ? 7 : end.friction ? 5 : 1;
+			if (end.critical)
+			{
+				endType++;
+				criticalKeys.insert(noteKey(end));
 			}
 			if (hold.fadeType == FadeType::None)
-				endTapType = 4;
-			if (endTapType != 1 && endTapType != 2)
-				taps.push_back(SUSNote{ endNote.tick, (int)endNote.lane + offset,
-				                        (int)endNote.width, endTapType });
+				endType = 4;
 
-			if (isGuide)
+			if (endType != 1 && endType != 2)
+				taps.push_back(
+				    SUSNote{ end.tick, (int)end.lane + offset, (int)end.width, endType });
+
+			if (hold.isGuide())
+			{
 				guides.push_back(slide);
+			}
 			else
+			{
 				slides.push_back(slide);
+			}
 		}
 
-		for (const auto& [tick, tempo] : score.tempoChanges)
-			bpms.push_back(BPM{ tick, tempo.quarterPerMinute });
-		if (bpms.empty())
-			bpms.push_back(BPM{ 0, 120.0f });
-
-		for (const auto& [_, ts] : score.timeSignatures)
-			barlengths.push_back(
-			    BarLength{ ts.measure, ((float)ts.numerator / (float)ts.denominator) * 4.0f });
-
-	
-		for (const auto& skill : score.skills)
-			taps.push_back(SUSNote{ skill.tick, 0, 1, 4,
-			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
-
+		for (const auto& [_, skill] : score.skills)
+			taps.push_back(SUSNote{ skill.tick, 0, 1, 4 });
 
 		if (score.fever.startTick != -1)
-			taps.push_back(SUSNote{ score.fever.startTick, 15, 1, 1,
-			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
+			taps.push_back(SUSNote{ score.fever.startTick, 15, 1, 1 });
+
 		if (score.fever.endTick != -1)
-			taps.push_back(SUSNote{ score.fever.endTick, 15, 1, 2,
-			                        hiSpeedGroupNames.count(0) ? hiSpeedGroupNames[0] : "00" });
+			taps.push_back(SUSNote{ score.fever.endTick, 15, 1, 2 });
 
+		for (const auto& tempo : score.tempoChanges)
+			bpms.push_back(BPM{ tempo.tick, tempo.bpm });
 
-		std::vector<HiSpeedGroup> hiSpeedGroups;
-		for (int i = 0; i < (int)score.layers.size(); ++i)
+		if (!bpms.size())
+			bpms.push_back(BPM{ 0, 120 });
+
+		for (const auto& [measure, ts] : score.timeSignatures)
+			barlengths.push_back(
+			    BarLength{ ts.measure, ((float)ts.numerator / (float)ts.denominator) * 4 });
+
+		hiSpeeds.reserve(score.hiSpeedChanges.size());
+		for (const auto& [_, hiSpeed] : score.hiSpeedChanges)
+			hiSpeeds.push_back(HiSpeed{ hiSpeed.tick, hiSpeed.speed });
+		SUSMetadata metadata;
+		metadata.data["title"] = score.metadata.title;
+		metadata.data["artist"] = score.metadata.artist;
+		metadata.data["designer"] = score.metadata.author;
+		metadata.requests.push_back("ticks_per_beat 480");
+		metadata.requests.push_back("side_lane true");
+		int laneOffset;
+		if (score.metadata.laneExtension == 0)
 		{
-			HiSpeedGroup group;
-			group.name = hiSpeedGroupNames[i];
-			for (const auto& [tick, hs] : score.layers[i].hiSpeedChanges)
-				group.hiSpeeds.push_back(SusHiSpeed{ tick, hs.speed });
-			hiSpeedGroups.push_back(std::move(group));
+			laneOffset = 0;
+		}
+		else
+		{
+			laneOffset = -score.metadata.laneExtension + 2;
+		}
+		metadata.requests.push_back("lane_offset " + std::to_string(laneOffset));
+		// milliseconds -> seconds
+		metadata.waveOffset = score.metadata.musicOffset / 1000.0f;
+
+		std::vector<HiSpeedGroup> hiSpeedGroup;
+
+		for (int i = 0; i < score.layers.size(); i++)
+		{
+			std::vector<HiSpeed> hiSpeeds;
+
+			for (const auto& [_, hiSpeed] : score.hiSpeedChanges)
+			{
+				if (hiSpeed.layer == i)
+				{
+					hiSpeeds.push_back(HiSpeed{ hiSpeed.tick, hiSpeed.speed });
+				}
+			}
+			hiSpeedGroup.push_back(HiSpeedGroup{ hiSpeedGroupNames[i], hiSpeeds });
 		}
 
-		SUSMetadata susMeta;
-		susMeta.data["title"] = metadata.title;
-		susMeta.data["artist"] = metadata.artist;
-		susMeta.data["designer"] = metadata.author;
-		susMeta.requests.push_back("ticks_per_beat 480");
-		susMeta.requests.push_back("side_lane true");
-		int laneOffset = metadata.laneExtension == 0 ? 0 : -metadata.laneExtension + 2;
-		susMeta.requests.push_back("lane_offset " + std::to_string(laneOffset));
-		susMeta.waveOffset = metadata.musicOffset / 1000.0f;
-
-		return SUS{ susMeta, taps,       directionals,  slides,     guides,
-			        bpms,    barlengths, hiSpeedGroups, laneOffset, true };
+		return SUS{ metadata, taps,       directionals, slides,    guides,
+			        bpms,     barlengths, hiSpeedGroup, laneOffset };
 	}
 }

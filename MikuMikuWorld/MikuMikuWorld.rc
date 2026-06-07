@@ -80,7 +80,7 @@ BEGIN
             VALUE "FileDescription", "MikuMikuWorld for UntitledCharts"
             VALUE "FileVersion", "3.2.1.37"
             VALUE "InternalName", "MikuMikuWorld.exe"
-            VALUE "LegalCopyright", "Copyright (C) 2022"
+            VALUE "LegalCopyright", "Copyright (C) MikuMikuWorld contributors"
             VALUE "OriginalFilename", "MikuMikuWorld.exe"
             VALUE "ProductName", "MikuMikuWorld for UntitledCharts"
             VALUE "ProductVersion", "3.2.1.37"

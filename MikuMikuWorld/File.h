@@ -96,6 +96,7 @@ namespace IO
 		void* parentWindowHandle = nullptr;
 
 		FileDialogResult openFile();
+		FileDialogResult openFolder();
 		FileDialogResult saveFile();
 	};
 

@@ -16,5 +16,6 @@ namespace MikuMikuWorld
 		float getY() const;
 		float getWidth() const;
 		float getHeight() const;
+
 	};
 }

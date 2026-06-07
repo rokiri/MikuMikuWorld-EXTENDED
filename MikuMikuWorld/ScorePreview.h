@@ -14,7 +14,7 @@ namespace MikuMikuWorld
 		Framebuffer frameBuffer;
 		float brightness;
 		bool init;
-
+		
 		struct DefaultJacket
 		{
 			static std::array<DirectX::XMFLOAT4, 4> getLeftUV();
@@ -26,14 +26,14 @@ namespace MikuMikuWorld
 		};
 		void updateDrawDefaultJacket(Renderer* renderer, const Jacket& jacket);
 
-	  public:
+	public:
 		ScorePreviewBackground();
 		~ScorePreviewBackground();
 
 		void setBrightness(float value);
 		void update(Renderer* renderer, const Jacket& jacket);
 		bool shouldUpdate(const Jacket& jacket) const;
-		void draw(Renderer* renderer, float scrWidth, float scrHeight) const;
+		void draw(Renderer* renderer, float scrWidth, float scrHeight) const;		
 	};
 
 	class ScorePreviewWindow
@@ -47,20 +47,18 @@ namespace MikuMikuWorld
 
 		const Texture& getNoteTexture();
 
-		void drawNoteBase(Renderer* renderer, const Note& note, float left, float right, float y,
-		                  float zScalar = 1);
-		void drawTraceDiamond(Renderer* renderer, const Note& note, float left, float right,
-		                      float y);
+		void drawNoteBase(Renderer* renderer, const Note& note, float left, float right, float y, float zScalar = 1);
+		void drawTraceDiamond(Renderer* renderer, const Note& note, float left, float right, float y);
 		void drawFlickArrow(Renderer* renderer, const Note& note, float y, double cur_time);
 
 		void drawStageCoverMask(Renderer* renderer);
-
+		
 		void updateToolbar(ScoreEditorTimeline& timeline, ScoreContext& context) const;
 		float getScrollbarWidth() const;
 		void updateScrollbar(ScoreEditorTimeline& timeline, ScoreContext& context) const;
 
-	  public:
-		ScorePreviewWindow();
+	public:
+		ScorePreviewWindow(); 
 		~ScorePreviewWindow();
 		void update(ScoreContext& context, Renderer* renderer);
 		void updateUI(ScoreEditorTimeline& timeline, ScoreContext& context);
@@ -69,14 +67,14 @@ namespace MikuMikuWorld
 		void drawLines(const ScoreContext& context, Renderer* renderer);
 		void drawHoldTicks(const ScoreContext& context, Renderer* renderer);
 		void drawHoldCurves(const ScoreContext& context, Renderer* renderer);
-
+ 		
 		void drawStage(Renderer* renderer);
 		void drawStageCover(Renderer* renderer);
 		void drawStageCoverDecoration(Renderer* renderer);
 		void loadNoteEffects(Effect::EffectView& effectView);
 
 		void setFullWindow(bool fullScreen);
-
+		
 		inline bool isFullWindow() const { return fullWindow; };
 	};
 }

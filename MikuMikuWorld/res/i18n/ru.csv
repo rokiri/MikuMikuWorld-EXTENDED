@@ -1,10 +1,9 @@
 # code: ru
 # key, value
 
-# translation by Nobody (@_notfallen_), Ababik (@ababikmeoww)
+# translation by Nobody (@_notfallen_)
 
 language_name, Русский
-translator, Nobody (@_notfallen_), Ababik (@ababikmeoww)
 
 # menu bar / бар меню
 file, Файл
@@ -37,7 +36,6 @@ file_not_found_msg2, Он не был найден
 remove_recent_file_not_found, Вы хотите удалить его из недавних файлов?
 yes, Да
 no, Нет
-#- property_enable,
 unsaved_changes, Несохранённые изменения
 ask_save, Сохранить несохранённые изменения?
 warn_unsaved, Любые несохранённые изменения исчезнут.
@@ -46,16 +44,15 @@ discard_changes, Сбросить изменения
 update_available, Обновление приложения доступно!
 update_available_description, Версия %s доступна. Хотите открыть его в браузере?
 score_file, Файл нот
-export_successful, Экспорт успешно завершен
-unknown_file_format, Неизвестный формат файла
-open_as_file_format, Вы хотите открыть его как...
-export_as_file_format, Вы хотите экспортировать его как...
+#- export_successful,
+#- unknown_file_format,
+#- open_as_file_format,
+#- export_as_file_format,
 error, Ошибка
 error_load_score_file, Произошла ошибка при попытке прочитать ноты.
-error_save_score_file, Произошла ошибка при попытке сохранить ноты.
+#- error_save_score_file,
 error_load_music_file, Не удалось открыть файл музыки.
-score_partially_missing, Какая-то часть чарта может отсутствовать!
-export_format_not_avail_extended, Этот формат недоступен для расширенного чарта.
+#- score_partially_missing,
 cancel, Отмена
 general, Общий
 key_config, Конфигурация клавиш
@@ -76,7 +73,6 @@ theme_light, Светлая
 theme_dark, Тёмная
 custom_color, Кастомный цвет
 timeline, Таймлайн
-match_timeline_size_to_window, Сопоставить размер таймлайна с шириной окна
 match_notes_size_to_timeline, Сопоставить размер нот с шириной таймлайна
 lane_width, Ширина полосы
 notes_height, Высота нот
@@ -88,18 +84,14 @@ smooth_scroll_time, Время плавной прокрутки
 return_to_last_tick, Вернуться к последнему тику на паузе
 cursor_auto_scroll, Авто-прокрутка курсора
 cursor_auto_scroll_amount, Процент авто-прокрутки курсора с таймлайна
-#- division_type,
 background, Задний фон
 background_image, Фотография заднего фона
 draw_background, Нарисовать фотографию заднего фона
-background_brightness, Яркость заднего фона
+background_brightnes, Яркость заднего фона
 lanes_opacity, Непрозрачность полосы
 video, Видео
-visuals, Визуал
-notes_skin, Скин ноты
 notes_se, Звуковой эффект нот
 show_tick_in_properties, Показывать тик в характеристиках
-warn_score_extension_disable, Отключение расширённых функций может привести к удалению связанных данных. Вы хотите продолжить?
 
 # score editor / Редактор уровня
 options, Настройки
@@ -112,10 +104,8 @@ hold, Холд
 hold_step, Тик холда
 flick, Флик
 critical, Критикал
-dummy, фейк
-hold_dummy, фейк холд
-hold_critical, Критикал холд
-#- hold_separator,
+#- dummy,
+#- hold_dummy,
 trace, След
 guide, Гайд
 damage, Дамаг
@@ -125,9 +115,9 @@ none, Ничего
 default, По умолчанию
 left, Влево
 right, Вправо
-down, Вниз
-down_left, Вниз влево
-down_right, Вниз вправо
+#- down,
+#- down_left,
+#- down_right,
 normal, Обычный
 hidden, Скрытый
 skip, Пропустить
@@ -136,22 +126,6 @@ ease_in, Ease In
 ease_out, Ease Out
 ease_in_out, Ease In Out
 ease_out_in, Ease Out In
-ease_none, Ease none
-sound_effect, Звук ноты
-sfx_default, Обычный
-sfx_none, Без звука
-sfx_tap, Нота
-sfx_flick, Флик
-sfx_trace, След
-sfx_tick, Тик
-sfx_crit_tap, Критикал
-sfx_crit_flick, Критикал флик
-sfx_crit_trace, Критикал след
-sfx_crit_tick, Критикал тик
-sfx_damage, Дамаг
-hold_layer_top, Сверху
-hold_layer_bottom, Снизу
-hold_layer_tooltip, По умолчанию гайд находится поверх холды. Измените это, чтобы изменить порядок
 delete, Удалить
 copy, Скопировать
 cut, Вырезать
@@ -161,50 +135,45 @@ duplicate, Дублировать
 flip_duplicate, Дублировать и повернуть
 flip, Повернуть
 note_width, Ширина нот
-note_align, Выравнивание ноты
 shrink_down, Уменьшить
 shrink_up, Увеличить
-compress_selection, Сжать
+#- compress_selection,
 connect_holds, Соединить холды
 split_hold, Разделить холды
 repeat_hold_mids, Повторить Тик Холдов
-hold_to_traces, Конвертировать холд в следы
-add_traces_for_hold, Добавить следы в холд
-convert_hold_to_traces, Конвертировать холд в следы
-convert_guide_hold, Конвертировать гайд-холд
-convert_guide_to_hold, Конвертировать гайд в холд
-convert_hold_to_guide, Конвертировать холд в гайд
-convert_hold_to_none, Конвертировать в ничего
+#- hold_to_traces,
+#- add_traces_for_hold,
+#- convert_hold_to_traces,
+#- convert_guide_hold,
+#- convert_guide_to_hold,
+#- convert_hold_to_guide,
 lerp_hispeeds, Интерполяция Hi-Speeds
 step_type, Тип шага
-step_alpha, Прозрачность гайда
 ease_type, Тип изгиба
 flick_type, Тип флика
-hold_type, Тип холды
+hold_type, Тип холда
 fade_type, Тип исчезновения
-hold_start_type, Тип начала холды
-hold_end_type, Тип конца холды
+#- hold_start_type,
+#- hold_end_type,
 metadata, Метадата
 title, Название
 designer, Дизайнер
 artist, Певец
 jacket, Обложка
 lane_extension, Расширение полос
-life_point, Жизнь
 audio, Аудио
 music_file, Файл музыки
 music_offset, Смещение музыки
 volume_master, Общая громкость
 volume_bgm, Громкость песни
 volume_se, Громкость звуковых эффектов
-playback_speed, Скорость воспроизведения
 statistics, Статистика
-hispeeds, Hispeeds
+#- hispeeds,
 taps, Ноты
 flicks, Флики
 holds, Холды
 steps, Тик холдов
-guides, гайды
+#- guides,
 traces, Следы
 total, Общий
 combo, Комбо
@@ -212,42 +181,33 @@ goto_measure, Перейти к измерению
 division, Деление %d
 division_affix, %d Делений
 custom, Кастом
+custom_division, Кастомное деление
 snap_mode, Snapping
 snap_mode_relative, Похожий Snap
 snap_mode_absolute, Абсолютный Snap
 snap_mode_individual_absolute, Индивидуальный Абсолютный Snap
 zoom, Приблизить
-#- zoom_sensitivity,
 show_step_outlines, Показать контуры шагов
-#- hide_step_outlines_during_playback,
 draw_waveform, Показать форму волны
-#- stop_playback_at_music_end,
 edit_bpm, Изменить BPM
 tick, Тик
 remove, Удалить
 edit_time_signature, Изменить отметку времени
 measure, Такт
 skill, Скилл
-skill_effect, Эффект
-skill_effect_score, Score Boost
-skill_effect_heal, Heal
-skill_effect_perfect, Плокер
-skill_level, Level
 increase_note_size, Увеличить размер ноты
 decrease_note_size, Уменьшить размер ноты
 hi_speed, Hi-speed
 edit_hi_speed, Изменить Hi-speed
 hi_speed_speed, Скорость
-hi_speed_skip_beat, Пропустить
-hi_speed_ease, Ease
-hi_speed_ease_none, None
-hi_speed_ease_linear, Линейно
-hi_speed_hide_notes, Скрыть ноты
+#- hi_speed_skip_beat,
+#- hi_speed_ease,
+#- hi_speed_ease_none,
+#- hi_speed_ease_linear,
+#- hi_speed_hide_notes,
 fade_none, Без исчезновения
 fade_in, Исчезновение (в начале)
 fade_out, Исчезновение (в конце)
-fade_custom, Кастом исчезновение
-fade_classic, Классическое исчезновение
 guide_color, Цвет гайда
 guide_neutral, Нейтрально
 guide_red, Красный
@@ -271,12 +231,8 @@ note_properties_hi_speed, Характеристики Hi-Speed
 note_properties_hold_note, Характеристики холд ноты
 note_properties_guide, Характеристики гайд ноты
 note_properties_not_selected, Никаких нот или Hi-Speed не было выбрано
-note_properties_mixed_value,--Mixed--
-translated_by, Перевод от: %s
+#- note_properties_many_hold_notes,
 zoom_tooltip, Ctrl-клик чтобы изменить значение
-timeline_context_not_selected, Таймлайн не открыт и не выбран
-extended_score, Расширённые функции
-note_select_tool_tip, Нажмите Ctrl для выделения или Alt для снятия выделения
 
 # preset manager / менеджер пресетов
 presets, Пресеты
@@ -290,8 +246,8 @@ confirm, Подтвердить
 # layer manager / менеджер слоёв
 layers, Слой
 layer_name, Имя
-#- layer_force_note_speed,
 create_layer, Создать слой
+confirm, Подтвердить
 show_all_layers, Показать все слои
 layer_rename, Переименовать слой
 layer_up, Передвинуть вверх
@@ -300,18 +256,12 @@ layer_merge, Соединить слой
 layer_delete, Удалить слой
 layer_hide, Спрятать слой
 layer_show, Показать слой
-layer_change_order, Изменить порядок слоев
-layer_order_tooltip, Зажмите для перемещения
-layer_merge_warning, Обнаружены hispeed оверлапы, они будут удалены. Вы все равно хотите объединить слои?
 
 # waypoint manager / менеджер меток
 waypoints, Метки
 create_waypoint, Создать метку
 edit_waypoint, Изменить метку
 waypoint_name, Имя
-insert_skill, Создать Skill
-set_fever_start, Установить начало FEVER
-set_fever_end, Установить конец FEVER
 
 # commands / команды
 action, Действие
@@ -333,7 +283,7 @@ timeline_critical, Таймлайн - Вставьте критикал
 timeline_trace, Таймлайн - Вставьте след
 timeline_guide, Таймлайн - Вставьте гайд
 timeline_damage, Таймлайн - Вставьте дамаг
-timeline_dummy, Таймлайн - Вставьте фейк
+#- timeline_dummy,
 timeline_bpm, Таймлайн - Вставьте BPM
 timeline_time_signature, Таймлайн - Вставьте отметку времени
 timeline_hi_speed, Таймлайн - Вставьте Hi-Speed

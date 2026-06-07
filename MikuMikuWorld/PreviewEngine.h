@@ -5,21 +5,24 @@
 #include "Score.h"
 #include "PreviewData.h" // Range構造体を使うために追加
 #include "Rendering/Texture.h"
+#include "Rendering/Sprite.h"
 #include "DirectXMath.h"
 
-namespace DirectX
+namespace DirectX 
 {
 	inline bool XMMatrixIsNull(FXMMATRIX M)
 	{
 		XMVECTOR zero = XMVectorZero();
-		return XMVector4Equal(M.r[0], zero) && XMVector4Equal(M.r[1], zero) &&
-		       XMVector4Equal(M.r[2], zero) && XMVector4Equal(M.r[3], zero);
+		return  XMVector4Equal(M.r[0], zero) &&
+				XMVector4Equal(M.r[1], zero) &&
+				XMVector4Equal(M.r[2], zero) &&
+				XMVector4Equal(M.r[3], zero);
 	}
 }
 
 namespace MikuMikuWorld
 {
-	enum class SpriteType : int
+	enum class SpriteType: int
 	{
 		NoteLeft,
 		NoteMiddle,
@@ -48,8 +51,8 @@ namespace MikuMikuWorld
 		std::unique_ptr<DirectX::XMMATRIX> xy;
 		std::unique_ptr<DirectX::XMMATRIX> yx;
 		DirectX::XMMATRIX yy;
-
-	  public:
+		
+		public:
 		SpriteTransform(float v[64]);
 		std::array<DirectX::XMFLOAT4, 4> apply(const std::array<DirectX::XMFLOAT4, 4>& vPos) const;
 	};
@@ -58,16 +61,12 @@ namespace MikuMikuWorld
 namespace MikuMikuWorld::Engine
 {
 	std::array<DirectX::XMFLOAT4, 4> quadvPos(float left, float right, float top, float bottom);
-	std::array<DirectX::XMFLOAT4, 4> perspectiveQuadvPos(float left, float right, float top,
-	                                                     float bottom);
-	std::array<DirectX::XMFLOAT4, 4> perspectiveQuadvPos(float leftStart, float leftStop,
-	                                                     float rightStart, float rightStop,
-	                                                     float top, float bottom);
+	std::array<DirectX::XMFLOAT4, 4> perspectiveQuadvPos(float left, float right, float top, float bottom);
+	std::array<DirectX::XMFLOAT4, 4> perspectiveQuadvPos(float leftStart, float leftStop, float rightStart, float rightStop, float top, float bottom);
 	std::array<DirectX::XMFLOAT4, 4> quadUV(const Sprite& sprite, const Texture& texture);
 
 	// 【追加】MMW4UC向けに、プレビュー用の時間計算関数をここに定義します
-	double accumulateScaledDuration(int tick, int beatTicks, const std::vector<Tempo>& tempos,
-	                                const HiSpeedCollection& hiSpeeds, int layer = 0);
+	double accumulateScaledDuration(int tick, int beatTicks, const std::vector<Tempo>& tempos, const std::unordered_map<id_t, HiSpeedChange>& hiSpeeds, int layer = 0);
 
 	Range getNoteVisualTime(Note const& note, Score const& score, float noteSpeed);
 
@@ -85,7 +84,7 @@ namespace MikuMikuWorld::Engine
 	{
 		return std::pow(1.06, 45.0 * (progress - 1.0));
 	}
-
+	
 	inline constexpr float STAGE_LANE_TOP = 47;
 	inline constexpr float STAGE_LANE_BOTTOM = 803;
 	inline constexpr float STAGE_LANE_HEIGHT = 850;
@@ -100,32 +99,33 @@ namespace MikuMikuWorld::Engine
 	inline constexpr float STAGE_ZOOM = 927 / 800.f;
 	inline constexpr float BACKGROUND_SIZE = 2462.25;
 
-	inline constexpr float STAGE_WIDTH_RATIO =
-	    Engine::STAGE_ZOOM * Engine::STAGE_LANE_WIDTH /
-	    (Engine::STAGE_TEX_HEIGHT * Engine::STAGE_ASPECT_RATIO) / Engine::STAGE_NUM_LANES;
-	inline constexpr float STAGE_HEIGHT_RATIO =
-	    Engine::STAGE_ZOOM * Engine::STAGE_LANE_HEIGHT / Engine::STAGE_TEX_HEIGHT;
-	inline constexpr float STAGE_TOP_RATIO =
-	    0.5f + Engine::STAGE_ZOOM * Engine::STAGE_LANE_TOP / Engine::STAGE_TEX_HEIGHT;
+	inline constexpr float STAGE_WIDTH_RATIO = Engine::STAGE_ZOOM * Engine::STAGE_LANE_WIDTH / (Engine::STAGE_TEX_HEIGHT * Engine::STAGE_ASPECT_RATIO) / Engine::STAGE_NUM_LANES;
+	inline constexpr float STAGE_HEIGHT_RATIO = Engine::STAGE_ZOOM * Engine::STAGE_LANE_HEIGHT / Engine::STAGE_TEX_HEIGHT;
+	inline constexpr float STAGE_TOP_RATIO = 0.5f + Engine::STAGE_ZOOM * Engine::STAGE_LANE_TOP / Engine::STAGE_TEX_HEIGHT;
 
-	static inline float laneToLeft(float lane) { return lane - 6; }
+	static inline float laneToLeft(float lane)
+	{
+		return lane - 6;
+	}
 	static inline float getNoteCenter(Note const& note)
 	{
-		return laneToLeft(note.lane) + note.width / 2.f;
+		return laneToLeft(note.lane) + note.width / 2.f; 
 	}
-	static inline float getNoteHeight() { return STAGE_NOTE_HEIGHT / STAGE_LANE_HEIGHT / 2.f; }
+	static inline float getNoteHeight()
+	{
+		return STAGE_NOTE_HEIGHT / STAGE_LANE_HEIGHT / 2.f;
+	}
 	static inline int getZIndex(SpriteLayer layer, float xOffset, float yOffset)
 	{
 		static_assert(sizeof(int) == sizeof(int32_t));
-		const auto floatClamp = [](float value, float min, float max)
-		{ return value < min ? min : (value <= max ? value : max); };
-		const auto masknShift = [](int32_t value, int32_t mask, int offset)
-		{ return (value & mask) << offset; };
+		const auto floatClamp = [](float value, float min, float max) { return value < min ? min : (value <= max ? value : max); };
+		const auto masknShift = [](int32_t value, int32_t mask, int offset) { return (value & mask) << offset; };
 		const int32_t mask24 = 0xFFFFFF, mask4 = 0x0F;
 		int32_t y = static_cast<int32_t>(floatClamp(1 - yOffset, 0, 1) * float(mask24) + 0.5f);
-		int32_t x =
-		    static_cast<int32_t>(floatClamp(xOffset / 12.f + 0.5f, 0, 1) * float(12) + 0.5f);
-		return INT32_MAX - masknShift(static_cast<int32_t>(layer), mask4, 32 - 4) -
-		       masknShift(y, mask24, 4) - masknShift(x, mask4, 0);
+		int32_t x = static_cast<int32_t>(floatClamp(xOffset / 12.f + 0.5f, 0, 1) * float(12) + 0.5f);
+		return INT32_MAX
+			- masknShift(static_cast<int32_t>(layer), mask4, 32 - 4)
+			- masknShift(y, mask24, 4)
+			- masknShift(x, mask4, 0);
 	}
 }

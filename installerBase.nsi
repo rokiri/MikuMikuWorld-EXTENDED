@@ -9,7 +9,7 @@
 ; Constants
 !define PRODUCT_NAME "MikuMikuWorld for UntitledCharts"
 !define PRODUCT_DESCRIPTION "MikuMikuWorld for UntitledCharts"
-!define COPYRIGHT "Copyright (c) 2022 Crash5b, 2024 Nanashi."
+!define COPYRIGHT "Copyright (c) MikuMikuWorld contributors"
 !define PRODUCT_VERSION "{version}.0"
 !define SETUP_VERSION "{version}.0"
 

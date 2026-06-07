@@ -2,7 +2,6 @@
 # key, value
 
 language_name,English
-translator,N/A
 
 # menu bar
 file,File
@@ -10,6 +9,7 @@ new,New
 open,Open
 open_recent,Open Recent
 clear,Clear
+file_open_gallery,Open Gallery
 save,Save
 save_as,Save As
 export_score,Export Score
@@ -18,6 +18,8 @@ edit,Edit
 undo,Undo
 redo,Redo
 select_all,Select All
+tools,Tools
+tools_straighten_3d,3D Straighten
 view,View
 settings,Settings
 window,Window
@@ -35,7 +37,6 @@ file_not_found_msg2,was not found
 remove_recent_file_not_found,Do you want to remove it from the recent files list?
 yes,Yes
 no,No
-property_enable,Enable
 unsaved_changes,Unsaved Changes
 ask_save,Save current changes?
 warn_unsaved,Any unsaved changes will be lost.
@@ -53,7 +54,6 @@ error_load_score_file,An error occurred while reading the score file
 error_save_score_file,An error occurred while saving the score file
 error_load_music_file,Cannot open music file
 score_partially_missing,Some of part of the score the might be missing!
-export_format_not_avail_extended,This format is not available for extended score
 cancel,Cancel
 general,General
 key_config,Key Config
@@ -74,7 +74,6 @@ theme_light,Light
 theme_dark,Dark
 custom_color,Custom Color
 timeline,Timeline
-match_timeline_size_to_window,Match timeline width to the window's width
 match_notes_size_to_timeline,Match notes size to timeline width
 lane_width,Lane Width
 notes_height,Notes Height
@@ -86,18 +85,14 @@ smooth_scroll_time,Smooth Scrolling Time
 return_to_last_tick,Return To Last Tick On Pause
 cursor_auto_scroll,Cursor Auto Scroll
 cursor_auto_scroll_amount,Cursor Auto Scroll Percentage From Timeline
-division_type,Display Division Type
 background,Background
 background_image,Background Image
 draw_background,Draw Background Image
-background_brightness,Background Brightness
+background_brightnes,Background Brightness
 lanes_opacity,Lanes Opacity
 video,Video
-visuals,Visuals
-notes_skin,Notes Skin
 notes_se,Notes SE
 show_tick_in_properties,Show Tick in Note Properties Window
-warn_score_extension_disable,Disabling extended features will remove associated data. Do you want to continue?
 
 # score editor
 options,Options
@@ -112,8 +107,6 @@ flick,Flick
 critical,Critical
 dummy,Fake
 hold_dummy,Fake Hold
-hold_critical,Critical Hold
-hold_separator,Hold Separator
 trace,Trace
 guide,Guide
 damage,Damage
@@ -134,22 +127,6 @@ ease_in,Ease In
 ease_out,Ease Out
 ease_in_out,Ease In Out
 ease_out_in,Ease Out In
-ease_none,Ease None
-sound_effect,SFX
-sfx_default,Default
-sfx_none,None
-sfx_tap,Tap
-sfx_flick,Flick
-sfx_trace,Trace
-sfx_tick,Tick
-sfx_crit_tap,Critical Tap
-sfx_crit_flick,Critical Flick
-sfx_crit_trace,Critical Trace
-sfx_crit_tick,Critical Tick
-sfx_damage,Damage
-hold_layer_top,Top
-hold_layer_bottom,Bottom
-hold_layer_tooltip,Guide Note is on top of Hold Note by default. Change this property to switch the order.
 delete,Delete
 copy,Copy
 cut,Cut
@@ -159,7 +136,6 @@ duplicate,Duplicate
 flip_duplicate,Flip Duplicate
 flip,Flip
 note_width,Note Width
-note_align,Note Alignment
 shrink_down,Shrink Down
 shrink_up,Shrink Up
 compress_selection,Compress Selection
@@ -172,10 +148,8 @@ convert_hold_to_traces,Convert Hold to Traces
 convert_guide_hold,Convert Hold-Guide
 convert_guide_to_hold,Convert Guide to Hold
 convert_hold_to_guide,Convert Hold to Guide
-convert_hold_to_none,Convert to None
 lerp_hispeeds,Interpolate Hi-Speeds
 step_type,Hold Mid Type
-step_alpha,Guide Alpha
 ease_type,Ease Type
 flick_type,Flick Type
 hold_type,Hold Type
@@ -188,14 +162,12 @@ designer,Designer
 artist,Artist
 jacket,Jacket
 lane_extension,Lane Extension
-life_point,Life Point
 audio,Audio
 music_file,Music File
 music_offset,Music Offset
 volume_master,Master Volume
 volume_bgm,BGM Volume
 volume_se,SE Volume
-playback_speed,Playback Speed
 statistics,Statistics
 hispeeds,Hi-Speeds
 taps,Taps
@@ -210,27 +182,20 @@ goto_measure,Go To Measure
 division,%d Division
 division_affix,%d Division
 custom,Custom
+custom_division,Custom Division
 snap_mode,Snapping
 snap_mode_relative,Relative Snap
 snap_mode_absolute,Absolute Snap
 snap_mode_individual_absolute,Individual Absolute Snap
 zoom,Zoom
-zoom_sensitivity,Zoom Sensitivity
 show_step_outlines,Show Hold Mid Outlines
-hide_step_outlines_during_playback,Hide Hold Mid Outlines during playback
 draw_waveform,Show Waveform
-stop_playback_at_music_end,Stop playback at music end
 edit_bpm,Edit Tempo
 tick,Tick
 remove,Remove
 edit_time_signature,Edit Time Signature
 measure,Measure
 skill,Skill
-skill_effect,Effect
-skill_effect_score,Score Boost
-skill_effect_heal,Heal
-skill_effect_perfect,Perfect Lock
-skill_level,Level
 increase_note_size,Increase Note Size
 decrease_note_size,Decrease Note Size
 hi_speed,Hi-Speed
@@ -244,8 +209,6 @@ hi_speed_hide_notes,Hide notes
 fade_none,No Fade
 fade_in,Fade In
 fade_out,Fade Out
-fade_custom,Fade Custom
-fade_classic,Fade Classic
 guide_color,Guide Color
 guide_neutral,Neutral
 guide_red,Red
@@ -269,12 +232,8 @@ note_properties_hi_speed,Hi-Speed Properties
 note_properties_hold_note,Hold Note Properties
 note_properties_guide,Guide Properties
 note_properties_not_selected,No notes or hi-speeds are selected
-note_properties_mixed_value,--Mixed--
-translated_by,Translated by: %s
+note_properties_many_hold_notes,More than one hold note is selected
 zoom_tooltip,Ctrl-click to edit value
-timeline_context_not_selected,No timeline openned or selected
-extended_score,Extended Score
-note_select_tool_tip,Ctrl to select or Alt to deselect
 
 # preset manager
 presets,Presets
@@ -288,8 +247,8 @@ confirm,Confirm
 # layer manager
 layers,Layers
 layer_name,Name
-layer_force_note_speed,Force Note Speed
 create_layer,Create Layer
+confirm,Confirm
 show_all_layers,Show All Layers
 layer_rename,Layer Rename
 layer_up,Move Up
@@ -298,18 +257,12 @@ layer_merge,Merge Layer
 layer_delete,Delete Layer
 layer_hide,Hide Layer
 layer_show,Show Layer
-layer_change_order,Change Layer Order
-layer_order_tooltip,Drag to reorder
-layer_merge_warning,There are hispeeds overlaps, they'll be deleted. Do you want to merge anyways?
 
 # waypoint manager
 waypoints,Waypoints
 create_waypoint,Create Waypoint
 edit_waypoint,Edit Waypoint
 waypoint_name,Name
-insert_skill,Insert Skill
-set_fever_start,Set Fever Start
-set_fever_end,Set Fever End
 
 # commands
 action,Action
@@ -337,3 +290,88 @@ timeline_time_signature,Timeline - Insert Time Signature
 timeline_hi_speed,Timeline - Insert Hi-Speed Change
 zoom_in,Zoom In
 zoom_out,Zoom Out
+
+# プレビュー・キーコンフィグ関連
+preview,Preview
+score_preview,Score Preview
+notes_speed,Notes Speed
+mirror_score,Mirror Score
+preview_draw_toolbar,Draw Preview Toolbar
+background_brightnes,Background Brightness
+stage_opacity,Stage Opacity
+stage_cover,Stage Cover (Vertical)
+visuals,Visuals
+flicks_animation,Flick Animations
+holds_animation,Hold Animations
+simultaneous_lines,Simultaneous Lines
+holds_alpha,Hold Opacity
+guides_alpha,Guide Opacity
+action,Action
+keys,Keys
+add,Add
+remove,Remove
+none,None
+cmd_key_listen,Waiting for input...
+key_config,Key Config
+
+# Layers & Waypoints
+new_layer,New Layer
+new_folder,New Folder
+create_folder,Create Folder
+layer_merge_confirm,Merge Layer
+layer_merge_msg,Do you want to merge this layer with the one below it?
+layer_delete_confirm,Delete Layer
+layer_delete_msg1,Are you sure you want to delete this layer?
+layer_delete_msg2,All notes inside it will be deleted as well.
+sort_asc,Sort Ascending
+sort_desc,Sort Descending
+new_waypoint,New Waypoint
+name,Name
+time,Time
+
+# Gallery
+gallery_all,All
+gallery_recent,Recent
+gallery_favorites,Favorites
+gallery_team_projects,Team Projects
+gallery_personal,Personal
+gallery_no_charts,No charts found.
+gallery_file,File Name
+gallery_format,Format
+gallery_title,Title
+gallery_artist,Artist
+gallery_author,Chart Author
+gallery_time,Time
+gallery_combo,Combo
+gallery_move_to_folder,Move to Folder
+gallery_uncategorized,- (Uncategorized)
+gallery_create_new_chart,Create New Chart
+gallery_recent_charts,Recent Charts
+gallery_more,More
+gallery_all_charts,All Charts on PC
+gallery_add_path,Add Path:
+gallery_search_paths,Search Paths
+gallery_rescan_paths,Rescan Paths
+gallery_browse_folder,Browse Folder
+gallery_path_input_hint,Type a folder path and press Enter
+gallery_folder_dialog_open,Folder picker is open...
+gallery_invalid_search_path,The path does not exist or is not a folder.
+gallery_start_scan,Scan Paths
+gallery_delete_file,Delete File
+gallery_delete_confirm,Are you sure you want to permanently delete this file?
+gallery_type_file,Type: %s File
+gallery_type_unknown,Type: Unknown File
+gallery_size_kb,Size: %llu KB
+gallery_original_location,Original Location: %s
+gallery_yes_y,Yes
+gallery_no_n,No
+gallery_show_search_paths,Show Paths
+gallery_hide_search_paths,Hide Paths
+gallery_search,Search
+gallery_sort,Sort
+gallery_created,Created
+gallery_name_sort,Name
+gallery_sort_ascending,Ascending
+gallery_sort_descending,Descending
+gallery_modified,Modified
+gallery_return_to_editor,Return to Editor
