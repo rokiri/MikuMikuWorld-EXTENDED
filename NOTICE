@@ -1,8 +1,8 @@
-MikuMikuWorld for UntitledCharts by Monchi Notices
+MikuMikuWorld EXTENDED Notice
 ==================================================
 
-This project, also referred to as MMW4UCbyMonchi, is based directly on
-MikuMikuWorld for UntitledCharts.
+This project, also referred to as MMW4UC-EXTENDED, is based directly on
+MikuMikuWorld for UntitledCharts by Monchi (MMW4UCbyMonchi).
 
 Attribution Chain
 -----------------
@@ -14,6 +14,7 @@ MikuMikuWorld
 -> MikuMikuWorld for Untitled Sekai
 -> MikuMikuWorld for UntitledCharts
 -> MikuMikuWorld for UntitledCharts by Monchi / MMW4UCbyMonchi
+-> MikuMikuWorld for UntitledCharts Extended / MMW4UC-EXTENDED
 
 Copyright and License
 ---------------------
@@ -40,6 +41,11 @@ Third-party dependency license texts are kept under the Licenses directory and
 inside dependency directories where applicable. Those files should be preserved
 when redistributing this project.
 
+Special Thanks
+--------------
+
+- monti114514 (Monchi) - MikuMikuWorld4UC by Monchi
+
 Translations
 ------------
 
@@ -57,3 +63,4 @@ Translation metadata previously credited the following contributors:
 - Turkish: sctech-tr
 - Brazilian Portuguese: nora (__noradrenaline)
 - Chinese: Guanfei (@_guanfei_)
+- Indonesian: Rokiri (@rokiri)

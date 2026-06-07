@@ -1,14 +1,11 @@
-**English** / [Japanese](./README.ja.md)
+## MikuMikuWorld++
 
-# MikuMikuWorld for UntitledCharts by Monchi
-
-MikuMikuWorld for UntitledCharts by Monchi, also referred to as MMW4UCbyMonchi, is a fork based directly on [MikuMikuWorld for UntitledCharts](https://github.com/UntitledCharts/MikuMikuWorld4UC).
-
-For the full attribution chain and license information, see [NOTICE](./NOTICE) and [LICENSE](./LICENSE).
+fork of [MMW4UC](https://github.com/UntitledCharts/MikuMikuWorld4UC), merged with [MMW4UC By Monchi](https://github.com/monti114514/MikuMikuWorld4UC)
 
 ## Added Features
 
-In addition to the features inherited from MikuMikuWorld for UntitledCharts, this fork includes changes for the MMW4UCbyMonchi workflow.
+- SUS: import and export capabilities
+- USC: import and export capabilities
 
 ## Translations
 

@@ -23,12 +23,14 @@ namespace MikuMikuWorld
 	};
 	static_assert(FORMAT_COUNT == FORMAT_NAMES.size());
 
-	// FIX: USC dan SUS diaktifkan untuk import
+<<<<<<< HEAD
 	static constexpr std::array<size_t, 5> IMPORT_AVAILABILITY = { true, false, true, true, true };
 	static_assert(FORMAT_COUNT == IMPORT_AVAILABILITY.size());
+=======
+	static constexpr std::array<size_t, 4> EXPORT_AVAILABILITY = { false, true, true, true };
+>>>>>>> f88bd46 (fixes runtime error)
 
-	// FIX: USC dan SUS diaktifkan untuk export
-	static constexpr std::array<size_t, 5> EXPORT_AVAILABILITY = { false, true, true, true, true };
+	static constexpr std::array<size_t, 5> EXPORT_AVAILABILITY = { true, false, true, true, true };
 	static_assert(FORMAT_COUNT == EXPORT_AVAILABILITY.size());
 
 	DefaultScoreSerializeController::DefaultScoreSerializeController(SerializingScore score)

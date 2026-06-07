@@ -9,7 +9,7 @@ using namespace nlohmann;
 namespace MikuMikuWorld
 {
 	ApplicationConfiguration config{};
-	constexpr const char* CONFIG_VERSION{ "1.11.0" };
+	constexpr const char* CONFIG_VERSION{ "1.0.0" };
 
 	ApplicationConfiguration::ApplicationConfiguration() : version{ CONFIG_VERSION }
 	{
@@ -112,7 +112,7 @@ namespace MikuMikuWorld
 			pvHoldAnimation = jsonIO::tryGetValue<bool>(config["preview"], "hold_animation", true);
 			pvSimultaneousLine = jsonIO::tryGetValue<bool>(config["preview"], "simultaneous_line", true);
 			pvHoldAlpha = jsonIO::tryGetValue<float>(config["preview"], "hold_alpha", 0.6f);
-			pvGuideAlpha = jsonIO::tryGetValue<float>(config["preview"], "guide_alpha", 0.4f);
+			pvGuideAlpha = jsonIO::tryGetValue<float>(config["preview"], "guide_alpha", 1.0f);
 		}
 
 		if (jsonIO::keyExists(config, "theme"))

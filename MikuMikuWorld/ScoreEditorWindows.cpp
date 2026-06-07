@@ -1018,7 +1018,7 @@ namespace MikuMikuWorld
 		if (ImGui::BeginPopupModal(MODAL_TITLE("about"), NULL, ImGuiWindowFlags_NoResize))
 		{
 			ImGui::Text(APP_NAME "\n"
-			                     "This application is based on MikuMikuWorld for UntitledCharts.\n\n"
+			                     "This application is based on MMW4UC and MMW4UC by Monchi.\n\n"
 			                     "See LICENSE and NOTICE for license and attribution information.\n\n");
 			ImGui::Separator();
 

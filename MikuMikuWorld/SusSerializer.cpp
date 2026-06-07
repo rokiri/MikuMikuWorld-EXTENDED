@@ -261,6 +261,9 @@ namespace MikuMikuWorld
 		{
 			for (const auto& slide : slides)
 			{
+				if (slide.empty())
+					continue;
+
 				bool isGuide = isGuideSlides;
 				const std::string key = noteKey(slide[0]);
 

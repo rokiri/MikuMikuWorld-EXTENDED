@@ -409,6 +409,10 @@ namespace MikuMikuWorld::Effect
 		EffectPool& pool = effectPools[effect];
 		for (int i = note.lane; i < note.lane + note.width; i++)
 		{
+			if (i < 0 || i >= (int)pool.pool.size())
+				continue;
+
+
 			ParticleController& controller = pool.pool[i];
 			controller.worldOffset.position = DirectX::XMVectorSetX(controller.worldOffset.position, getEffectXPos(i, 1, config.pvMirrorScore));
 			controller.play(note, time, -1);

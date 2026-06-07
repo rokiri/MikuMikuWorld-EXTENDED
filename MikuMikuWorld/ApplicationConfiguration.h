@@ -134,7 +134,7 @@ namespace MikuMikuWorld
 		bool pvMirrorScore{ false };
 		bool pvHoldAnimation{ true };
 		float pvHoldAlpha{ 0.8f };
-		float pvGuideAlpha{ 0.5f };
+		float pvGuideAlpha{ 1.0f };
 		bool pvFlickAnimation{ true };
 		int pvEffectsProfile{ 0 };
 		bool pvDrawToolbar{ true };
