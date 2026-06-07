@@ -179,7 +179,13 @@
     <ClCompile Include="Audio\Waveform.cpp">
       <Filter>Audio</Filter>
     </ClCompile>
-    <ClCompile Include="ScorePreview\PreviewData.cpp">
+    <ClCompile Include="PreviewData.cpp">
+      <Filter>ScorePreview</Filter>
+    </ClCompile>
+    <ClCompile Include="ScorePreview.cpp">
+      <Filter>ScorePreview</Filter>
+    </ClCompile>
+    <ClCompile Include="PreviewEngine.cpp">
       <Filter>ScorePreview</Filter>
     </ClCompile>
   </ItemGroup>
@@ -394,10 +400,13 @@
     <ClInclude Include="Text.h">
       <Filter>UI\Include</Filter>
     </ClInclude>
-    <ClInclude Include="ScorePreview\PreviewData.h">
+    <ClInclude Include="PreviewData.h">
       <Filter>ScorePreview</Filter>
     </ClInclude>
-    <ClInclude Include="ScorePreview\PreviewEngine.h">
+    <ClInclude Include="PreviewEngine.h">
+      <Filter>ScorePreview</Filter>
+    </ClInclude>
+    <ClInclude Include="ScorePreview.h">
       <Filter>ScorePreview</Filter>
     </ClInclude>
   </ItemGroup>

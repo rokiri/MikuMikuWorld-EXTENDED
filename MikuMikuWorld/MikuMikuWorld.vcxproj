@@ -204,6 +204,8 @@
     <ClCompile Include="OpenGlLoader.cpp" />
     <ClCompile Include="NotesPreset.cpp" />
     <ClCompile Include="PlatformIO.cpp" />
+    <ClCompile Include="PreviewData.cpp" />
+    <ClCompile Include="PreviewEngine.cpp" />
     <ClCompile Include="Rendering\Camera.cpp" />
     <ClCompile Include="Rendering\Framebuffer.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
@@ -214,7 +216,7 @@
     <ClCompile Include="ScoreContext.cpp" />
     <ClCompile Include="ScoreEditorTimeline.cpp" />
     <ClCompile Include="ScoreEditorWindows.cpp" />
-    <ClCompile Include="ScorePreview\PreviewData.cpp" />
+    <ClCompile Include="ScorePreview.cpp" />
     <ClCompile Include="ScoreSerializer.cpp" />
     <ClCompile Include="ScoreSerializeWindow.cpp" />
     <ClCompile Include="ScoreStats.cpp" />
@@ -271,6 +273,8 @@
     <ClInclude Include="NoteTypes.h" />
     <ClInclude Include="NotesPreset.h" />
     <ClInclude Include="PlatformIO.h" />
+    <ClInclude Include="PreviewData.h" />
+    <ClInclude Include="PreviewEngine.h" />
     <ClInclude Include="Rendering\AnchorType.h" />
     <ClInclude Include="Rendering\Camera.h" />
     <ClInclude Include="Rendering\Framebuffer.h" />
@@ -287,8 +291,7 @@
     <ClInclude Include="ScoreEditorTimeline.h" />
     <ClInclude Include="ScoreEditorWindows.h" />
     <ClInclude Include="ScoreEvents.h" />
-    <ClInclude Include="ScorePreview\PreviewData.h" />
-    <ClInclude Include="ScorePreview\PreviewEngine.h" />
+    <ClInclude Include="ScorePreview.h" />
     <ClInclude Include="ScoreSerializer.h" />
     <ClInclude Include="ScoreSerializeWindow.h" />
     <ClInclude Include="ScoreStats.h" />

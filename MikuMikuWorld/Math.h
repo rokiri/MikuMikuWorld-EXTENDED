@@ -171,4 +171,10 @@ namespace MikuMikuWorld
 	EaseFunction getEaseFunction(EaseType ease);
 
 	uint32_t gcf(uint32_t a, uint32_t b);
+
+	struct Range
+	{
+		double start;
+		double end;
+	};
 }

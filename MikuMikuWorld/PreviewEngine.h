@@ -1,14 +1,79 @@
 #pragma once
-#include <cmath>
+#include <array>
+#include <memory>
 #include "Math.h"
 #include "Score.h"
-#include "ScorePreview/PreviewData.h"
+#include "PreviewData.h" // Range構造体を使うために追加
+#include "Rendering/Texture.h"
+#include "DirectXMath.h"
+
+namespace DirectX
+{
+	inline bool XMMatrixIsNull(FXMMATRIX M)
+	{
+		XMVECTOR zero = XMVectorZero();
+		return XMVector4Equal(M.r[0], zero) && XMVector4Equal(M.r[1], zero) &&
+		       XMVector4Equal(M.r[2], zero) && XMVector4Equal(M.r[3], zero);
+	}
+}
+
+namespace MikuMikuWorld
+{
+	enum class SpriteType : int
+	{
+		NoteLeft,
+		NoteMiddle,
+		NoteRight,
+		TraceDiamond,
+		FlickArrowLeft,
+		FlickArrowUp = FlickArrowLeft + 6,
+		SimultaneousLine = FlickArrowUp + 6,
+		HoldTick
+	};
+
+	enum class SpriteLayer : uint8_t
+	{
+		FLICK_ARROW,
+		DIAMOND,
+		BASE_NOTE,
+		TICK_NOTE,
+		HOLD_PATH,
+		GUIDE_PATH,
+		UNDER_NOTE_EFFECT
+	};
+
+	class SpriteTransform
+	{
+		DirectX::XMMATRIX xx;
+		std::unique_ptr<DirectX::XMMATRIX> xy;
+		std::unique_ptr<DirectX::XMMATRIX> yx;
+		DirectX::XMMATRIX yy;
+
+	  public:
+		SpriteTransform(float v[64]);
+		std::array<DirectX::XMFLOAT4, 4> apply(const std::array<DirectX::XMFLOAT4, 4>& vPos) const;
+	};
+}
 
 namespace MikuMikuWorld::Engine
 {
+	std::array<DirectX::XMFLOAT4, 4> quadvPos(float left, float right, float top, float bottom);
+	std::array<DirectX::XMFLOAT4, 4> perspectiveQuadvPos(float left, float right, float top,
+	                                                     float bottom);
+	std::array<DirectX::XMFLOAT4, 4> perspectiveQuadvPos(float leftStart, float leftStop,
+	                                                     float rightStart, float rightStop,
+	                                                     float top, float bottom);
+	std::array<DirectX::XMFLOAT4, 4> quadUV(const Sprite& sprite, const Texture& texture);
+
+	// 【追加】MMW4UC向けに、プレビュー用の時間計算関数をここに定義します
+	double accumulateScaledDuration(int tick, int beatTicks, const std::vector<Tempo>& tempos,
+	                                const HiSpeedCollection& hiSpeeds, int layer = 0);
+
+	Range getNoteVisualTime(Note const& note, Score const& score, float noteSpeed);
+
 	static inline float getNoteDuration(float noteSpeed)
 	{
-		return (float)lerpD(0.35, 4.0, std::pow(unlerpD(12, 1, noteSpeed), 1.31));
+		return lerpD(0.35, 4.0, std::pow(unlerpD(12, 1, noteSpeed), 1.31));
 	}
 
 	static inline double approach(double start_time, double end_time, double current_time)
@@ -16,37 +81,51 @@ namespace MikuMikuWorld::Engine
 		return std::pow(1.06, 45 * lerpD(-1, 0, unlerpD(start_time, end_time, current_time)));
 	}
 
-	inline constexpr float STAGE_LANE_TOP = 47.f;
-	inline constexpr float STAGE_LANE_BOTTOM = 803.f;
-	inline constexpr float STAGE_LANE_HEIGHT = 850.f;
-	inline constexpr float STAGE_LANE_WIDTH = 1420.f;
-	inline constexpr float STAGE_NUM_LANES = 12.f;
-	inline constexpr float STAGE_TEX_WIDTH = 2048.f;
-	inline constexpr float STAGE_TEX_HEIGHT = 1176.f;
-	inline constexpr float STAGE_NOTE_HEIGHT = 75.f;
-	inline constexpr float STAGE_TARGET_WIDTH = 1920.f;
-	inline constexpr float STAGE_TARGET_HEIGHT = 1080.f;
+	static inline double approachProgress(double progress)
+	{
+		return std::pow(1.06, 45.0 * (progress - 1.0));
+	}
+
+	inline constexpr float STAGE_LANE_TOP = 47;
+	inline constexpr float STAGE_LANE_BOTTOM = 803;
+	inline constexpr float STAGE_LANE_HEIGHT = 850;
+	inline constexpr float STAGE_LANE_WIDTH = 1420;
+	inline constexpr float STAGE_NUM_LANES = 12;
+	inline constexpr float STAGE_TEX_WIDTH = 2048;
+	inline constexpr float STAGE_TEX_HEIGHT = 1176;
+	inline constexpr float STAGE_NOTE_HEIGHT = 75;
+	inline constexpr float STAGE_TARGET_WIDTH = 1920;
+	inline constexpr float STAGE_TARGET_HEIGHT = 1080;
 	inline constexpr float STAGE_ASPECT_RATIO = STAGE_TARGET_WIDTH / STAGE_TARGET_HEIGHT;
 	inline constexpr float STAGE_ZOOM = 927 / 800.f;
-	inline constexpr float BACKGROUND_SIZE = 2462.25f;
+	inline constexpr float BACKGROUND_SIZE = 2462.25;
 
 	inline constexpr float STAGE_WIDTH_RATIO =
-	    STAGE_ZOOM * STAGE_LANE_WIDTH / (STAGE_TEX_HEIGHT * STAGE_ASPECT_RATIO) / STAGE_NUM_LANES;
-	inline constexpr float STAGE_HEIGHT_RATIO = STAGE_ZOOM * STAGE_LANE_HEIGHT / STAGE_TEX_HEIGHT;
-	inline constexpr float STAGE_TOP_RATIO = 0.5f + STAGE_ZOOM * STAGE_LANE_TOP / STAGE_TEX_HEIGHT;
+	    Engine::STAGE_ZOOM * Engine::STAGE_LANE_WIDTH /
+	    (Engine::STAGE_TEX_HEIGHT * Engine::STAGE_ASPECT_RATIO) / Engine::STAGE_NUM_LANES;
+	inline constexpr float STAGE_HEIGHT_RATIO =
+	    Engine::STAGE_ZOOM * Engine::STAGE_LANE_HEIGHT / Engine::STAGE_TEX_HEIGHT;
+	inline constexpr float STAGE_TOP_RATIO =
+	    0.5f + Engine::STAGE_ZOOM * Engine::STAGE_LANE_TOP / Engine::STAGE_TEX_HEIGHT;
 
-	static inline float laneToLeft(float lane) { return lane - 6.f; }
-
-	static inline float getNoteCenter(const Note& note)
+	static inline float laneToLeft(float lane) { return lane - 6; }
+	static inline float getNoteCenter(Note const& note)
 	{
 		return laneToLeft(note.lane) + note.width / 2.f;
 	}
-
 	static inline float getNoteHeight() { return STAGE_NOTE_HEIGHT / STAGE_LANE_HEIGHT / 2.f; }
-
-	inline Range getNoteVisualTime(const Note& note, const Score& score, float noteSpeed)
+	static inline int getZIndex(SpriteLayer layer, float xOffset, float yOffset)
 	{
-		double targetTime = accumulateScaledDuration(note.tick, score);
-		return Range{ targetTime - getNoteDuration(noteSpeed), targetTime };
+		static_assert(sizeof(int) == sizeof(int32_t));
+		const auto floatClamp = [](float value, float min, float max)
+		{ return value < min ? min : (value <= max ? value : max); };
+		const auto masknShift = [](int32_t value, int32_t mask, int offset)
+		{ return (value & mask) << offset; };
+		const int32_t mask24 = 0xFFFFFF, mask4 = 0x0F;
+		int32_t y = static_cast<int32_t>(floatClamp(1 - yOffset, 0, 1) * float(mask24) + 0.5f);
+		int32_t x =
+		    static_cast<int32_t>(floatClamp(xOffset / 12.f + 0.5f, 0, 1) * float(12) + 0.5f);
+		return INT32_MAX - masknShift(static_cast<int32_t>(layer), mask4, 32 - 4) -
+		       masknShift(y, mask24, 4) - masknShift(x, mask4, 0);
 	}
 }
