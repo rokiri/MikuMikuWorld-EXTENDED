@@ -3,22 +3,44 @@
 
 namespace MikuMikuWorld
 {
-	const int MMWS_VERSION = 1;
+	const int MMWS_VERSION = 4;
+	const int CC_MMWS_VERSION = 6;
+	const int UC_MMWS_VERSION = 2;
 	const char* UC_MMWS_SIGNATURE = "UCMMWS";
 
 	namespace
 	{
+		enum NoteFlags
+		{
+			NOTE_CRITICAL = 1 << 0,
+			NOTE_FRICTION = 1 << 1,
+			NOTE_DUMMY = 1 << 2,
+		};
+
+		enum HoldFlags
+		{
+			HOLD_START_HIDDEN = 1 << 0,
+			HOLD_END_HIDDEN = 1 << 1,
+			HOLD_GUIDE = 1 << 2,
+			HOLD_DUMMY = 1 << 3,
+		};
+
 		void writeNote(const Note& note, IO::BinaryWriter& writer)
 		{
 			writer.writeInt32(note.tick);
 			writer.writeSingle(note.lane);
 			writer.writeSingle(note.width);
 			writer.writeInt32(note.layer);
-			writer.writeInt32(static_cast<int>(note.getType()));
-			writer.writeInt32(note.critical ? 1 : 0);
-			writer.writeInt32(note.friction ? 1 : 0);
-			writer.writeInt32(note.dummy ? 1 : 0);
-			writer.writeInt32(static_cast<int>(note.flick));
+			if (!note.hasEase())
+				writer.writeInt32(static_cast<int>(note.flick));
+			unsigned int flags{};
+			if (note.critical)
+				flags |= NOTE_CRITICAL;
+			if (note.friction)
+				flags |= NOTE_FRICTION;
+			if (note.dummy)
+				flags |= NOTE_DUMMY;
+			writer.writeInt32(flags);
 		}
 
 		Note readNote(IO::BinaryReader& reader)
@@ -28,13 +50,13 @@ namespace MikuMikuWorld
 			note.lane = reader.readSingle();
 			note.width = reader.readSingle();
 			note.layer = reader.readUInt32();
-			static_cast<void>(reader.readUInt32()); // type (unused, inferred from context)
-			note.critical = reader.readUInt32() != 0;
-			note.friction = reader.readUInt32() != 0;
-			note.dummy = reader.readUInt32() != 0;
 			note.flick = static_cast<FlickType>(reader.readUInt32());
 			if (note.flick >= FlickType::FlickTypeCount)
 				note.flick = FlickType::None;
+			unsigned int flags = reader.readUInt32();
+			note.critical = (bool)(flags & NOTE_CRITICAL);
+			note.friction = (bool)(flags & NOTE_FRICTION);
+			note.dummy = (bool)(flags & NOTE_DUMMY);
 			return note;
 		}
 
@@ -44,8 +66,8 @@ namespace MikuMikuWorld
 			writer.writeString(metadata.author);
 			writer.writeString(metadata.artist);
 			writer.writeString(metadata.musicFile);
-			writer.writeString(metadata.jacketFile);
 			writer.writeSingle(metadata.musicOffset);
+			writer.writeString(metadata.jacketFile);
 			writer.writeInt32(metadata.laneExtension);
 		}
 
@@ -56,8 +78,8 @@ namespace MikuMikuWorld
 			metadata.author = reader.readString();
 			metadata.artist = reader.readString();
 			metadata.musicFile = reader.readString();
-			metadata.jacketFile = reader.readString();
 			metadata.musicOffset = reader.readSingle();
+			metadata.jacketFile = reader.readString();
 			metadata.laneExtension = reader.readUInt32();
 			return metadata;
 		}
@@ -86,8 +108,8 @@ namespace MikuMikuWorld
 				writer.writeSingle(hs.speed);
 				writer.writeInt32(hs.layer);
 				writer.writeSingle(hs.skips);
-				writer.writeInt32(static_cast<int>(hs.ease));
-				writer.writeInt32(hs.hideNotes ? 1 : 0);
+				writer.writeInt16(static_cast<int>(hs.ease));
+				writer.writeInt16(hs.hideNotes ? 1 : 0);
 			}
 
 			writer.writeInt32((int)score.skills.size());
@@ -130,8 +152,8 @@ namespace MikuMikuWorld
 				hs.speed = reader.readSingle();
 				hs.layer = reader.readUInt32();
 				hs.skips = reader.readSingle();
-				hs.ease = static_cast<HiSpeedEaseType>(reader.readUInt32());
-				hs.hideNotes = reader.readUInt32() != 0;
+				hs.ease = static_cast<HiSpeedEaseType>(reader.readUInt16());
+				hs.hideNotes = reader.readUInt16() != 0;
 				score.hiSpeedChanges[hs.ID] = hs;
 			}
 
@@ -158,10 +180,10 @@ namespace MikuMikuWorld
 			return;
 
 		writer.writeString(UC_MMWS_SIGNATURE);
-		writer.writeInt32(MMWS_VERSION);
+		writer.writeInt32(UC_MMWS_VERSION);
 
 		uint32_t offsetsAddress = writer.getStreamPosition();
-		writer.writeNull(sizeof(uint32_t) * 4);
+		writer.writeNull(sizeof(uint32_t) * 7);
 
 		uint32_t metadataAddress = writer.getStreamPosition();
 		writeMetadata(score.metadata, writer);
@@ -169,32 +191,18 @@ namespace MikuMikuWorld
 		uint32_t eventsAddress = writer.getStreamPosition();
 		writeScoreEvents(score, writer);
 
-		uint32_t layersAddress = writer.getStreamPosition();
-		writer.writeInt32((int)score.layers.size());
-		for (const auto& layer : score.layers)
-		{
-			writer.writeString(layer.name);
-			writer.writeInt32(layer.hidden ? 1 : 0);
-		}
-
-		uint32_t waypointsAddress = writer.getStreamPosition();
-		writer.writeInt32((int)score.waypoints.size());
-		for (const auto& wp : score.waypoints)
-		{
-			writer.writeString(wp.name);
-			writer.writeInt32(wp.tick);
-		}
-
 		uint32_t tapsAddress = writer.getStreamPosition();
-		int noteCount = 0;
 		writer.writeNull(sizeof(uint32_t));
+
+		int noteCount = 0;
 		for (const auto& [_, note] : score.notes)
 		{
-			if (note.isHold())
+			if (note.getType() != NoteType::Tap)
 				continue;
 			writeNote(note, writer);
 			++noteCount;
 		}
+
 		uint32_t holdsAddress = writer.getStreamPosition();
 
 		writer.seek(tapsAddress);
@@ -204,15 +212,22 @@ namespace MikuMikuWorld
 		writer.writeInt32((int)score.holdNotes.size());
 		for (const auto& [_, hold] : score.holdNotes)
 		{
-			writer.writeInt32(static_cast<int>(hold.startType));
-			writer.writeInt32(static_cast<int>(hold.endType));
-			writer.writeInt32(static_cast<int>(hold.fadeType));
-			writer.writeInt32(static_cast<int>(hold.guideColor));
-			writer.writeInt32(hold.dummy ? 1 : 0);
+			unsigned int flags{};
+			if (hold.startType == HoldNoteType::Guide)
+				flags |= HOLD_GUIDE;
+			if (hold.startType == HoldNoteType::Hidden)
+				flags |= HOLD_START_HIDDEN;
+			if (hold.endType == HoldNoteType::Hidden)
+				flags |= HOLD_END_HIDDEN;
+			if (hold.dummy)
+				flags |= HOLD_DUMMY;
+			writer.writeInt32(flags);
 
 			const Note& startNote = score.notes.at(hold.start.ID);
 			writeNote(startNote, writer);
 			writer.writeInt32(static_cast<int>(hold.start.ease));
+			writer.writeInt32(static_cast<int>(hold.fadeType));
+			writer.writeInt32(static_cast<int>(hold.guideColor));
 
 			writer.writeInt32((int)hold.steps.size());
 			for (const auto& step : hold.steps)
@@ -227,11 +242,44 @@ namespace MikuMikuWorld
 			writeNote(endNote, writer);
 		}
 
+		uint32_t damagesAddress = writer.getStreamPosition();
+		writer.writeNull(sizeof(uint32_t));
+
+		int damageCount = 0;
+		for (const auto& [_, note] : score.notes)
+		{
+			if (note.getType() != NoteType::Damage)
+				continue;
+			writeNote(note, writer);
+			++damageCount;
+		}
+
+		uint32_t layersAddress = writer.getStreamPosition();
+
+		writer.seek(damagesAddress);
+		writer.writeInt32(damageCount);
+		writer.seek(layersAddress);
+
+		writer.writeInt32((int)score.layers.size());
+		for (const auto& layer : score.layers)
+			writer.writeString(layer.name);
+
+		uint32_t waypointsAddress = writer.getStreamPosition();
+		writer.writeInt32((int)score.waypoints.size());
+		for (const auto& wp : score.waypoints)
+		{
+			writer.writeString(wp.name);
+			writer.writeInt32(wp.tick);
+		}
+
 		writer.seek(offsetsAddress);
 		writer.writeInt32(metadataAddress);
 		writer.writeInt32(eventsAddress);
 		writer.writeInt32(tapsAddress);
 		writer.writeInt32(holdsAddress);
+		writer.writeInt32(damagesAddress);
+		writer.writeInt32(layersAddress);
+		writer.writeInt32(waypointsAddress);
 
 		writer.flush();
 		writer.close();
@@ -255,6 +303,9 @@ namespace MikuMikuWorld
 		uint32_t eventsAddress = reader.readUInt32();
 		uint32_t tapsAddress = reader.readUInt32();
 		uint32_t holdsAddress = reader.readUInt32();
+		uint32_t damagesAddress = reader.readUInt32();
+		uint32_t layersAddress = reader.readUInt32();
+		uint32_t waypointsAddress = reader.readUInt32();
 
 		reader.seek(metadataAddress);
 		score.metadata = readMetadata(reader);
@@ -268,8 +319,8 @@ namespace MikuMikuWorld
 		for (int i = 0; i < noteCount; ++i)
 		{
 			Note note = readNote(reader);
-			note.ID = nextID;
-			score.notes[nextID++] = note;
+			note.ID = nextID++;
+			score.notes[note.ID] = note;
 		}
 
 		reader.seek(holdsAddress);
@@ -278,17 +329,24 @@ namespace MikuMikuWorld
 		for (int i = 0; i < holdCount; ++i)
 		{
 			HoldNote hold;
-			hold.startType = static_cast<HoldNoteType>(reader.readUInt32());
-			hold.endType = static_cast<HoldNoteType>(reader.readUInt32());
-			hold.fadeType = static_cast<FadeType>(reader.readUInt32());
-			hold.guideColor = static_cast<GuideColor>(reader.readUInt32());
-			hold.dummy = reader.readUInt32() != 0;
+			unsigned int flags = reader.readUInt32();
+
+			if (flags & HOLD_GUIDE)
+				hold.startType = hold.endType = HoldNoteType::Guide;
+			if (flags & HOLD_START_HIDDEN)
+				hold.startType = HoldNoteType::Hidden;
+			if (flags & HOLD_END_HIDDEN)
+				hold.endType = HoldNoteType::Hidden;
+			if (flags & HOLD_DUMMY)
+				hold.dummy = true;
 
 			Note startNote = readNote(reader);
 			startNote.ID = nextID++;
 			hold.start.ID = startNote.ID;
 			hold.start.ease = static_cast<EaseType>(reader.readUInt32());
 			hold.start.type = HoldStepType::Normal;
+			hold.fadeType = static_cast<FadeType>(reader.readUInt32());
+			hold.guideColor = static_cast<GuideColor>(reader.readUInt32());
 			score.notes[startNote.ID] = startNote;
 
 			int stepCount = reader.readUInt32();
@@ -312,12 +370,34 @@ namespace MikuMikuWorld
 			score.holdNotes[nextHoldID++] = hold;
 		}
 
+		reader.seek(damagesAddress);
+		int damageCount = reader.readUInt32();
+		for (int i = 0; i < damageCount; ++i)
+		{
+			Note note = readNote(reader);
+			note.ID = nextID++;
+			score.notes[note.ID] = note;
+		}
+
+		reader.seek(layersAddress);
+		int layerCount = reader.readUInt32();
+		score.layers.clear();
+		for (int i = 0; i < layerCount; ++i)
+			score.layers.push_back({ reader.readString() });
+
+		reader.seek(waypointsAddress);
+		int waypointCount = reader.readUInt32();
+		score.waypoints.clear();
+		for (int i = 0; i < waypointCount; ++i)
+		{
+			std::string name = reader.readString();
+			int tick = reader.readUInt32();
+			score.waypoints.push_back({ name, tick });
+		}
+
 		reader.close();
 		return score;
 	}
 
-	bool NativeScoreSerializer::canSerialize(const Score&)
-	{
-		return true;
-	}
+	bool NativeScoreSerializer::canSerialize(const Score&) { return true; }
 }
