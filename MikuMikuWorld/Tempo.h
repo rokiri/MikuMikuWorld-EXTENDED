@@ -1,41 +1,44 @@
 #pragma once
 #include "Constants.h"
-#include "ScoreEvents.h"
+#include "TimelineMode.h"
 #include <map>
 #include <unordered_map>
 #include <vector>
 
 namespace MikuMikuWorld
 {
-	qnote_t quatersPerMeasure(const TimeSignature& t);
-	qnote_t quartersPerBeat(const TimeSignature& t);
-	beat_t beatsPerMeasure(const TimeSignature& t);
+	struct HiSpeedChange;
 
-	qnote_t ticksToQuarters(tick_t ticks, tick_t quarterTicks = TICKS_PER_QUARTER);
-	tick_t quartersToTicks(qnote_t quarters, tick_t quarterTicks = TICKS_PER_QUARTER);
+	struct TimeSignature
+	{
+		int measure;
+		int numerator;
+		int denominator;
+	};
 
-	secs_t quartersToSecs(qnote_t quarters, float minuteQuarters);
-	qnote_t secsToQuarters(secs_t secs, float minuteQuarters);
+	struct Tempo
+	{
+		int tick;
+		float bpm;
 
-	secs_t accumulateDuration(tick_t tick, const TempoCollection& tempos,
-	                          tick_t quarterTicks = TICKS_PER_QUARTER);
-	tick_t accumulateTicks(secs_t secs, const TempoCollection& tempos,
-	                       tick_t quarterTicks = TICKS_PER_QUARTER);
+		Tempo();
+		Tempo(int tick, float bpm);
+	};
 
-	measure_t accumulateMeasures(tick_t ticks, const TimeSignatureCollection& ts,
-	                             tick_t quarterTicks = TICKS_PER_QUARTER);
-	tick_t accumulateTicks(measure_t measure, const TimeSignatureCollection& ts,
-	                       tick_t quarterTicks = TICKS_PER_QUARTER);
+	int snapTick(int tick, int div);
+	float beatsPerMeasure(const TimeSignature& t);
 
-	beat_t accumulateBeats(measure_t measure, const TimeSignatureCollection& ts);
+	float ticksToSec(int ticks, int beatTicks, float bpm);
+	int secsToTicks(float secs, int beatTicks, float bpm);
 
-	struct Score;
-	secs_t accumulateScaledDuration(tick_t tick, const Score& score,
-	                                tick_t quarterTicks = TICKS_PER_QUARTER);
+	float accumulateDuration(int tick, int beatTicks, const std::vector<Tempo>& tempos);
+	int accumulateTicks(float sec, int beatTicks, const std::vector<Tempo>& tempos);
 
-	TimeSignature& getTimeSignAt(Score& score, measure_t measure);
-	Tempo& getTempoAt(Score& score, tick_t tick);
-	HiSpeed* getHiSpeedAt(Score& score, tick_t tick, id_t layer);
+	int accumulateMeasures(int ticks, int beatTicks, const std::map<int, TimeSignature>& ts);
+	int measureToTicks(int measure, int beatTicks, const std::map<int, TimeSignature>& ts);
 
-	bool insertTempoChange(TempoCollection& collection, const Tempo& tempo);
+	const Tempo& getTempoAt(int tick, const std::vector<Tempo>& tempos);
+	int findTimeSignature(int measure, const std::map<int, TimeSignature>& ts);
+	id_t findHighSpeedChange(int tick, const std::unordered_map<id_t, HiSpeedChange>& hiSpeeds,
+	                         int selectedLayer);
 }

@@ -7,12 +7,12 @@
 
 namespace MikuMikuWorld
 {
-	class SonolusEngine; // Forward declaration
+	class SonolusEngine;
 	class SonolusSerializer : public ScoreSerializer
 	{
 	  public:
-		void serialize(const SerializingScore& data, std::string filename) override;
-		SerializingScore deserialize(std::string filename) override;
+		void serialize(const Score& score, std::string filename) override;
+		Score deserialize(std::string filename) override;
 
 		SonolusSerializer(std::unique_ptr<SonolusEngine>&& engine, bool compressData = true,
 		                  bool prettyDump = false)
@@ -39,43 +39,41 @@ namespace MikuMikuWorld
 
 		static double toBgmOffset(float musicOffset);
 		static Sonolus::LevelDataEntity toBpmChangeEntity(const Tempo& tempo);
-		static RealType ticksToBeats(TickType ticks, TickType beatTicks = TICKS_PER_QUARTER);
+		static RealType ticksToBeats(TickType ticks, TickType beatTicks = TICKS_PER_BEAT);
 		static RealType widthToSize(WidthType width);
 		static RealType toSonolusLane(LaneType lane, WidthType width);
 
 		static float fromBgmOffset(double bgmOffset);
 		static bool fromBpmChangeEntity(const Sonolus::LevelDataEntity& bpmChangeEntity,
 		                                Tempo& tempo);
-		static TickType beatsToTicks(RealType beats, TickType beatTicks = TICKS_PER_QUARTER);
+		static TickType beatsToTicks(RealType beats, TickType beatTicks = TICKS_PER_BEAT);
 		static WidthType sizeToWidth(RealType size);
 		static LaneType toNativeLane(RealType lane, RealType size);
 
 	  public:
-		virtual Sonolus::LevelData serialize(const SerializingScore& score) = 0;
-		virtual SerializingScore deserialize(const Sonolus::LevelData& levelData) = 0;
-
-		// virtual ~SonolusEngine() = default;
+		virtual Sonolus::LevelData serialize(const Score& score) = 0;
+		virtual Score deserialize(const Sonolus::LevelData& levelData) = 0;
 	};
 
 	class PySekaiEngine : public SonolusEngine
 	{
 	  public:
-		Sonolus::LevelData serialize(const SerializingScore& data) override;
-		SerializingScore deserialize(const Sonolus::LevelData& levelData) override;
+		Sonolus::LevelData serialize(const Score& score) override;
+		Score deserialize(const Sonolus::LevelData& levelData) override;
 
 		static bool canSerialize(const Score& score);
 
 	  private:
 		static Sonolus::LevelDataEntity toGroupEntity(const Layer& layer);
-		static Sonolus::LevelDataEntity toTimeScaleEntity(const HiSpeed& hispeed,
+		static Sonolus::LevelDataEntity toTimeScaleEntity(const HiSpeedChange& hispeed,
 		                                                  const RefType& groupName);
-		static Sonolus::LevelDataEntity toSkillEntity(const Skill& skill);
+		static Sonolus::LevelDataEntity toSkillEntity(const SkillTrigger& skill);
 		static std::pair<Sonolus::LevelDataEntity, Sonolus::LevelDataEntity>
 		toFeverEntities(const Fever& fever);
 		static Sonolus::LevelDataEntity toNoteEntity(const Note& note, const std::string& archetype,
 		                                             const RefType& groupName,
 		                                             const HoldNote* hold = nullptr,
-		                                             const HoldNoteStep* holdStep = nullptr);
+		                                             const HoldStep* holdStep = nullptr);
 		static std::string getSingleNoteArchetype(const Note& note);
 		static std::string getHoldNoteArchetype(const Note& note, bool isHead, bool isTail);
 		static void insertTransientTickNote(size_t headIndex, size_t tailIndex, bool isActiveHead,
@@ -85,23 +83,21 @@ namespace MikuMikuWorld
 		                                 const Sonolus::LevelDataEntity& tail);
 		static int toDirectionNumeric(FlickType flick);
 		static int toEaseNumeric(EaseType ease);
-		static int toEffectNumeric(SoundEffectType effect);
-		static int toSegmentNumeric(const HoldNoteStep* holdStep = nullptr);
-		static int toLayerNumeric(const HoldStepLayer& layer);
+		static int toSegmentNumeric(const HoldStep* holdStep = nullptr);
 
 		static bool fromGroupEntity(const Sonolus::LevelDataEntity& groupEntity, Layer& layer);
 		static bool fromTimeScaleEntity(const Sonolus::LevelDataEntity& timescaleEntity,
 		                                const Sonolus::LevelDataEntity& groupEntity,
-		                                HiSpeed& hispeed,
+		                                HiSpeedChange& hispeed,
 		                                std::unordered_map<RefType, size_t>& groupNameMap);
-		static bool fromSkillEntity(const Sonolus::LevelDataEntity& skillEntity, Skill& skill);
+		static bool fromSkillEntity(const Sonolus::LevelDataEntity& skillEntity,
+		                            SkillTrigger& skill);
 		static bool fromFeverEntity(const Sonolus::LevelDataEntity& feverEntity, Fever& fever);
 
 		static int fromNoteEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
 		                          const std::unordered_map<RefType, size_t>& groupNameMap);
 		static int fromTapNoteEntity(const Sonolus::LevelDataEntity& tapNoteEntity, Note& note,
 		                             const std::unordered_map<RefType, size_t>& groupNameMap);
-
 		static int fromHoldMidEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
 		                             const std::unordered_map<RefType, size_t>& groupNameMap);
 
@@ -110,8 +106,6 @@ namespace MikuMikuWorld
 
 		static FlickType fromDirectionNumeric(int direction);
 		static EaseType fromEaseNumeric(int ease);
-		static SoundEffectType fromEffectNumeric(int effectKind);
-		static bool fromSegmentNumeric(int segmentKind, HoldNoteStep& holdStep);
-		static HoldStepLayer fromLayerNumeric(int segmentLayer);
+		static bool fromSegmentNumeric(int segmentKind, HoldStep& holdStep);
 	};
 }

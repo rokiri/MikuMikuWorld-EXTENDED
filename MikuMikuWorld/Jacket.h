@@ -16,7 +16,7 @@ namespace MikuMikuWorld
 		Jacket();
 
 		void load(const std::string& filename);
-		void draw() const;
+		void draw();
 		void clear();
 
 		const std::string& getFilename() const;

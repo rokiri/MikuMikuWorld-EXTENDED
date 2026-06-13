@@ -8,40 +8,19 @@ using namespace IO;
 
 namespace MikuMikuWorld
 {
-	Shader::Shader(const std::string& name, const std::filesystem::path& source)
+	Shader::Shader(const std::string& name, const std::string& source)
 	{
 		this->name = name;
 		compile(source);
 	}
 
-	Shader::Shader(Shader&& other) noexcept
-	    : ID(other.ID), name(std::move(other.name)), locMap(std::move(other.locMap))
-	{
-		other.ID = 0;
-	}
-
-	Shader& Shader::operator=(Shader&& other) noexcept
-	{
-		if (this != &other)
-		{
-			dispose();
-
-			ID = other.ID;
-			name = std::move(other.name);
-			locMap = std::move(other.locMap);
-
-			other.ID = 0;
-		}
-		return *this;
-	}
-
-	Shader::~Shader() { dispose(); }
+	Shader::~Shader() { glDeleteProgram(ID); }
 
 	std::string Shader::getName() const { return name; }
 
-	void Shader::compile(const std::filesystem::path& source)
+	void Shader::compile(const std::string& source)
 	{
-		std::filesystem::path sourcePath = source;
+		std::wstring wSource = mbToWideStr(source);
 		std::string vertexCode, fragmentCode;
 		std::ifstream vertexFile, fragmentFile;
 		vertexFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -49,8 +28,8 @@ namespace MikuMikuWorld
 
 		try
 		{
-			vertexFile.open(sourcePath.replace_extension(".vert"));
-			fragmentFile.open(sourcePath.replace_extension(".frag"));
+			vertexFile.open(wSource + L".vert");
+			fragmentFile.open(wSource + L".frag");
 
 			std::stringstream vertexStream, fragmentStream;
 
@@ -133,16 +112,6 @@ namespace MikuMikuWorld
 
 	void Shader::use() { glUseProgram(ID); }
 
-	void Shader::dispose()
-	{
-		if (ID == 0)
-			return;
-		glDeleteProgram(ID);
-		ID = 0;
-		name.clear();
-		locMap.clear();
-	}
-
 	void Shader::setBool(const std::string& name, bool value)
 	{
 		glUniform1i(getUniformLoc(name), (int)value);
@@ -175,9 +144,7 @@ namespace MikuMikuWorld
 
 	void Shader::setMatrix4(const std::string& name, DirectX::XMMATRIX value)
 	{
-		DirectX::XMFLOAT4X4 mat;
-		DirectX::XMStoreFloat4x4(&mat, value);
-		glUniformMatrix4fv(getUniformLoc(name), 1, GL_FALSE, (GLfloat*)&mat.m[0][0]);
+		glUniformMatrix4fv(getUniformLoc(name), 1, GL_FALSE, (GLfloat*)&value.r->m128_f32[0]);
 	}
 
 }

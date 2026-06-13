@@ -411,8 +411,6 @@ namespace MikuMikuWorld::Effect
 		{
 			if (i < 0 || i >= (int)pool.pool.size())
 				continue;
-
-
 			ParticleController& controller = pool.pool[i];
 			controller.worldOffset.position = DirectX::XMVectorSetX(controller.worldOffset.position, getEffectXPos(i, 1, config.pvMirrorScore));
 			controller.play(note, time, -1);

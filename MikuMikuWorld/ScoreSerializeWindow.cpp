@@ -6,7 +6,8 @@
 #include "UscSerializer.h"
 #include "SonolusSerializer.h"
 
-#include "Text.h"
+#include "Localization.h"
+#include "ApplicationConfiguration.h"
 #include "Colors.h"
 #include "ScoreEditor.h"
 
@@ -14,50 +15,46 @@ namespace MikuMikuWorld
 {
 	static constexpr size_t FORMAT_COUNT = static_cast<size_t>(SerializeFormat::FormatCount);
 
-	static const std::array<std::string, 5> FORMAT_NAMES = {
-		IO::formatString("%s (%s)", IO::mmwsFilter.filterName, UC_MMWS_EXTENSION),
-		IO::formatString("%s (%s)", IO::mmwsLegacyFilter.filterName, MMWS_EXTENSION),
-		IO::formatString("%s (%s)", IO::susFilter.filterName, SUS_EXTENSION),
-		IO::formatString("%s (%s)", IO::uscFilter.filterName, USC_EXTENSION),
+	static const std::array<std::string, FORMAT_COUNT> FORMAT_NAMES = {
+		IO::formatString("%s (%s)", IO::mmwsFilter.filterName.c_str(), UC_MMWS_EXTENSION),
+		IO::formatString("%s (%s)", IO::susFilter.filterName.c_str(), SUS_EXTENSION),
+		IO::formatString("%s (%s)", IO::uscFilter.filterName.c_str(), USC_EXTENSION),
 		IO::lvlDatFilter.filterName,
 	};
-	static_assert(FORMAT_COUNT == FORMAT_NAMES.size());
 
-<<<<<<< HEAD
-	static constexpr std::array<size_t, 5> IMPORT_AVAILABILITY = { true, false, true, true, true };
-	static_assert(FORMAT_COUNT == IMPORT_AVAILABILITY.size());
-=======
 	static constexpr std::array<size_t, 4> EXPORT_AVAILABILITY = { false, true, true, true };
->>>>>>> f88bd46 (fixes runtime error)
 
-	static constexpr std::array<size_t, 5> EXPORT_AVAILABILITY = { true, false, true, true, true };
-	static_assert(FORMAT_COUNT == EXPORT_AVAILABILITY.size());
-
-	DefaultScoreSerializeController::DefaultScoreSerializeController(SerializingScore score)
+	DefaultScoreSerializeController::DefaultScoreSerializeController(Score score)
 	{
 		this->score = std::move(score);
 
-		serializable.resize(FORMAT_COUNT, Result::Ok());
-		auto checkFormat = [this](SerializeFormat format, auto canSerialize)
-		{
-			if (!EXPORT_AVAILABILITY[(size_t)format])
-				return;
-			serializable[(size_t)format] = canSerialize(this->score);
-		};
-		checkFormat(SerializeFormat::NativeFormat, NativeScoreSerializer::canSerialize);
-		checkFormat(SerializeFormat::LegacyNativeFormat, LegacyNativeScoreSerializer::canSerialize);
-		// FIX: USC canSerialize diaktifkan
-		checkFormat(SerializeFormat::UscFormat, UscSerializer::canSerialize);
-		// SUS canSerialize di-skip karena SusSerializer masih #ifdef COMPILE_ME
-		// checkFormat(SerializeFormat::SusFormat, SusSerializer::canSerialize);
+		for (size_t i = 0; i < FORMAT_COUNT; i++)
+			serializable.push_back(isSerializable(static_cast<SerializeFormat>(i), score));
 	}
 
-	DefaultScoreSerializeController::DefaultScoreSerializeController(SerializingScore score,
+	DefaultScoreSerializeController::DefaultScoreSerializeController(Score score,
 	                                                                 const std::string& filename)
 	    : DefaultScoreSerializeController(std::move(score))
 	{
 		this->filename = filename;
 		createSerializer();
+	}
+
+	bool DefaultScoreSerializeController::isSerializable(SerializeFormat format, const Score& score)
+	{
+		switch (format)
+		{
+		case SerializeFormat::NativeFormat:
+			return NativeScoreSerializer::canSerialize(score);
+		case SerializeFormat::SusFormat:
+			return SusSerializer::canSerialize(score);
+		case SerializeFormat::UscFormat:
+			return UscSerializer::canSerialize(score);
+		case SerializeFormat::LvlDataFormat:
+			return PySekaiEngine::canSerialize(score);
+		default:
+			return false;
+		}
 	}
 
 	void DefaultScoreSerializeController::createSerializer()
@@ -68,20 +65,15 @@ namespace MikuMikuWorld
 		case SerializeFormat::NativeFormat:
 			serializer = std::make_unique<NativeScoreSerializer>();
 			break;
-		case SerializeFormat::LegacyNativeFormat:
-			serializer = std::make_unique<LegacyNativeScoreSerializer>();
-			break;
-		// FIX: USC serializer diaktifkan
-		case SerializeFormat::UscFormat:
-			serializer = std::make_unique<UscSerializer>(getConfig().minifyOutput);
-			break;
-		// SUS masih disabled karena SusSerializer masih #ifdef COMPILE_ME
 		case SerializeFormat::SusFormat:
-		serializer = std::make_unique<SusSerializer>();
-		break;
+			serializer = std::make_unique<SusSerializer>();
+			break;
+		case SerializeFormat::UscFormat:
+			serializer = std::make_unique<UscSerializer>(config.minifyOutput);
+			break;
 		case SerializeFormat::LvlDataFormat:
-			serializer =
-			    std::make_unique<SonolusSerializer>(std::make_unique<PySekaiEngine>(), true, false);
+			serializer = std::make_unique<SonolusSerializer>(
+			    std::make_unique<PySekaiEngine>(), config.minifyOutput, !config.minifyOutput);
 			break;
 		default:
 			errorMessage = "No serializer found!";
@@ -90,7 +82,7 @@ namespace MikuMikuWorld
 		}
 
 		if (format == SerializeFormat::NativeFormat)
-			name = filename;
+			scoreFilename = filename;
 	}
 
 	SerializeResult DefaultScoreSerializeController::update()
@@ -107,8 +99,8 @@ namespace MikuMikuWorld
 			{
 				errorMessage = IO::formatString("%s\n"
 				                                "%s: %s",
-				                                localize(Text::errorSaveScoreFile),
-				                                localize(Text::error), err.what());
+				                                getString("error_save_score_file"),
+				                                getString("error"), err.what());
 				return SerializeResult::Error;
 			}
 		}
@@ -127,8 +119,8 @@ namespace MikuMikuWorld
 			                           ImGuiWindowFlags_NoResize))
 			{
 				const ImGuiStyle& style = ImGui::GetStyle();
-				ImGui::Text(localize(Text::exportAsFileFormat));
-				ImGui::Checkbox(localize(Text::minify), &getConfig().minifyOutput);
+				ImGui::Text(getString("export_as_file_format"));
+				ImGui::Checkbox(getString("minify"), &config.minifyOutput);
 				ImVec2 avail = ImGui::GetContentRegionAvail();
 				float btnWidth = avail.x / 2 - style.ItemSpacing.x * 2,
 				      btnHeight = ImGui::GetFrameHeight();
@@ -143,24 +135,16 @@ namespace MikuMikuWorld
 						bool isSelected = (static_cast<int>(selectedFormat) == i);
 						if (isSelected)
 						{
-							const ImVec4 color = UI::accentColors[getConfig().accentColor];
+							const ImVec4 color = UI::accentColors[config.accentColor];
 							const ImVec4 darkColor = generateDarkColor(color);
 							const ImVec4 lightColor = generateHighlightColor(color);
 							ImGui::PushStyleColor(ImGuiCol_Header, color);
 							ImGui::PushStyleColor(ImGuiCol_HeaderHovered, darkColor);
 							ImGui::PushStyleColor(ImGuiCol_HeaderActive, lightColor);
 						}
-						ImGui::BeginDisabled(!serializable[i].isOk());
+						ImGui::BeginDisabled(!serializable[i]);
 						if (ImGui::Selectable(FORMAT_NAMES[i].data(), isSelected))
 							selectedFormat = static_cast<SerializeFormat>(i);
-						if (!serializable[i].isOk() &&
-						    ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
-						    ImGui::BeginTooltip())
-						{
-							ImGui::TextColored(ImVec4(0.96f, 0.26f, 0.21f, 1.0f),
-							                   serializable[i].getMessage().c_str());
-							ImGui::EndTooltip();
-						}
 						ImGui::EndDisabled();
 						if (isSelected)
 						{
@@ -171,15 +155,14 @@ namespace MikuMikuWorld
 					ImGui::EndListBox();
 				}
 
-				ImGui::BeginDisabled(!isValidFormat(selectedFormat) ||
-				                     !EXPORT_AVAILABILITY[(int)selectedFormat]);
-				if (ImGui::Button(localize(Text::select), { btnWidth, btnHeight }))
+				ImGui::BeginDisabled(!isValidFormat(selectedFormat));
+				if (ImGui::Button(getString("select"), { btnWidth, btnHeight }))
 				{
 					IO::FileDialog fileDialog{};
 					fileDialog.title = "Export Chart";
 					fileDialog.filters = { getFormatFilter(selectedFormat) };
 					fileDialog.defaultExtension = getFormatDefaultExtension(selectedFormat);
-					fileDialog.parentWindowHandle = Application::getAppWindowHandle();
+					fileDialog.parentWindowHandle = Application::windowState.windowHandle;
 
 					if (fileDialog.saveFile() == IO::FileDialogResult::OK)
 					{
@@ -190,7 +173,7 @@ namespace MikuMikuWorld
 				}
 				ImGui::EndDisabled();
 				ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 2);
-				if (ImGui::Button(localize(Text::cancel), { btnWidth, btnHeight }))
+				if (ImGui::Button(getString("cancel"), { btnWidth, btnHeight }))
 				{
 					ImGui::CloseCurrentPopup();
 					result = SerializeResult::Cancel;
@@ -200,6 +183,7 @@ namespace MikuMikuWorld
 			return result;
 		}
 		else
+			// Has filename but no valid serializer
 			return SerializeResult::Error;
 	}
 
@@ -220,17 +204,14 @@ namespace MikuMikuWorld
 		switch (selectedFormat)
 		{
 		case SerializeFormat::NativeFormat:
-		case SerializeFormat::LegacyNativeFormat:
 			deserializer = std::make_unique<NativeScoreSerializer>();
 			break;
-		// USC
+		case SerializeFormat::SusFormat:
+			deserializer = std::make_unique<SusSerializer>();
+			break;
 		case SerializeFormat::UscFormat:
 			deserializer = std::make_unique<UscSerializer>();
 			break;
-		// SUS
-		case SerializeFormat::SusFormat:
-		deserializer = std::make_unique<SusSerializer>();
-		break;
 		case SerializeFormat::LvlDataFormat:
 			deserializer = std::make_unique<SonolusSerializer>(std::make_unique<PySekaiEngine>());
 			break;
@@ -242,7 +223,7 @@ namespace MikuMikuWorld
 		}
 
 		if (selectedFormat == SerializeFormat::NativeFormat)
-			this->name = filename;
+			this->scoreFilename = filename;
 	}
 
 	SerializeResult DefaultScoreDeserializeController::update()
@@ -256,7 +237,7 @@ namespace MikuMikuWorld
 			}
 			catch (PartialScoreDeserializeError& partialError)
 			{
-				score = partialError.getResult();
+				score = partialError.getScore();
 				errorMessage = partialError.what();
 				return SerializeResult::PartialDeserializeSuccess;
 			}
@@ -266,8 +247,8 @@ namespace MikuMikuWorld
 				    IO::formatString("%s\n"
 				                     "%s: %s\n"
 				                     "%s: %s",
-				                     localize(Text::errorLoadScoreFile), localize(Text::scoreFile),
-				                     filename.c_str(), localize(Text::error), error.what());
+				                     getString("error_load_score_file"), getString("score_file"),
+				                     filename.c_str(), getString("error"), error.what());
 				return SerializeResult::Error;
 			}
 		}
@@ -286,8 +267,8 @@ namespace MikuMikuWorld
 			                           ImGuiWindowFlags_NoResize))
 			{
 				const ImGuiStyle& style = ImGui::GetStyle();
-				ImGui::Text("%s '%s'\n%s", (const char*)localize(Text::unknownFileFormat),
-				            filename.c_str(), (const char*)localize(Text::openAsFileFormat));
+				ImGui::Text("%s '%s'\n%s", getString("unknown_file_format"), filename.c_str(),
+				            getString("open_as_file_format"));
 				ImVec2 avail = ImGui::GetContentRegionAvail();
 				float btnWidth = avail.x / 2 - style.ItemSpacing.x * 2,
 				      btnHeight = ImGui::GetFrameHeight();
@@ -297,12 +278,10 @@ namespace MikuMikuWorld
 				{
 					for (int i = 0; i < FORMAT_NAMES.size(); ++i)
 					{
-						if (!IMPORT_AVAILABILITY[i])
-							continue;
 						bool isSelected = (static_cast<int>(selectedFormat) == i);
 						if (isSelected)
 						{
-							const ImVec4 color = UI::accentColors[getConfig().accentColor];
+							const ImVec4 color = UI::accentColors[config.accentColor];
 							const ImVec4 darkColor = generateDarkColor(color);
 							const ImVec4 lightColor = generateHighlightColor(color);
 							ImGui::PushStyleColor(ImGuiCol_Header, color);
@@ -320,16 +299,15 @@ namespace MikuMikuWorld
 					ImGui::EndListBox();
 				}
 
-				ImGui::BeginDisabled(!isValidFormat(selectedFormat) ||
-				                     !IMPORT_AVAILABILITY[(int)selectedFormat]);
-				if (ImGui::Button(localize(Text::select), { btnWidth, btnHeight }))
+				ImGui::BeginDisabled(!isValidFormat(selectedFormat));
+				if (ImGui::Button(getString("select"), { btnWidth, btnHeight }))
 				{
 					createDeserializer();
 					ImGui::CloseCurrentPopup();
 				}
 				ImGui::EndDisabled();
 				ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 2);
-				if (ImGui::Button(localize(Text::cancel), { btnWidth, btnHeight }))
+				if (ImGui::Button(getString("cancel"), { btnWidth, btnHeight }))
 				{
 					result = SerializeResult::Cancel;
 					ImGui::CloseCurrentPopup();
@@ -342,7 +320,8 @@ namespace MikuMikuWorld
 			return SerializeResult::Error;
 	}
 
-	void ScoreSerializeWindow::update(ScoreEditor& editor)
+	void ScoreSerializeWindow::update(ScoreEditor& editor, ScoreContext& context,
+	                                  ScoreEditorTimeline& timeline)
 	{
 		if (!controller)
 			return;
@@ -350,31 +329,46 @@ namespace MikuMikuWorld
 		{
 		case SerializeResult::PartialSerializeSuccess:
 			IO::messageBox(APP_NAME, controller->getErrorMessage(), IO::MessageBoxButtons::Ok,
-			               IO::MessageBoxIcon::Warning, Application::getAppWindowHandle());
+			               IO::MessageBoxIcon::Warning, Application::windowState.windowHandle);
 			controller.reset();
 			break;
 		case SerializeResult::SerializeSuccess:
-			IO::messageBox(APP_NAME, IO::formatString(localize(Text::exportSuccessful)),
+			IO::messageBox(APP_NAME, IO::formatString(getString("export_successful")),
 			               IO::MessageBoxButtons::Ok, IO::MessageBoxIcon::Information,
-			               Application::getAppWindowHandle());
+			               Application::windowState.windowHandle);
 			controller.reset();
 			break;
 		case SerializeResult::PartialDeserializeSuccess:
 			IO::messageBox(APP_NAME, controller->getErrorMessage(), IO::MessageBoxButtons::Ok,
-			               IO::MessageBoxIcon::Warning, Application::getAppWindowHandle());
+			               IO::MessageBoxIcon::Warning, Application::windowState.windowHandle);
 			[[fallthrough]];
 		case SerializeResult::DeserializeSuccess:
-			timeline->loadScore(std::move(controller->getSerializeScore().score),
-			                    std::move(controller->getSerializeScore().metadata),
-			                    controller->getFilename());
+			context.clearSelection();
+			context.history.clear();
+			context.score = std::move(controller->getScore());
+			context.selectedLayer = 0;
+			context.workingData =
+			    EditorScoreData(context.score.metadata, controller->getScoreFilename());
+
+			editor.loadMusic(context.workingData.musicFilename);
+			context.audio.setMusicOffset(0, context.workingData.musicOffset);
+
+			context.scoreStats.calculateStats(context.score);
+			timeline.calculateMaxOffsetFromScore(context.score);
+
+			UI::setWindowTitle((context.workingData.filename.size()
+			                        ? IO::File::getFilename(context.workingData.filename)
+			                        : windowUntitled));
+			context.upToDate = true;
 			if (!controller->getFilename().empty())
 				editor.updateRecentFilesList(controller->getFilename());
+
 			controller.reset();
 			break;
 		default:
 		case SerializeResult::Error:
 			IO::messageBox(APP_NAME, controller->getErrorMessage(), IO::MessageBoxButtons::Ok,
-			               IO::MessageBoxIcon::Error, Application::getAppWindowHandle());
+			               IO::MessageBoxIcon::Error, Application::windowState.windowHandle);
 			controller.reset();
 			break;
 		case SerializeResult::Cancel:
@@ -385,27 +379,23 @@ namespace MikuMikuWorld
 		}
 	}
 
-	void ScoreSerializeWindow::serialize(ScoreEditorTimeline& timeline)
+	void ScoreSerializeWindow::serialize(const ScoreContext& context)
 	{
-		controller = std::make_unique<DefaultScoreSerializeController>(
-		    SerializingScore{ timeline.context.score, timeline.context.metadata });
-		this->timeline = &timeline;
+		Score score = context.score;
+		score.metadata = context.workingData.toScoreMetadata();
+		controller = std::make_unique<DefaultScoreSerializeController>(std::move(score));
 	}
 
-	void ScoreSerializeWindow::serialize(ScoreEditorTimeline& timeline, const std::string& filename)
+	void ScoreSerializeWindow::serialize(const ScoreContext& context, const std::string& filename)
 	{
-		controller = std::make_unique<DefaultScoreSerializeController>(
-		    SerializingScore{ timeline.context.score, timeline.context.metadata }, filename);
-		this->timeline = &timeline;
+		Score score = context.score;
+		score.metadata = context.workingData.toScoreMetadata();
+		controller = std::make_unique<DefaultScoreSerializeController>(std::move(score), filename);
 	}
 
-	void ScoreSerializeWindow::deserialize(ScoreEditorTimeline& timeline,
-	                                       const std::string& filename)
+	void ScoreSerializeWindow::deserialize(const std::string& filename)
 	{
 		controller.reset();
 		controller = std::make_unique<DefaultScoreDeserializeController>(filename);
-		this->timeline = &timeline;
 	}
-
-	bool ScoreSerializeWindow::isSerializing() const { return static_cast<bool>(controller); }
 }

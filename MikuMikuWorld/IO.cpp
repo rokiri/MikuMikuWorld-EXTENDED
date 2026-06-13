@@ -1,4 +1,5 @@
 #include "IO.h"
+#include <Windows.h>
 #include <algorithm>
 #include <zlib.h>
 #include <sstream>
@@ -6,6 +7,68 @@
 
 namespace IO
 {
+	MessageBoxResult messageBox(std::string title, std::string message, MessageBoxButtons buttons,
+	                            MessageBoxIcon icon, void* parentWindow)
+	{
+		UINT flags = 0;
+		switch (icon)
+		{
+		case MessageBoxIcon::Information:
+			flags |= MB_ICONINFORMATION;
+			break;
+		case MessageBoxIcon::Warning:
+			flags |= MB_ICONWARNING;
+			break;
+		case MessageBoxIcon::Error:
+			flags |= MB_ICONERROR;
+			break;
+		case MessageBoxIcon::Question:
+			flags |= MB_ICONQUESTION;
+			break;
+		default:
+			break;
+		}
+
+		switch (buttons)
+		{
+		case MessageBoxButtons::Ok:
+			flags |= MB_OK;
+			break;
+		case MessageBoxButtons::OkCancel:
+			flags |= MB_OKCANCEL;
+			break;
+		case MessageBoxButtons::YesNo:
+			flags |= MB_YESNO;
+			break;
+		case MessageBoxButtons::YesNoCancel:
+			flags |= MB_YESNOCANCEL;
+			break;
+		default:
+			break;
+		}
+
+		const int result =
+		    MessageBoxExW(reinterpret_cast<HWND>(parentWindow), mbToWideStr(message).c_str(),
+		                  mbToWideStr(title).c_str(), flags, 0);
+		switch (result)
+		{
+		case IDABORT:
+			return MessageBoxResult::Abort;
+		case IDCANCEL:
+			return MessageBoxResult::Cancel;
+		case IDIGNORE:
+			return MessageBoxResult::Ignore;
+		case IDNO:
+			return MessageBoxResult::No;
+		case IDYES:
+			return MessageBoxResult::Yes;
+		case IDOK:
+			return MessageBoxResult::Ok;
+		default:
+			return MessageBoxResult::None;
+		}
+	}
+
 	char* reverse(char* str)
 	{
 		char* end = str;
@@ -58,15 +121,11 @@ namespace IO
 
 	bool startsWith(const std::string_view& line, const std::string_view& key)
 	{
-		if (line.size() < key.size())
-			return false;
 		return std::equal(key.begin(), key.end(), line.begin());
 	}
 
 	bool endsWith(const std::string_view& line, const std::string_view& key)
 	{
-		if (line.size() < key.size())
-			return false;
 		return std::equal(key.rbegin(), key.rend(), line.rbegin());
 	}
 
@@ -89,32 +148,49 @@ namespace IO
 		return line.substr(start, end - start + 1);
 	}
 
-	std::vector<std::string> split(const std::string& line, std::string_view delim)
+	std::vector<std::string> split(const std::string& line, const std::string& delim)
 	{
 		std::vector<std::string> values;
 		size_t start = 0;
-		size_t end;
+		size_t end = line.length() - 1;
 
-		do
+		while (start < line.length() && end != std::string::npos)
 		{
 			end = line.find_first_of(delim, start);
 			values.push_back(line.substr(start, end - start));
 
 			start = end + 1;
-		} while (end != std::string::npos);
+		}
 
 		return values;
 	}
 
-	std::pair<std::string, std::string> split_first(const std::string& line,
-	                                                const std::string& delim)
+	std::pair<std::string, std::string> split_first(const std::string& line, const std::string& delim)
 	{
 		std::pair<std::string, std::string> values;
 		size_t firstDelim = line.find_first_of(delim);
-		values.first = line.substr(0, firstDelim);
-		if (firstDelim != std::string::npos)
-			values.second = line.substr(firstDelim + 1);
+		size_t end = line.length() - 1;
+		values =
+		    std::make_pair(line.substr(0, firstDelim), line.substr(firstDelim + 1));
 		return values;
+	}
+
+	std::string wideStringToMb(const std::wstring& str)
+	{
+		int size = WideCharToMultiByte(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0, NULL, NULL);
+		std::string result(size, 0);
+		WideCharToMultiByte(CP_UTF8, 0, &str[0], (int)str.size(), &result[0], size, NULL, NULL);
+
+		return result;
+	}
+
+	std::wstring mbToWideStr(const std::string& str)
+	{
+		int size = MultiByteToWideChar(CP_UTF8, 0, &str[0], str.size(), NULL, 0);
+		std::wstring wResult(size, 0);
+		MultiByteToWideChar(CP_UTF8, 0, &str[0], str.size(), &wResult[0], size);
+
+		return wResult;
 	}
 
 	std::string concat(const char* s1, const char* s2, const char* join)
@@ -122,6 +198,7 @@ namespace IO
 		return std::string(s1).append(join).append(s2);
 	}
 
+	
 	static std::vector<uint8_t> processCompressionStream(const std::vector<uint8_t>& data,
 	                                                     z_stream* stream, int flush,
 	                                                     int (*process)(z_streamp, int))

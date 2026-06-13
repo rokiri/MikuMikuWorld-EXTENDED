@@ -1,90 +1,55 @@
 #include "ScoreStats.h"
 #include "Score.h"
-#include <functional>
+#include "Constants.h"
 #include <algorithm>
-#include <numeric>
 
 namespace MikuMikuWorld
 {
-	static bool isNormalTapNote(const Note& note)
-	{
-		return note.type == NoteType::Tap && !note.isFlick() && !note.isTrace() && !note.isHidden();
-	}
-
-	template <typename T, typename = void> struct has_second : std::false_type
-	{
-	};
-	template <typename T>
-	struct has_second<T, std::void_t<decltype(std::declval<T>().second)>> : std::true_type
-	{
-	};
-	template <typename TContainer, typename TFunc> static int getCount(const TContainer& m, TFunc f)
-	{
-		auto count_f = [&](const auto& e)
-		{
-			if constexpr (has_second<decltype(e)>::value)
-				return std::invoke(f, e.second);
-			else
-				return std::invoke(f, e);
-		};
-		return std::count_if(std::begin(m), std::end(m), count_f);
-	}
-
-	static int getNormalHoldNoteCount(const HoldNote& hold)
-	{
-		auto isNormalHoldStep = [](const HoldNoteStep& step)
-		{
-			return !hasFlag(step.flag, HoldNoteFlag::Guide) &&
-			       !hasFlag(step.flag, HoldNoteFlag::Dummy);
-		};
-		return getCount(hold.separators, isNormalHoldStep);
-	}
-
-	static int getGuideHoldNoteCount(const HoldNote& hold)
-	{
-		return getCount(hold.separators, [](const HoldNoteStep& step) { return step.isGuide(); });
-	}
-
-	template <typename TMapContainer, typename TFunc>
-	static int getTotal(const TMapContainer& m, TFunc f)
-	{
-		return std::accumulate(std::begin(m), std::end(m), 0,
-		                       [&](int count, const TMapContainer::value_type& e)
-		                       { return count + std::invoke(f, e.second); });
-	}
-
 	ScoreStats::ScoreStats() { reset(); }
 
 	void ScoreStats::reset()
 	{
-		taps = flicks = holds = guides = ticks = traces = damages = dummies = total = combo = 0;
-		hispeeds = 1;
+		resetCounts();
+		resetCombo();
 	}
+
+	void ScoreStats::resetCounts() { hispeeds = 1; taps = flicks = holds = steps = guides = traces = total = 0; }
+
+	void ScoreStats::resetCombo() { combo = 0; }
 
 	void ScoreStats::calculateStats(const Score& score)
 	{
-		taps = getCount(score.notes, isNormalTapNote);
+		hispeeds = score.hiSpeedChanges.size();
 
-		holds = getTotal(score.holdNotes, getNormalHoldNoteCount);
+		taps = std::count_if(score.notes.begin(), score.notes.end(),
+		                     [](const auto& n)
+		                     {
+			                     const Note& note = n.second;
+			                     return note.getType() == NoteType::Tap && !note.isFlick() &&
+			                            !note.friction;
+		                     });
 
-		ticks = getCount(score.notes,
-		                 [](const Note& n) { return n.type == NoteType::Tick && !n.isHidden(); });
+		holds = std::count_if(score.notes.begin(), score.notes.end(),
+		                      [&](const auto& n) {
+			                      return n.second.getType() == NoteType::Hold &&
+			                             !score.holdNotes.at(n.first).isGuide();
+		                      });
 
-		guides = getTotal(score.holdNotes, getGuideHoldNoteCount);
+		steps =
+		    std::count_if(score.notes.begin(), score.notes.end(),
+		                  [](const auto& n) { return n.second.getType() == NoteType::HoldMid; });
 
-		flicks = getCount(score.notes, &Note::isFlick);
+		guides = std::count_if(score.notes.begin(), score.notes.end(),
+		                       [&](const auto& n) {
+			                       return n.second.getType() == NoteType::Hold &&
+			                              score.holdNotes.at(n.first).isGuide();
+		                       });
 
-		traces = getCount(score.notes, &Note::isTrace);
+		flicks = std::count_if(score.notes.begin(), score.notes.end(),
+		                       [](const auto& n) { return n.second.isFlick(); });
 
-		damages = getCount(score.notes, [](const Note& n)
-		                   { return n.type == NoteType::Damage && !n.isHidden(); });
-
-		dummies =
-		    getCount(score.notes, [](const Note& n) { return hasFlag(n.flag, NoteFlag::Dummy); });
-
-		hispeeds = std::accumulate(score.layers.begin(), score.layers.end(), size_t(0),
-		                           [](size_t val, const Layer& layer)
-		                           { return val + layer.hiSpeedChanges.size(); });
+		traces = std::count_if(score.notes.begin(), score.notes.end(),
+		                       [](const auto& n) { return n.second.friction; });
 
 		total = score.notes.size();
 		calculateCombo(score);
@@ -92,43 +57,54 @@ namespace MikuMikuWorld
 
 	void ScoreStats::calculateCombo(const Score& score)
 	{
+		resetCombo();
 		combo = score.notes.size();
 
-		combo -= getCount(score.notes, [](const Note& n) { return n.isHidden() || n.isDummy(); });
-
-		constexpr int eighthTicks = TICKS_PER_QUARTER / 2;
+		constexpr int halfBeat = TICKS_PER_BEAT / 2;
+		for (const auto& [id, note] : score.notes)
+		{
+			if (note.dummy)
+				combo--;
+		}
 		for (const auto& [id, hold] : score.holdNotes)
 		{
-			for (auto stepIt = hold.separators.begin(), endIt = std::next(stepIt); stepIt != endIt;)
+			if (hold.isGuide())
 			{
-				const HoldNoteStep& holdStep = *stepIt;
-				if (holdStep.isGuide() || holdStep.isDummy())
-				{
-					stepIt = endIt;
-					if (endIt != hold.separators.end())
-						++endIt;
-					continue;
-				}
-				if (endIt != hold.separators.end() && (!endIt->isGuide() && !endIt->isDummy()))
-				{
-					++endIt;
-					continue;
-				}
-				id_t endID = endIt != hold.separators.end() ? endIt->ID : hold.steps.back();
-
-				int startTick = score.notes.at(stepIt->ID).tick + eighthTicks;
-				if (startTick % eighthTicks)
-					startTick -= (startTick % eighthTicks);
-				int endTick = score.notes.at(endID).tick;
-				if (endTick % eighthTicks)
-					endTick += eighthTicks - (endTick % eighthTicks);
-
-				stepIt = endIt;
-				if (startTick >= endTick)
-					continue;
-
-				combo += (endTick - startTick) / eighthTicks;
+				// Guide holds are not included
+				combo -= 2 + hold.steps.size();
+				continue;
 			}
+
+			// Hidden hold starts and ends do not count towards combo
+			if (!score.notes.at(hold.start.ID).dummy && hold.startType != HoldNoteType::Normal)
+				combo--;
+
+			if (!score.notes.at(hold.end).dummy && hold.endType != HoldNoteType::Normal)
+				combo--;
+
+			combo -= std::count_if(hold.steps.begin(), hold.steps.end(),
+			                       [](const HoldStep& step)
+			                       { return step.type == HoldStepType::Hidden; });
+
+			if (hold.dummy)
+				continue;
+
+			int startTick = score.notes.at(id).tick;
+			int endTick = score.notes.at(hold.end).tick;
+			int eighthTick = startTick;
+
+			eighthTick += halfBeat;
+			if (eighthTick % halfBeat)
+				eighthTick -= (eighthTick % halfBeat);
+
+			// hold <= 1/8th long
+			if (eighthTick == startTick || eighthTick == endTick)
+				continue;
+
+			if (endTick % halfBeat)
+				endTick += halfBeat - (endTick % halfBeat);
+
+			combo += (endTick - eighthTick) / halfBeat;
 		}
 	}
 }

@@ -2,68 +2,63 @@
 
 namespace MikuMikuWorld
 {
-	HistoryManager::HistoryManager() : stackIndex{ 0 }, historyStack{}
+	Score HistoryManager::undo()
 	{
-		historyStack.push_back(History{ "Initial history", Score() });
+		History history = undoHistory.top();
+		redoHistory.push(history);
+		undoHistory.pop();
+
+		return history.prev;
 	}
 
-	const History& HistoryManager::peekCurrent() const { return historyStack.at(stackIndex); }
-
-	const History& HistoryManager::undo()
+	Score HistoryManager::redo()
 	{
-		stackIndex--;
-		return historyStack.at(stackIndex);
+		History history = redoHistory.top();
+		undoHistory.push(history);
+		redoHistory.pop();
+
+		return history.curr;
 	}
 
-	const History& HistoryManager::redo()
+	void HistoryManager::pushHistory(const std::string& description, const Score& prev,
+	                                 const Score& curr)
 	{
-		stackIndex++;
-		return historyStack.at(stackIndex);
-	}
-
-	void HistoryManager::pushHistory(std::string_view description, const Score& score,
-	                                 const ScoreMetadata& metadata)
-	{
-		if (historyStack.size() != stackIndex + 1)
-			historyStack.erase(historyStack.begin() + stackIndex + 1, historyStack.end());
-		historyStack.push_back(History{ std::string(description), score, metadata });
-		stackIndex = historyStack.size() - 1;
+		History history{ description, prev, curr };
+		pushHistory(history);
 	}
 
 	void HistoryManager::pushHistory(const History& history)
 	{
-		if (historyStack.size() != stackIndex + 1)
-			historyStack.erase(historyStack.begin() + stackIndex + 1, historyStack.end());
-		historyStack.push_back(history);
-		stackIndex = historyStack.size() - 1;
+		undoHistory.push(history);
+
+		while (!redoHistory.empty())
+			redoHistory.pop();
 	}
 
 	void HistoryManager::clear()
 	{
-		historyStack.clear();
-		stackIndex = 0;
-		historyStack.push_back(History{ "Initial history", Score(), ScoreMetadata() });
+		while (!undoHistory.empty())
+			undoHistory.pop();
+
+		while (!redoHistory.empty())
+			redoHistory.pop();
 	}
 
-	void HistoryManager::clear(const Score& score, const ScoreMetadata& metadata)
+	bool HistoryManager::hasUndo() const { return undoHistory.size(); }
+
+	bool HistoryManager::hasRedo() const { return redoHistory.size(); }
+
+	int HistoryManager::undoCount() const { return undoHistory.size(); }
+
+	int HistoryManager::redoCount() const { return redoHistory.size(); }
+
+	std::string HistoryManager::peekUndo() const
 	{
-		historyStack.clear();
-		stackIndex = 0;
-		historyStack.push_back(History{ "Initial history", score, metadata });
+		return undoHistory.size() ? undoHistory.top().description : "";
 	}
 
-	bool HistoryManager::hasUndo() const { return stackIndex > 0; }
-
-	bool HistoryManager::hasRedo() const { return stackIndex < (historyStack.size() - 1); }
-
-	int HistoryManager::undoCount() const { return stackIndex; }
-
-	int HistoryManager::redoCount() const { return historyStack.size() - stackIndex - 1; }
-
-	std::tuple<HistoryManager::iterator, HistoryManager::iterator, HistoryManager::iterator>
-	HistoryManager::getHistories() const
+	std::string HistoryManager::peekRedo() const
 	{
-		return std::make_tuple(historyStack.crbegin(), historyStack.crend() - stackIndex - 1,
-		                       historyStack.crend());
+		return redoHistory.size() ? redoHistory.top().description : "";
 	}
 }

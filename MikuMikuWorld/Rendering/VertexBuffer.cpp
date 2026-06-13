@@ -5,60 +5,18 @@
 namespace MikuMikuWorld
 {
 	VertexBuffer::VertexBuffer(int _capacity)
-	    : vertexCapacity{ _capacity }, bufferPos{ 0 }, vao{ 0 }, vbo{ 0 }, ebo{ 0 }
+	    : vertexCapcity{ _capacity }, bufferPos{ 0 }, vao{ 0 }, vbo{ 0 }, ebo{ 0 }
 	{
 		buffer = nullptr;
 		indices = nullptr;
-		indexCapacity = (vertexCapacity * 6) / 4;
+		indexCapacity = (vertexCapcity * 6) / 4;
 	}
 
 	VertexBuffer::~VertexBuffer() { dispose(); }
 
-	VertexBuffer::VertexBuffer(VertexBuffer&& other) noexcept
-	    : buffer(other.buffer), indices(other.indices), indexCapacity(other.indexCapacity),
-	      vertexCapacity(other.vertexCapacity), bufferPos(other.bufferPos), vao(other.vao),
-	      vbo(other.vbo), ebo(other.ebo)
-	{
-		other.buffer = nullptr;
-		other.indices = nullptr;
-		other.vao = 0;
-		other.vbo = 0;
-		other.ebo = 0;
-		other.indexCapacity = 0;
-		other.vertexCapacity = 0;
-		other.bufferPos = 0;
-	}
-
-	VertexBuffer& VertexBuffer::operator=(VertexBuffer&& other) noexcept
-	{
-		if (this != &other)
-		{
-			dispose();
-
-			buffer = other.buffer;
-			indices = other.indices;
-			indexCapacity = other.indexCapacity;
-			vertexCapacity = other.vertexCapacity;
-			bufferPos = other.bufferPos;
-			vao = other.vao;
-			vbo = other.vbo;
-			ebo = other.ebo;
-
-			other.buffer = nullptr;
-			other.indices = nullptr;
-			other.vao = 0;
-			other.vbo = 0;
-			other.ebo = 0;
-			other.indexCapacity = 0;
-			other.vertexCapacity = 0;
-			other.bufferPos = 0;
-		}
-		return *this;
-	}
-
 	void VertexBuffer::setup()
 	{
-		buffer = new Vertex[vertexCapacity];
+		buffer = new Vertex[vertexCapcity];
 		indices = new int[indexCapacity];
 
 		size_t offset = 0;
@@ -68,9 +26,9 @@ namespace MikuMikuWorld
 			indices[index + 1] = offset + 1;
 			indices[index + 2] = offset + 2;
 
-			indices[index + 3] = offset + 0;
-			indices[index + 4] = offset + 2;
-			indices[index + 5] = offset + 3;
+			indices[index + 3] = offset + 2;
+			indices[index + 4] = offset + 3;
+			indices[index + 5] = offset + 0;
 
 			offset += 4;
 		}
@@ -82,7 +40,7 @@ namespace MikuMikuWorld
 		glGenBuffers(1, &ebo);
 
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, vertexCapacity * sizeof(Vertex), NULL, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, vertexCapcity * sizeof(Vertex), NULL, GL_DYNAMIC_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCapacity * sizeof(unsigned int), indices,
@@ -100,11 +58,6 @@ namespace MikuMikuWorld
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
 		                      (void*)offsetof(Vertex, uv));
 
-		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-		                      (void*)(offsetof(Vertex, uv) + offsetof(DirectX::XMFLOAT4, z)));
-		static_assert(sizeof(DirectX::XMFLOAT4) == sizeof(DirectX::XMVECTOR));
-
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 	}
@@ -113,18 +66,10 @@ namespace MikuMikuWorld
 	{
 		delete[] buffer;
 		delete[] indices;
-		buffer = nullptr;
-		indices = nullptr;
 
-		if (vao)
-			glDeleteVertexArrays(1, &vao);
-		vao = 0;
-		if (vbo)
-			glDeleteBuffers(1, &vbo);
-		vbo = 0;
-		if (ebo)
-			glDeleteBuffers(1, &ebo);
-		ebo = 0;
+		glDeleteVertexArrays(1, &vao);
+		glDeleteBuffers(1, &vbo);
+		glDeleteBuffers(1, &ebo);
 	}
 
 	void VertexBuffer::bind() const
@@ -135,17 +80,19 @@ namespace MikuMikuWorld
 
 	int VertexBuffer::getSize() const { return bufferPos * sizeof(Vertex); }
 
-	int VertexBuffer::getCapacity() const { return vertexCapacity; }
+	int VertexBuffer::getCapacity() const { return vertexCapcity; }
 
-	size_t VertexBuffer::pushBuffer(const Vertex* vertices, size_t count)
+	void VertexBuffer::pushBuffer(const Quad& q)
 	{
-		assert(count % 4 == 0 && "Only quads are supported");
-		size_t copyCount = size_t(vertexCapacity) - (bufferPos / 4);
-		copyCount *= 4;
-		copyCount = std::min(copyCount, count);
-		std::copy_n(vertices, copyCount, buffer + bufferPos);
-		bufferPos += copyCount;
-		return copyCount;
+		for (int offset = 0; offset < 4; ++offset)
+		{
+			buffer[bufferPos + offset].position =
+			    DirectX::XMVector2Transform(q.vertices[offset].position, q.matrix);
+			buffer[bufferPos + offset].color = q.vertices[offset].color;
+			buffer[bufferPos + offset].uv = q.vertices[offset].uv;
+		}
+
+		bufferPos += 4;
 	}
 
 	void VertexBuffer::resetBufferPos() { bufferPos = 0; }

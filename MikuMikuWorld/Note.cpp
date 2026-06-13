@@ -1,310 +1,204 @@
 #include "Note.h"
 #include "Constants.h"
 #include "Score.h"
-#include "ApplicationConfiguration.h"
 #include <algorithm>
+#include <choc/memory/choc_xxHash.h>
 
 namespace MikuMikuWorld
 {
-	static std::vector<HoldNoteStep>::iterator holdStepIteratorAt(const Note& step,
-	                                                              std::vector<HoldNoteStep>& steps,
-	                                                              const NoteCollection& notes)
+	int nextID = 1;
+
+	int Note::getNextID()
 	{
-		return std::prev(
-		    std::upper_bound(steps.begin(), steps.end(), step, HoldNote::HoldStepComparer(notes)));
+		uint8_t data[sizeof(int)];
+		std::memcpy(data, &nextID, sizeof(int));
+		nextID = choc::hash::xxHash64::hash(&data, sizeof(int), HASH_SEED + 1);
+		return nextID;
 	}
 
-	static std::vector<HoldNoteStep>::const_iterator
-	holdStepIteratorAt(const Note& step, const std::vector<HoldNoteStep>& steps,
-	                   const NoteCollection& notes)
+	Note::Note(NoteType _type)
+	    : type{ _type }, parentID{ static_cast<id_t>(-1) }, tick{ 0 }, lane{ 0 }, width{ 3 },
+	      critical{ false }, friction{ false }
 	{
-		return std::prev(
-		    std::upper_bound(steps.begin(), steps.end(), step, HoldNote::HoldStepComparer(notes)));
 	}
 
-	bool HoldNote::canGuideAlpha(const Note& step, const NoteCollection& notes) const
+	Note::Note(NoteType _type, int _tick, float _lane, float _width)
+	    : type{ _type }, parentID{ static_cast<id_t>(-1) }, tick{ _tick }, lane{ _lane },
+	      width{ _width }, critical{ false }, friction{ false }
 	{
-		auto it = holdStepIteratorAt(step, separators, notes);
-		return it->isGuide() || (it != separators.begin() && std::prev(it)->isGuide());
 	}
 
-	bool HoldNote::canSetGuideAlpha(const Note& step, const NoteCollection& notes) const
+	Note::Note()
+	    : type{ NoteType::Tap }, parentID{ static_cast<id_t>(-1) }, tick{ 0 }, lane{ 0 },
+	      width{ 3 }, critical{ false }, friction{ false }
 	{
-		// Only if fade type is custom
-		if (fadeType != FadeType::Custom)
-			return false;
-		auto it = holdStepIteratorAt(step, separators, notes);
-		// Only separator notes can have custom alpha
-		if (step.ID != it->ID && step.ID != steps.back())
-			return false;
-		return it->isGuide() || (it != separators.begin() && std::prev(it)->isGuide());
 	}
 
-	void HoldNote::insertStep(Note& note, NoteCollection& notes, bool swaps, bool update)
+	bool Note::isFlick() const
 	{
-		note.holdID = ID;
-		auto it = std::upper_bound(steps.begin(), steps.end(), note, StepIdComparer(notes));
-		if (it == steps.begin())
+		return flick != FlickType::None && type != NoteType::Hold && type != NoteType::HoldMid;
+	}
+
+	// NOTE: Keep this backward compat for score serialization
+	bool Note::hasEase() const { return type == NoteType::Hold || type == NoteType::HoldMid; }
+
+	bool Note::canFlick() const { return type == NoteType::Tap || type == NoteType::HoldEnd; }
+	bool Note::canTrace() const
+	{
+		return type == NoteType::Hold || type == NoteType::HoldEnd || type == NoteType::Tap;
+	}
+
+	void cycleFlick(Note& note)
+	{
+		if (note.getType() == NoteType::Hold || note.getType() == NoteType::HoldMid)
+			return;
+
+		note.flick = (FlickType)(((int)note.flick + 1) % (int)FlickType::FlickTypeCount);
+	}
+
+	void cycleStepEase(HoldStep& note)
+	{
+		note.ease = (EaseType)(((int)note.ease + 1) % (int)EaseType::EaseTypeCount);
+	}
+
+	void cycleStepType(HoldStep& note)
+	{
+		note.type = (HoldStepType)(((int)note.type + 1) % (int)HoldStepType::HoldStepTypeCount);
+	}
+
+	void sortHoldSteps(const Score& score, HoldNote& note)
+	{
+		std::stable_sort(note.steps.begin(), note.steps.end(),
+		                 [&score](const HoldStep& s1, const HoldStep& s2)
+		                 {
+			                 const Note& n1 = score.notes.at(s1.ID);
+			                 const Note& n2 = score.notes.at(s2.ID);
+			                 return n1.tick == n2.tick ? n1.lane < n2.lane : n1.tick < n2.tick;
+		                 });
+	}
+
+	int getFlickArrowSpriteIndex(const Note& note)
+	{
+		int startIndex = note.critical ? 24 : 12;
+		int sizeOffset = (std::min(std::max(note.width, 1.f), 6.f) - 1) * 2;
+		int arrowOffset =
+		    (note.flick == FlickType::Default || note.flick == FlickType::Down) ? 0 : 1;
+		return startIndex + sizeOffset + arrowOffset;
+	}
+
+	int getNoteSpriteIndex(const Note& note)
+	{
+		// default tap
+		int index = 3;
+
+		if (note.friction)
 		{
-			Note& prevStart = notes.at(steps.front());
-			if (swaps)
-				swapNoteProperties(prevStart, note);
-			else
-			{
-				prevStart.flag =
-				    setFlag(prevStart.flag, NoteFlag::LongNote | NoteFlag::NonAttached, false);
-				note.flag = setFlag(note.flag, NoteFlag::LongNote);
-				if (hasFlag(note.flag, NoteFlag::Attached))
-					note.flag = setFlag(note.flag, NoteFlag::NonAttached);
-			}
-			steps.insert(it, note.ID);
+			index = note.critical ? 5 : note.flick != FlickType::None ? 6 : 4;
 		}
-		else if (it == steps.end())
+		else if (note.critical && note.getType() != NoteType::HoldMid)
 		{
-			Note& prevEnd = notes.at(steps.back());
-			if (swaps)
-				swapNoteProperties(prevEnd, note);
-			else
-			{
-				prevEnd.flag =
-				    setFlag(prevEnd.flag, NoteFlag::LongNote | NoteFlag::NonAttached, false);
-				note.flag = setFlag(note.flag, NoteFlag::LongNote);
-				if (hasFlag(note.flag, NoteFlag::Attached))
-					note.flag = setFlag(note.flag, NoteFlag::NonAttached);
-			}
-			steps.insert(it, note.ID);
+			index = 0;
+		}
+		else if (note.isFlick())
+		{
+			index = 1;
 		}
 		else
 		{
-			steps.insert(it, note.ID);
-			note.flag = setFlag(note.flag, NoteFlag::LongNote | NoteFlag::NonAttached, false);
-		}
-		if (update)
-		{
-			updateJoints(notes);
-			updateFading(notes);
-		}
-	}
-
-	void HoldNote::sortSteps(NoteCollection& notes, bool swaps)
-	{
-		Note& prevStart = notes.at(steps.front());
-		Note& prevEnd = notes.at(steps.back());
-		prevStart.flag = setFlag(prevStart.flag, NoteFlag::LongNote | NoteFlag::NonAttached, false);
-		prevEnd.flag = setFlag(prevEnd.flag, NoteFlag::LongNote | NoteFlag::NonAttached, false);
-
-		std::stable_sort(steps.begin(), steps.end(), StepIdComparer(notes));
-		Note& start = notes.at(steps.front());
-		Note& end = notes.at(steps.back());
-		if (swaps)
-		{
-			if (prevStart.ID != start.ID)
-				swapNoteProperties(prevStart, start);
-			if (prevEnd.ID != end.ID)
-				swapNoteProperties(prevEnd, end);
-		}
-		if (hasFlag(start.flag, NoteFlag::Attached))
-			start.flag = setFlag(start.flag, NoteFlag::NonAttached);
-		if (hasFlag(end.flag, NoteFlag::Attached))
-			end.flag = setFlag(end.flag, NoteFlag::NonAttached);
-
-		updateSeparators(notes);
-		updateLongs(notes);
-		updateJoints(notes);
-		updateFading(notes);
-	}
-
-	void HoldNote::updateSeparators(NoteCollection& notes)
-	{
-		separators.front().ID = steps.front();
-		std::sort(std::next(separators.begin()), separators.end(), HoldStepComparer(notes));
-	}
-
-	void HoldNote::updateJoints(NoteCollection& notes)
-	{
-		joints.clear();
-		for (size_t i = 0; i < steps.size(); ++i)
-			if (!notes.at(steps[i]).isAttached())
-				joints.push_back(steps[i]);
-	}
-
-	void HoldNote::updateLongs(NoteCollection& notes)
-	{
-		HoldNoteStep* prevStep = &separators.front();
-		for (auto it = std::next(separators.begin()); it != separators.end(); ++it)
-		{
-			HoldNoteStep& holdStep = *it;
-			Note& step = notes.at(holdStep.ID);
-			step.flag = setFlag(step.flag, NoteFlag::LongNote,
-			                    holdStep.isGuide() != prevStep->isGuide() || step.isHidden());
-			prevStep = &holdStep;
-		}
-		Note& start = notes.at(steps.front());
-		Note& end = notes.at(steps.back());
-		start.flag = setFlag(start.flag, NoteFlag::LongNote,
-		                     !separators.front().isGuide() || start.isHidden());
-		end.flag = setFlag(end.flag, NoteFlag::LongNote, !prevStep->isGuide() || end.isHidden());
-	}
-
-	void HoldNote::updateFading(NoteCollection& notes)
-	{
-		static_assert(size_t(FadeType::FadeTypeCount) == 5 && "Update this");
-		Note& startStep = notes.at(steps.front());
-		Note& endStep = notes.at(steps.back());
-		size_t endIdx = steps.size() - 1;
-		auto nextSeparatorIt = separators.begin();
-		const HoldNoteStep* holdStep = &*nextSeparatorIt;
-		++nextSeparatorIt;
-		Note* startHoldStep = &notes.at(holdStep->ID);
-		Note* endHoldStep =
-		    nextSeparatorIt != separators.end() ? &notes.at(nextSeparatorIt->ID) : &endStep;
-		for (size_t idx = 0; idx <= endIdx; idx++)
-		{
-			bool wasGuide = holdStep->isGuide();
-			if (nextSeparatorIt != separators.end() && nextSeparatorIt->ID == steps[idx])
+			switch (note.getType())
 			{
-				holdStep = &(*nextSeparatorIt);
-				++nextSeparatorIt;
-				startHoldStep = endHoldStep;
-				endHoldStep =
-				    nextSeparatorIt != separators.end() ? &notes.at(nextSeparatorIt->ID) : &endStep;
-			}
-			if (!holdStep->isGuide() && !wasGuide)
-				continue;
+			case NoteType::Hold:
+			case NoteType::HoldEnd:
+				index = 2;
+				break;
 
-			Note& step = notes.at(steps[idx]);
-			switch (fadeType)
-			{
-			case FadeType::Out:
-				step.guideAlpha = unlerp(endStep.tick, startStep.tick, step.tick);
+			case NoteType::HoldMid:
+				index = note.critical ? 8 : 7;
 				break;
-			case FadeType::None:
-				step.guideAlpha = 1.f;
-				break;
-			case FadeType::In:
-				step.guideAlpha = unlerp(startStep.tick, endStep.tick, step.tick);
-				break;
-			case FadeType::Classic:
-				step.guideAlpha = lerp(1.0f, 0.2f, float(idx) / endIdx);
-				break;
+
 			default:
-			case FadeType::Custom:
-			{
-				if (step.ID == startHoldStep->ID || step.ID == endHoldStep->ID)
-					break;
-				float ratio = unlerp(startHoldStep->tick, endHoldStep->tick, step.tick, 0.5f);
-				step.guideAlpha = lerp(startHoldStep->guideAlpha, endHoldStep->guideAlpha, ratio);
 				break;
 			}
-			}
 		}
+
+		return index;
 	}
 
-	const Note* HoldNote::jointBeforeStep(const Note& step, const NoteCollection& notes) const
+	int getCcNoteSpriteIndex(const Note& note)
 	{
-		auto cmp = StepIdComparer<std::less<>>(notes);
-		auto it = std::lower_bound(joints.begin(), joints.end(), step, cmp);
-		if (it == joints.end())
-			return &notes.at(*std::prev(it));
-		if (cmp(step, *it))
-			return it != joints.begin() ? &notes.at(*std::prev(it)) : nullptr;
-		else
-			return &notes.at(*it);
-	}
+		int index;
 
-	const Note* HoldNote::jointAfterStep(const Note& step, const NoteCollection& notes) const
-	{
-		auto cmp = StepIdComparer<std::greater<>>(notes);
-		auto it = std::lower_bound(joints.rbegin(), joints.rend(), step, cmp);
-		if (it == joints.rend())
-			return &notes.at(*std::prev(it));
-		if (cmp(step, *it))
-			return it != joints.rbegin() ? &notes.at(*std::prev(it)) : nullptr;
-		else
-			return &notes.at(*it);
-	}
-
-	HoldNoteStep& HoldNote::holdStepAt(const Note& step, const NoteCollection& notes)
-	{
-		return *holdStepIteratorAt(step, separators, notes);
-	}
-
-	const HoldNoteStep& HoldNote::holdStepAt(const Note& step, const NoteCollection& notes) const
-	{
-		return *holdStepIteratorAt(step, separators, notes);
-	}
-
-	void setNotePosition(Note& n1, const Note& n2)
-	{
-		n1.tick = n2.tick;
-		n1.lane = n2.lane;
-		n1.width = n2.width;
-	}
-
-	void swapNotePosition(Note& n1, Note& n2)
-	{
-		std::swap(n1.tick, n2.tick);
-		std::swap(n1.lane, n2.lane);
-		std::swap(n1.width, n2.width);
-	}
-
-	void swapNoteProperties(Note& n1, Note& n2)
-	{
-		std::swap(n1.type, n2.type);
-		std::swap(n1.flag, n2.flag);
-		std::swap(n1.flick, n2.flick);
-		std::swap(n1.ease, n2.ease);
-		std::swap(n1.guideAlpha, n2.guideAlpha);
-	}
-
-	std::string_view getNoteSE(const Note& note)
-	{
-		if (note.soundEffect != SoundEffectType::Default)
+		switch (note.getType())
 		{
-			switch (note.soundEffect)
-			{
-			default:
-			case SoundEffectType::None:
-				return "";
-			case SoundEffectType::TapPerfect:
-				return SE_TAP;
-			case SoundEffectType::Flick:
-				return SE_FLICK;
-			case SoundEffectType::Trace:
-				return SE_FRICTION;
-			case SoundEffectType::Tick:
-				return SE_TICK;
-			case SoundEffectType::CritTap:
-				return SE_CRITICAL_TAP;
-			case SoundEffectType::CritFlick:
-				return SE_CRITICAL_FLICK;
-			case SoundEffectType::CritTrace:
-				return SE_CRITICAL_FRICTION;
-			case SoundEffectType::CritTick:
-				return SE_CRITICAL_TICK;
-			case SoundEffectType::Damage:
-				return SE_DAMAGE;
-			}
-		}
-		if (note.isHidden())
-			return "";
-		switch (note.type)
-		{
-		case NoteType::Tap:
-			if (note.isFlick())
-				return note.isCrit() ? SE_CRITICAL_FLICK : SE_FLICK;
-			else if (note.isTrace())
-				return note.isCrit() ? SE_CRITICAL_FRICTION : SE_FRICTION;
-			else if (note.isHold())
-				return note.isCrit() ? SE_CRITICAL_LONG_TAP : SE_LONG_TAP;
-			else
-				return note.isCrit() ? SE_CRITICAL_TAP : SE_TAP;
-		case NoteType::Tick:
-			return note.isCrit() ? SE_CRITICAL_TICK : SE_TICK;
 		case NoteType::Damage:
-			return SE_DAMAGE;
+			index = 0;
+			break;
+
 		default:
+			break;
+		}
+
+		return index;
+	}
+
+	int getDummySpriteIndex(const Note& note)
+	{
+		int index = -1;
+		if (note.dummy)
+		{
+			index = 0;
+		}
+		return index;
+	}
+
+	int getFrictionSpriteIndex(const Note& note)
+	{
+		return note.critical ? 10 : note.flick != FlickType::None ? 11 : 9;
+	}
+
+	int findHoldStep(const HoldNote& note, int stepID)
+	{
+		for (int index = 0; index < note.steps.size(); ++index)
+		{
+			if (note.steps[index].ID == stepID)
+				return index;
+		}
+
+		return -1;
+	}
+
+	std::string_view getNoteSE(const Note& note, const Score& score)
+	{
+		std::string_view se = SE_PERFECT;
+		if (note.getType() == NoteType::Damage)
+		{
 			return "";
 		}
+		else if (note.getType() == NoteType::HoldMid)
+		{
+			const HoldNote& hold = score.holdNotes.at(note.parentID);
+			int pos = findHoldStep(hold, note.ID);
+			if (pos != -1 && hold.steps[pos].type == HoldStepType::Hidden)
+				return "";
+
+			se = note.critical ? SE_CRITICAL_TICK : SE_TICK;
+		}
+		else
+		{
+			if (note.isFlick())
+			{
+				se = note.critical ? SE_CRITICAL_FLICK : SE_FLICK;
+			}
+			else if (note.friction)
+			{
+				se = note.critical ? SE_CRITICAL_FRICTION : SE_FRICTION;
+			}
+			else if (note.critical && note.getType() == NoteType::Tap)
+			{
+				se = SE_CRITICAL_TAP;
+			}
+		}
+
+		return se;
 	}
 }

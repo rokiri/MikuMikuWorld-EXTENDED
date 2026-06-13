@@ -7,6 +7,11 @@ fork of [MMW4UC](https://github.com/UntitledCharts/MikuMikuWorld4UC), merged wit
 - SUS: import and export capabilities
 - USC: import and export capabilities
 
+// Up Coming:
+- Built in preview health bar simulation
+- Preview combo
+- Preview skill trigger
+
 ## Translations
 
 If you want to contribute a translation, please see [the guide](./TRANSLATION.md).

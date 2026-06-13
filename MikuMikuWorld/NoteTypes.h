@@ -1,30 +1,16 @@
 #pragma once
-#include <cstdint>
-#include <utility>
-#include "Enum.h"
+#include <stdint.h>
 
 namespace MikuMikuWorld
 {
 	enum class NoteType : uint8_t
 	{
 		Tap,
-		Tick,
+		Hold,
+		HoldMid,
+		HoldEnd,
 		Damage,
-		NoteTypeCount
 	};
-
-	enum class NoteFlag : uint8_t
-	{
-		None,
-		Critical = 1 << 0,
-		Trace = 1 << 1,
-		Dummy = 1 << 2,
-		Attached = 1 << 3,
-		Hidden = 1 << 4,
-		LongNote = 1 << 6, // Use for rendering, has no other effect
-		NonAttached = 1 << 7, // Override Attached flag, for case where it need to be preserved
-	};
-	DECLARE_ENUM_FLAG_OPERATORS(NoteFlag)
 
 	enum class FlickType : uint8_t
 	{
@@ -38,24 +24,19 @@ namespace MikuMikuWorld
 		FlickTypeCount
 	};
 
-	inline constexpr const char* flickTypes[]{ "none", "default",   "left",      "right",
-		                                       "down", "down_left", "down_right" };
-
-	enum class SoundEffectType : uint8_t
-	{
-		Default,
-		None,
-		TapPerfect,
-		Flick,
-		Trace,
-		Tick,
-		CritTap,
-		CritFlick,
-		CritTrace,
-		CritTick,
-		Damage,
-		SoundEffectTypeCount
+	constexpr const char* flickTypes[]{
+		"none", "default", "left", "right", "down", "down_left", "down_right"
 	};
+
+	enum class HoldStepType : uint8_t
+	{
+		Normal,
+		Hidden,
+		Skip,
+		HoldStepTypeCount
+	};
+
+	constexpr const char* stepTypes[]{ "normal", "hidden", "skip" };
 
 	enum class EaseType : uint8_t
 	{
@@ -64,49 +45,31 @@ namespace MikuMikuWorld
 		EaseOut,
 		EaseInOut,
 		EaseOutIn,
-		EaseNone,
 		EaseTypeCount
 	};
 
-	inline constexpr const char* easeTypes[]{ "linear", "in", "out", "inout", "outin", "none" };
+	constexpr const char* easeNames[]{ "linear", "in", "out", "inout", "outin" };
 
-	enum class HoldNoteFlag : uint16_t
+	constexpr const char* easeTypes[]{ "linear", "ease_in", "ease_out", "ease_in_out",
+		                               "ease_out_in" };
+
+	enum class HoldNoteType : uint8_t
 	{
-		Normal = 0,
-		Critical = 1 << 0,
-		Dummy = 1 << 1,
-		Guide = 1 << 2,
+		Normal,
+		Hidden,
+		Guide
 	};
-	DECLARE_ENUM_FLAG_OPERATORS(HoldNoteFlag)
 
-	// constexpr const char* holdTypes[]{ "normal", "hidden", "guide" };
+	constexpr const char* holdTypes[]{ "normal", "hidden", "guide" };
 
-	enum class EditHoldJointType : uint8_t
+	enum class HoldEndType : uint8_t
 	{
 		Normal,
 		Trace,
-		Hidden,
-		JointTypeCount
+		Hidden
 	};
 
-	inline constexpr const char* holdEndTypes[]{ "normal", "trace", "hidden" };
-
-	enum class EditHoldStepType : uint8_t
-	{
-		Normal,
-		Hidden,
-		Skip,
-		HoldStepTypeCount
-	};
-
-	inline constexpr const char* stepTypes[]{ "normal", "hidden", "skip" };
-
-	enum class ClassicGuideColor : uint8_t
-	{
-		Green,
-		Yellow,
-		GuideColorCount
-	};
+	constexpr const char* holdEndTypes[]{ "normal", "trace", "hidden" };
 
 	enum class GuideColor : uint8_t
 	{
@@ -121,27 +84,20 @@ namespace MikuMikuWorld
 		GuideColorCount
 	};
 
-	inline constexpr const char* guideColors[]{ "neutral", "red",    "green", "blue",
-		                                        "yellow",  "purple", "cyan",  "black" };
+	constexpr const char* guideColors[]{ "neutral", "red",    "green", "blue",
+		                                 "yellow",  "purple", "cyan",  "black" };
+	constexpr const char* guideColorsForString[]{ "guide_neutral", "guide_red",    "guide_green",
+		                                          "guide_blue",    "guide_yellow", "guide_purple",
+		                                          "guide_cyan",    "guide_black" };
 
 	enum class FadeType : uint8_t
 	{
 		Out,
 		None,
-		In,
-		Custom,
-		Classic,
-		FadeTypeCount
+		In
 	};
 
-	inline constexpr const char* fadeTypes[] = { "out", "none", "in", "custom", "default" };
-
-	enum class HoldStepLayer : uint8_t
-	{
-		Top,
-		Bottom,
-		LayerCount
-	};
+	constexpr const char* fadeTypes[]{ "fade_out", "fade_none", "fade_in" };
 
 	enum class HiSpeedEaseType : uint8_t
 	{
@@ -150,11 +106,5 @@ namespace MikuMikuWorld
 		EaseTypeCount
 	};
 
-	using id_t = int32_t;
-	using tick_t = int32_t;
-	using beat_t = float;
-	using qnote_t = float;
-	using secs_t = double;
-	using measure_t = int32_t;
-	using layered_tick_t = std::pair<id_t, tick_t>;
+	constexpr const char* hiSpeedEaseNames[] = { "hi_speed_ease_none", "hi_speed_ease_linear" };
 }

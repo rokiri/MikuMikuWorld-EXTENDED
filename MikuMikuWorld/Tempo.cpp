@@ -5,229 +5,174 @@
 
 namespace MikuMikuWorld
 {
-	float quatersPerMeasure(const TimeSignature& t) { return 4.0f * t.numerator / t.denominator; }
-	qnote_t quartersPerBeat(const TimeSignature& t)
-	{
-		return quatersPerMeasure(t) / beatsPerMeasure(t);
-	}
-	beat_t beatsPerMeasure(const TimeSignature& t) { return t.numerator; }
+	Tempo::Tempo() : tick{ 0 }, bpm{ 160 } {}
 
-	qnote_t ticksToQuarters(tick_t ticks, tick_t quarterTicks)
+	Tempo::Tempo(int _tick, float _bpm) : tick{ _tick }, bpm{ _bpm } {}
+
+	float beatsPerMeasure(const TimeSignature& t)
 	{
-		return static_cast<qnote_t>(ticks) / quarterTicks;
+		return ((float)t.numerator / (float)t.denominator) * 4.0f;
 	}
 
-	tick_t quartersToTicks(qnote_t quarters, tick_t quarterTicks)
+	float ticksToSec(int ticks, int beatTicks, float bpm)
 	{
-		static_assert(sizeof(long) == sizeof(tick_t));
-		return std::lround(quarters * quarterTicks);
+		return ticks * (60.0f / bpm / (float)beatTicks);
 	}
 
-	secs_t quartersToSecs(qnote_t quarters, float minuteQuarters)
+	int secsToTicks(float secs, int beatTicks, float bpm)
 	{
-		return quarters * 60.f / minuteQuarters;
+		return secs / (60.0f / bpm / (float)beatTicks);
 	}
 
-	qnote_t secsToQuarters(secs_t secs, float minuteQuarters)
+	float accumulateDuration(int tick, int beatTicks, const std::vector<Tempo>& bpms)
 	{
-		return secs * minuteQuarters / 60.f;
-	}
-
-	secs_t accumulateDuration(tick_t tick, const TempoCollection& tempos, tick_t quarterTicks)
-	{
-		if (tempos.empty())
-			return 0;
-		secs_t total = 0;
-
-		auto last = tempos.upper_bound(tick);
-		if (last == tempos.begin())
-			++last;
-		for (auto pv = tempos.begin(), it = std::next(pv); it != last; pv = it, ++it)
-		{
-			auto&& [prevTick, prevTempo] = *pv;
-			auto&& [currTick, currTempo] = *it;
-			total += quartersToSecs(ticksToQuarters(currTick - prevTick, quarterTicks),
-			                        prevTempo.quarterPerMinute);
-		}
-
-		auto&& [lastTick, lastTempo] = *std::prev(last);
-		total += quartersToSecs(ticksToQuarters(tick - lastTick, quarterTicks),
-		                        lastTempo.quarterPerMinute);
-
-		return total;
-	}
-
-	tick_t accumulateTicks(secs_t secs, const TempoCollection& tempos, tick_t quarterTicks)
-	{
-		if (tempos.empty())
-			return 0;
-		tick_t total = 0;
-		secs_t accSecs = 0;
-
-		auto pv = tempos.begin();
-		for (auto it = std::next(pv); it != tempos.end(); pv = it, ++it)
-		{
-			auto&& [prevTick, prevTempo] = *pv;
-			auto&& [currTick, currTempo] = *it;
-
-			tick_t ticks = currTick - prevTick;
-			float seconds =
-			    quartersToSecs(ticksToQuarters(ticks, quarterTicks), prevTempo.quarterPerMinute);
-
-			if (accSecs + seconds >= secs)
-				break;
-			total += ticks;
-			accSecs += seconds;
-		}
-
-		total += quartersToTicks(secsToQuarters(secs - accSecs, pv->second.quarterPerMinute),
-		                         quarterTicks);
-
-		return total;
-	}
-
-	measure_t accumulateMeasures(tick_t tick, const TimeSignatureCollection& ts,
-	                             tick_t quarterTicks)
-	{
-		if (ts.empty())
-			return 0;
-		const qnote_t endQuarts = ticksToQuarters(tick, quarterTicks);
-		qnote_t accQuarts = 0;
-		measure_t total = 0;
-
-		auto pv = ts.begin();
-		for (auto it = std::next(pv); it != ts.end(); pv = it, ++it)
-		{
-			auto&& [prevMeasure, prevTimeSig] = *pv;
-			auto&& [currMeasure, currTimeSig] = *it;
-
-			measure_t measures = currMeasure - prevMeasure;
-			qnote_t quarters = measures * quatersPerMeasure(prevTimeSig);
-
-			if ((accQuarts + quarters) >= endQuarts)
-				break;
-			total += measures;
-			accQuarts += quarters;
-		}
-
-		total += (endQuarts - accQuarts) / quatersPerMeasure(pv->second);
-
-		return total;
-	}
-
-	tick_t accumulateTicks(measure_t measure, const TimeSignatureCollection& ts,
-	                       tick_t quarterTicks)
-	{
-		if (ts.empty())
-			return 0;
-		tick_t total = 0;
-
-		auto last = ts.upper_bound(measure);
-		for (auto pv = ts.begin(), it = std::next(pv); it != last; pv = it, ++it)
-		{
-			auto&& [prevMeasure, prevTimeSig] = *pv;
-			auto&& [currMeasure, currTimeSig] = *it;
-
-			measure_t measures = currMeasure - prevMeasure;
-			qnote_t quarters = measures * quatersPerMeasure(prevTimeSig);
-
-			total += quartersToTicks(quarters, quarterTicks);
-		}
-
-		auto&& [prevMeasure, prevTimeSig] = *std::prev(last);
-		total +=
-		    quartersToTicks((measure - prevMeasure) * quatersPerMeasure(prevTimeSig), quarterTicks);
-
-		return total;
-	}
-
-	beat_t accumulateBeats(measure_t measure, const TimeSignatureCollection& ts)
-	{
-		if (ts.empty())
-			return 0;
 		float total = 0;
+		int accTicks = 0;
+		int lastBPM = 0;
 
-		auto last = ts.upper_bound(measure);
-		for (auto pv = ts.begin(), it = std::next(pv); it != last; pv = it, ++it)
+		for (int i = 0; i < bpms.size() - 1; ++i)
 		{
-			auto&& [prevMeasure, prevTimeSig] = *pv;
-			auto&& [currMeasure, currTimeSig] = *it;
+			lastBPM = i;
+			int ticks = bpms[i + 1].tick - bpms[i].tick;
+			if (accTicks + ticks >= tick)
+				break;
 
-			measure_t measures = currMeasure - prevMeasure;
-			total += measures * beatsPerMeasure(prevTimeSig);
+			accTicks += ticks;
+			total += ticksToSec(bpms[i + 1].tick - bpms[i].tick, beatTicks, bpms[i].bpm);
+			lastBPM = i + 1;
 		}
 
-		auto&& [prevMeasure, prevTimeSig] = *std::prev(last);
-		total += (measure - prevMeasure) * beatsPerMeasure(prevTimeSig);
+		total += ticksToSec(tick - bpms[lastBPM].tick, beatTicks, bpms[lastBPM].bpm);
 
 		return total;
 	}
 
-	secs_t accumulateScaledDuration(tick_t tick, const Score& score, tick_t quarterTicks)
+	int accumulateTicks(float sec, int beatTicks, const std::vector<Tempo>& bpms)
 	{
-		if (score.tempoChanges.empty())
-			return 0.0;
+		int total = 0;
+		float accSecs = 0;
+		int lastBPM = 0;
 
-		const HiSpeedCollection* hiSpeeds = nullptr;
-		if (!score.layers.empty())
-			hiSpeeds = &score.layers[0].hiSpeedChanges;
-
-		if (!hiSpeeds || hiSpeeds->empty())
-			return accumulateDuration(tick, score.tempoChanges, quarterTicks);
-
-		secs_t scaledTotal = 0.0;
-		tick_t prevTick = 0;
-		float currentSpeed = 1.0f;
-
-		for (const auto& [hsTick, hs] : *hiSpeeds)
+		for (int i = 0; i < bpms.size() - 1; ++i)
 		{
-			if (hsTick >= tick)
+			lastBPM = i;
+			float seconds = ticksToSec(bpms[i + 1].tick - bpms[i].tick, beatTicks, bpms[i].bpm);
+			if (accSecs + seconds >= sec)
 				break;
 
-			secs_t segDuration = accumulateDuration(hsTick, score.tempoChanges, quarterTicks) -
-			                     accumulateDuration(prevTick, score.tempoChanges, quarterTicks);
-			scaledTotal += segDuration * currentSpeed;
+			total += secsToTicks(seconds, beatTicks, bpms[i].bpm);
+			accSecs += seconds;
 
-			prevTick = hsTick;
-			currentSpeed = hs.speed;
+			// last tempo is included
+			lastBPM = i + 1;
 		}
 
-		secs_t segDuration = accumulateDuration(tick, score.tempoChanges, quarterTicks) -
-		                     accumulateDuration(prevTick, score.tempoChanges, quarterTicks);
-		scaledTotal += segDuration * currentSpeed;
+		total += secsToTicks(sec - accSecs, beatTicks, bpms[lastBPM].bpm);
 
-		return scaledTotal;
+		return total;
 	}
 
-	TimeSignature& getTimeSignAt(Score& score, measure_t measure)
+	int accumulateMeasures(int tick, int beatTicks, const std::map<int, TimeSignature>& ts)
 	{
-		return std::prev(score.timeSignatures.upper_bound(measure))->second;
+		int accTicks = 0;
+		int total = 0;
+		auto lastSignature = ts.begin();
+
+		for (auto t = ts.begin(); t != std::prev(ts.end()); t = std::next(t))
+		{
+			lastSignature = t;
+			int ticksPerMeasure = beatsPerMeasure(t->second) * beatTicks;
+			int measures = std::next(t)->first - t->first;
+			int ticks = measures * ticksPerMeasure;
+
+			if (accTicks + ticks >= tick)
+				break;
+
+			total += measures;
+			accTicks += ticks;
+			lastSignature = std::next(t);
+		}
+
+		total += (tick - accTicks) / (beatsPerMeasure(lastSignature->second) * beatTicks);
+		return total;
 	}
 
-	Tempo& getTempoAt(Score& score, tick_t tick)
+	int measureToTicks(int measure, int beatTicks, const std::map<int, TimeSignature>& ts)
 	{
-		return std::prev(score.tempoChanges.upper_bound(tick))->second;
+		int accMeasures = 0;
+		int total = 0;
+		auto lastSignature = ts.begin();
+
+		for (auto t = ts.begin(); t != std::prev(ts.end()); t = std::next(t))
+		{
+			lastSignature = t;
+			int ticksPerMeasure = beatsPerMeasure(t->second) * beatTicks;
+			int measures = std::next(t)->first - t->first;
+			int ticks = measures * ticksPerMeasure;
+
+			if (accMeasures + measures >= measure)
+				break;
+
+			total += ticks;
+			accMeasures += measures;
+			lastSignature = std::next(t);
+		}
+
+		total +=
+		    (measure - lastSignature->first) * (beatsPerMeasure(lastSignature->second) * beatTicks);
+		return total;
 	}
 
-	HiSpeed* getHiSpeedAt(Score& score, tick_t tick, id_t layer)
+	int findTimeSignature(int measure, const std::map<int, TimeSignature>& ts)
 	{
-		auto& currentHispeedChanges = score.layers[layer].hiSpeedChanges;
-		if (currentHispeedChanges.empty())
-			return nullptr;
-		auto it = currentHispeedChanges.upper_bound(tick);
-		if (it == currentHispeedChanges.begin())
-			return nullptr;
-		return &std::prev(it)->second;
+		for (auto it = ts.rbegin(); it != ts.rend(); ++it)
+		{
+			if (it->second.measure <= measure)
+				return it->second.measure;
+		}
+
+		return 0;
 	}
 
-	bool insertTempoChange(TempoCollection& collection, const Tempo& tempo)
+	id_t findHighSpeedChange(int tick, const std::unordered_map<id_t, HiSpeedChange>& hiSpeeds,
+	                         int selectedLayer)
 	{
-		return collection.try_emplace(tempo.tick, tempo).second;
+		std::vector<std::pair<id_t, HiSpeedChange>> currentLayersHiSpeeds;
+		for (auto& [i, h] : hiSpeeds)
+		{
+			if (selectedLayer != -1 && h.layer != selectedLayer)
+				continue;
+			currentLayersHiSpeeds.push_back(std::pair(i, h));
+		}
+		std::sort(currentLayersHiSpeeds.begin(), currentLayersHiSpeeds.end(),
+		          [](const auto& a, const auto& b) { return a.second.tick < b.second.tick; });
+		for (auto it = currentLayersHiSpeeds.rbegin(); it != currentLayersHiSpeeds.rend(); ++it)
+		{
+			if (it->second.tick <= tick)
+				return it->first;
+		}
+
+		return -1;
 	}
 
-	bool isSame(const HiSpeed& a, const HiSpeed& b)
+	const Tempo& getTempoAt(int tick, const std::vector<Tempo>& tempos)
 	{
-		return a.speed == b.speed && a.ease == b.ease && a.skips == b.skips &&
-		       a.hideNotes == b.hideNotes;
+		for (auto it = tempos.rbegin(); it != tempos.rend(); ++it)
+			if (it->tick <= tick)
+				return *it;
+
+		return tempos[0];
+	}
+
+	int snapTick(int tick, int div)
+	{
+		const int subDivision = TICKS_PER_BEAT / (static_cast<float>(div) / 4);
+		const int remainingTicks = tick % subDivision;
+
+		tick -= remainingTicks;
+		if (remainingTicks >= subDivision / 2)
+			tick += subDivision;
+
+		return std::max(tick, 0);
 	}
 }

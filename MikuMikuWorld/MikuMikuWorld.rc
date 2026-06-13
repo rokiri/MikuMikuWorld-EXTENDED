@@ -78,12 +78,12 @@ BEGIN
         BLOCK "200004b0"
         BEGIN
             VALUE "FileDescription", "MikuMikuWorld Extended"
-            VALUE "FileVersion", "2.0.0.0"
+            VALUE "FileVersion", "3.2.1.37"
             VALUE "InternalName", "MikuMikuWorld.exe"
             VALUE "LegalCopyright", "Copyright (C) MikuMikuWorld contributors"
             VALUE "OriginalFilename", "MikuMikuWorld.exe"
             VALUE "ProductName", "MikuMikuWorld Extended"
-            VALUE "ProductVersion", "2.0.0.0"
+            VALUE "ProductVersion", "3.2.1.37"
         END
     END
     BLOCK "VarFileInfo"

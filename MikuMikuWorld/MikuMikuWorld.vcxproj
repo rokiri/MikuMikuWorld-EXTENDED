@@ -116,7 +116,7 @@
     <ClCompile>
       <WarningLevel>Level1</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_ENABLE_EXTENDED_ALIGNED_STORAGE;_DEBUG;DEBUG;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_ENABLE_EXTENDED_ALIGNED_STORAGE;IMGUI_DISABLE_OBSOLETE_FUNCTIONS;_DEBUG;DEBUG;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>../Depends/DirectXMath-master;../Depends/glad/include;../Depends/GLFW/include;../Depends/stb_image;../Depends/miniaudio;../Depends/json;../Depends/stb_vorbis;../Depends/openssl/include;../Depends;../Depends/zlib/include</AdditionalIncludeDirectories>
@@ -141,7 +141,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_ENABLE_EXTENDED_ALIGNED_STORAGE;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_ENABLE_EXTENDED_ALIGNED_STORAGE;IMGUI_DISABLE_OBSOLETE_FUNCTIONS;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>../Depends/DirectXMath-master;../Depends/glad/include;../Depends/GLFW/include;../Depends/stb_image;../Depends/miniaudio;../Depends/json;../Depends/stb_vorbis;../Depends/openssl/include;../Depends;../Depends/zlib/include</AdditionalIncludeDirectories>

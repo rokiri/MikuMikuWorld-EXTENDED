@@ -10,33 +10,28 @@ namespace MikuMikuWorld
 	struct History
 	{
 		std::string description;
-		Score score;
-		ScoreMetadata metadata;
+		Score prev;
+		Score curr;
 	};
 
 	class HistoryManager
 	{
 	  private:
-		size_t stackIndex;
-		std::vector<History> historyStack;
-
-		using iterator = std::vector<History>::const_reverse_iterator;
+		std::stack<History> undoHistory;
+		std::stack<History> redoHistory;
 
 	  public:
-		HistoryManager();
-		const History& peekCurrent() const;
-		const History& undo();
-		const History& redo();
+		Score undo();
+		Score redo();
 
 		int undoCount() const;
 		int redoCount() const;
-		std::tuple<iterator, iterator, iterator> getHistories() const;
+		std::string peekUndo() const;
+		std::string peekRedo() const;
 
 		void pushHistory(const History& history);
-		void pushHistory(std::string_view description, const Score& score,
-		                 const ScoreMetadata& metadata);
+		void pushHistory(const std::string& description, const Score& prev, const Score& curr);
 		void clear();
-		void clear(const Score& score, const ScoreMetadata& metadata);
 		bool hasUndo() const;
 		bool hasRedo() const;
 	};

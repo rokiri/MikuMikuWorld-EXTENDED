@@ -9,46 +9,38 @@
 
 namespace MikuMikuWorld
 {
-	static void frameBufferResizeCallback(GLFWwindow* window, int width, int height)
+	void frameBufferResizeCallback(GLFWwindow* window, int width, int height)
 	{
 		glViewport(0, 0, width, height);
 	}
 
-	static void windowSizeCallback(GLFWwindow* window, int width, int height)
+	void windowSizeCallback(GLFWwindow* window, int width, int height)
 	{
-		WindowState& windowState =
-		    static_cast<Application*>(glfwGetWindowUserPointer(window))->getWindowState();
-		if (!windowState.maximized)
+		if (!Application::windowState.maximized)
 		{
-			windowState.size.x = width;
-			windowState.size.y = height;
+			Application::windowState.size.x = width;
+			Application::windowState.size.y = height;
 		}
 	}
 
-	static void windowPositionCallback(GLFWwindow* window, int x, int y)
+	void windowPositionCallback(GLFWwindow* window, int x, int y)
 	{
-		WindowState& windowState =
-		    static_cast<Application*>(glfwGetWindowUserPointer(window))->getWindowState();
-		if (!windowState.maximized)
+		if (!Application::windowState.maximized)
 		{
-			windowState.position.x = x;
-			windowState.position.y = y;
+			Application::windowState.position.x = x;
+			Application::windowState.position.y = y;
 		}
 	}
 
-	static void windowCloseCallback(GLFWwindow* window)
+	void windowCloseCallback(GLFWwindow* window)
 	{
-		WindowState& windowState =
-		    static_cast<Application*>(glfwGetWindowUserPointer(window))->getWindowState();
 		glfwSetWindowShouldClose(window, 0);
-		windowState.closing = true;
+		Application::windowState.closing = true;
 	}
 
-	static void windowMaximizeCallback(GLFWwindow* window, int _maximized)
+	void windowMaximizeCallback(GLFWwindow* window, int _maximized)
 	{
-		WindowState& windowState =
-		    static_cast<Application*>(glfwGetWindowUserPointer(window))->getWindowState();
-		windowState.maximized = _maximized;
+		Application::windowState.maximized = _maximized;
 	}
 
 	Result Application::initOpenGL()
@@ -70,14 +62,8 @@ namespace MikuMikuWorld
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-		glfwWindowHint(GLFW_POSITION_X, getConfig().windowPos.x);
-		glfwWindowHint(GLFW_POSITION_Y, getConfig().windowPos.y);
-		if (getConfig().maximized)
-			glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
-		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-		window = glfwCreateWindow(std::max(getConfig().windowSize.x, 100.f),
-		                          std::max(getConfig().windowSize.y, 100.f), APP_NAME, NULL, NULL);
+		window = glfwCreateWindow(config.windowSize.x, config.windowSize.y, APP_NAME, NULL, NULL);
 		possibleError = glfwGetError(&glfwErrorDescription);
 		if (possibleError != GLFW_NO_ERROR)
 		{
@@ -86,25 +72,23 @@ namespace MikuMikuWorld
 			              "Failed to create GLFW Window.\n" + std::string(glfwErrorDescription));
 		}
 
-		// glfwSetWindowPos(window, getConfig().windowPos.x, getConfig().windowPos.y);
+		glfwSetWindowPos(window, config.windowPos.x, config.windowPos.y);
 		glfwMakeContextCurrent(window);
-		glfwSetWindowTitle(window, APP_NAME);
-		glfwSetWindowUserPointer(window, this);
+		glfwSetWindowTitle(window, APP_NAME " - Untitled");
 		glfwSetWindowPosCallback(window, windowPositionCallback);
 		glfwSetWindowSizeCallback(window, windowSizeCallback);
 		glfwSetFramebufferSizeCallback(window, frameBufferResizeCallback);
 		glfwSetWindowCloseCallback(window, windowCloseCallback);
 		glfwSetWindowMaximizeCallback(window, windowMaximizeCallback);
 
-		auto iconPath = Application::getInstance().getResourcePath("mmw_icon.png");
-		if (IO::File::exists(iconPath))
+		std::string iconFilename = appDir + "res\\mmw_icon.png";
+		if (IO::File::exists(iconFilename))
 		{
-			std::string iconFilename = IO::toString(iconPath);
-			GLFWimage image{};
-			image.pixels =
-			    stbi_load(iconFilename.c_str(), &image.width, &image.height, 0, 4); // rgba channels
-			glfwSetWindowIcon(window, 1, &image);
-			stbi_image_free(image.pixels);
+			GLFWimage images[1]{};
+			images[0].pixels = stbi_load(iconFilename.c_str(), &images[0].width, &images[0].height,
+			                             0, 4); // rgba channels
+			glfwSetWindowIcon(window, 1, images);
+			stbi_image_free(images[0].pixels);
 		}
 
 		// GLAD initializtion
@@ -114,14 +98,16 @@ namespace MikuMikuWorld
 			return Result(ResultStatus::Error, "Failed to fetch OpenGL proc address.");
 		}
 
-		glfwSwapInterval(getConfig().vsync);
+		glfwSwapInterval(config.vsync);
+		if (config.maximized)
+			glfwMaximizeWindow(window);
 
 		glLineWidth(1.0f);
 		glPointSize(1.0f);
 		glEnablei(GL_BLEND, 0);
 		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-		glViewport(0, 0, getConfig().windowSize.x, getConfig().windowSize.y);
+		glViewport(0, 0, config.windowSize.x, config.windowSize.y);
 
 		return Result::Ok();
 	}

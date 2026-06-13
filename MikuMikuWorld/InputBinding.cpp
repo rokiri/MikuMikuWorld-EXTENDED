@@ -1,7 +1,6 @@
 #include "InputBinding.h"
 #include "ImGui/imgui.h"
 #include "IO.h"
-#include <map>
 
 using IO::trim, IO::split;
 
@@ -128,24 +127,23 @@ static constexpr ImGuiKeyInfo imguiKeysTable[] = {
 	{ ImGuiMod_Super, "Super", "Super" }
 };
 
-static std::map<ImGuiKey, size_t> BuildKeyMap()
-{
-	std::map<ImGuiKey, size_t> keyMap;
-	for (size_t i = 0; i < std::size(imguiKeysTable); i++)
-		keyMap[imguiKeysTable[i].key] = i;
-	return keyMap;
-}
-
-static ImGuiKeyInfo GetImGuiKeyInfo(ImGuiKey key)
+static constexpr ImGuiKeyInfo GetImGuiKeyInfo(ImGuiKey key)
 {
 	if (key == ImGuiKey_None)
 		return { key, "None", "" };
-	static std::map<ImGuiKey, size_t> keyTableMap = BuildKeyMap();
-	auto keyIt = keyTableMap.find(key);
-	if (keyIt == keyTableMap.end())
+	else if (key == ImGuiMod_Ctrl) // not very elegant but will do for now
+		return imguiKeysTable[105];
+	else if (key == ImGuiMod_Shift)
+		return imguiKeysTable[106];
+	else if (key == ImGuiMod_Alt)
+		return imguiKeysTable[107];
+	else if (key == ImGuiMod_Super)
+		return imguiKeysTable[108];
+	else if (key < ImGuiKey_NamedKey_BEGIN || key > ImGuiMod_Super ||
+	         (key > ImGuiKey_KeypadEqual && key < ImGuiMod_Ctrl))
 		return { key, "Unknown", "Unknown" };
-	else
-		return imguiKeysTable[keyIt->second];
+
+	return imguiKeysTable[key - ImGuiKey_NamedKey_BEGIN];
 }
 
 const char* ToShortcutString(const MultiInputBinding& binding)
@@ -159,10 +157,10 @@ const char* ToShortcutString(const MultiInputBinding& binding)
 
 const char* ToShortcutString(const InputBinding& binding)
 {
-	return ToShortcutString((ImGuiKey)binding.keyCode, (ImGuiKey)binding.keyModifiers);
+	return ToShortcutString((ImGuiKey)binding.keyCode, (int)binding.keyModifiers);
 }
 
-const char* ToShortcutString(ImGuiKey key, ImGuiKey mods)
+const char* ToShortcutString(ImGuiKey key, int mods)
 {
 	strcpy(keyInfoNameBuffer, "\0"); // start from the beginning of the buffer
 	if (mods & ImGuiMod_Ctrl)
@@ -224,7 +222,7 @@ InputBinding FromSerializedString(std::string string)
 	string = trim(string);
 	std::vector<std::string> keys = split(string, "+");
 
-	InputBinding binding{ ImGuiKey_None, ImGuiMod_None };
+	InputBinding binding{ ImGuiKey_None, 0 };
 
 	const std::array<int, 4> modIndices = { 105, 106, 107, 108 };
 
@@ -276,23 +274,18 @@ InputBinding FromSerializedString(std::string string)
 
 namespace ImGui
 {
-	bool TestModifiers(ImGuiKey mods) { return ImGui::GetIO().KeyMods == mods; }
+	bool TestModifiers(int mods) { return ImGui::GetIO().KeyMods == (ImGuiKey)mods; }
 
 	bool IsDown(const InputBinding& binding)
 	{
-		return ImGui::TestModifiers((ImGuiKey)binding.keyModifiers) &&
+		return ImGui::TestModifiers((int)binding.keyModifiers) &&
 		       ImGui::IsKeyDown((ImGuiKey)binding.keyCode);
 	}
 
 	bool IsPressed(const InputBinding& binding, bool repeat)
 	{
-		return ImGui::TestModifiers((ImGuiKey)binding.keyModifiers) &&
+		return ImGui::TestModifiers((int)binding.keyModifiers) &&
 		       ImGui::IsKeyPressed((ImGuiKey)binding.keyCode, repeat);
-	}
-
-	bool Shortcut(const InputBinding& binding, ImGuiInputFlags flags)
-	{
-		return ImGui::Shortcut(static_cast<ImGuiKeyChord>(binding), flags);
 	}
 
 	bool IsAnyDown(const MultiInputBinding& bindings)
@@ -307,19 +300,9 @@ namespace ImGui
 	bool IsAnyPressed(const MultiInputBinding& bindings, bool repeat)
 	{
 		for (int i = 0; i < bindings.count; ++i)
-			if (bindings.bindings[i].keyCode != ImGuiKey_None &&
-			    IsPressed(bindings.bindings[i], repeat))
+			if (IsPressed(bindings.bindings[i], repeat))
 				return true;
 
 		return false;
-	}
-
-	bool AnyShortcut(const MultiInputBinding& bindings, ImGuiInputFlags flags)
-	{
-		bool active = false;
-		for (int i = 0; i < bindings.count; ++i)
-			active |= Shortcut(bindings.bindings[i], flags);
-
-		return active;
 	}
 }

@@ -1,5 +1,8 @@
 #include "SusSerializer.h"
 #include "SUS.h"
+#include "IO.h"
+#include <unordered_set>
+#include <array>
 #include "SusExporter.h"
 #include "SusParser.h"
 
@@ -460,8 +463,7 @@ namespace MikuMikuWorld
 
 	SUS SusSerializer::scoreToSus(const Score& score)
 	{
-		constexpr std::array<int, static_cast<int>(FlickType::FlickTypeCount)> flickToType{ 0, 1, 3,
-			                                                                                4 };
+		constexpr std::array<int, static_cast<int>(FlickType::FlickTypeCount)> flickToType{ 0, 1, 3, 4, 0, 4, 4 };
 
 		int offset = score.metadata.laneExtension == 0 ? 2 : score.metadata.laneExtension;
 
@@ -470,7 +472,7 @@ namespace MikuMikuWorld
 		std::vector<std::vector<SUSNote>> guides;
 		std::vector<BPM> bpms;
 		std::vector<BarLength> barlengths;
-		std::vector<HiSpeed> hiSpeeds;
+		std::vector<SusHiSpeed> hiSpeeds;
 
 		std::unordered_map<int, std::string> hiSpeedGroupNames;
 
@@ -642,7 +644,7 @@ namespace MikuMikuWorld
 
 		hiSpeeds.reserve(score.hiSpeedChanges.size());
 		for (const auto& [_, hiSpeed] : score.hiSpeedChanges)
-			hiSpeeds.push_back(HiSpeed{ hiSpeed.tick, hiSpeed.speed });
+			hiSpeeds.push_back(SusHiSpeed{ hiSpeed.tick, hiSpeed.speed });
 		SUSMetadata metadata;
 		metadata.data["title"] = score.metadata.title;
 		metadata.data["artist"] = score.metadata.artist;
@@ -666,13 +668,13 @@ namespace MikuMikuWorld
 
 		for (int i = 0; i < score.layers.size(); i++)
 		{
-			std::vector<HiSpeed> hiSpeeds;
+			std::vector<SusHiSpeed> hiSpeeds;
 
 			for (const auto& [_, hiSpeed] : score.hiSpeedChanges)
 			{
 				if (hiSpeed.layer == i)
 				{
-					hiSpeeds.push_back(HiSpeed{ hiSpeed.tick, hiSpeed.speed });
+					hiSpeeds.push_back(SusHiSpeed{ hiSpeed.tick, hiSpeed.speed });
 				}
 			}
 			hiSpeedGroup.push_back(HiSpeedGroup{ hiSpeedGroupNames[i], hiSpeeds });
@@ -681,4 +683,5 @@ namespace MikuMikuWorld
 		return SUS{ metadata, taps,       directionals, slides,    guides,
 			        bpms,     barlengths, hiSpeedGroup, laneOffset };
 	}
+	SusSerializer::SusSerializer() : exportComment("") {}
 }

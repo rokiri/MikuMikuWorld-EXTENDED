@@ -2,23 +2,17 @@
 
 #include "Score.h"
 #include "File.h"
-#include "Utilities.h"
 #include <memory>
 #include <stdexcept>
 #include <string>
 
 namespace MikuMikuWorld
 {
-	struct SerializingScore
-	{
-		Score score;
-		ScoreMetadata metadata;
-	};
 	class ScoreSerializer
 	{
 	  public:
-		virtual void serialize(const SerializingScore& scoreData, std::string filename) = 0;
-		virtual SerializingScore deserialize(std::string filename) = 0;
+		virtual void serialize(const Score& score, std::string filename) = 0;
+		virtual Score deserialize(std::string filename) = 0;
 
 		ScoreSerializer() {}
 		virtual ~ScoreSerializer() {};
@@ -27,7 +21,6 @@ namespace MikuMikuWorld
 	enum class SerializeFormat
 	{
 		NativeFormat,
-		LegacyNativeFormat,
 		SusFormat,
 		UscFormat,
 		LvlDataFormat,
@@ -51,9 +44,9 @@ namespace MikuMikuWorld
 		ScoreSerializeController() = default;
 
 	  public:
-		SerializingScore& getSerializeScore();
+		Score& getScore();
 		const std::string& getFilename() const;
-		const std::string& getName() const;
+		const std::string& getScoreFilename() const;
 		const std::string& getErrorMessage() const;
 
 		virtual SerializeResult update() = 0;
@@ -63,25 +56,24 @@ namespace MikuMikuWorld
 		static bool isValidFormat(SerializeFormat format);
 		static IO::FileDialogFilter getFormatFilter(SerializeFormat format);
 		static std::string getFormatDefaultExtension(SerializeFormat format);
-
 	  protected:
 		std::string errorMessage;
 		std::string filename;
-		std::string name;
-		SerializingScore score;
+		std::string scoreFilename;
+		Score score;
 	};
 
 	class PartialScoreDeserializeError : public std::runtime_error
 	{
 	  public:
-		PartialScoreDeserializeError(SerializingScore result, const std::string& message)
-		    : partialResult(std::move(result)), std::runtime_error(message)
+		PartialScoreDeserializeError(Score score, const std::string& message)
+		    : partialScore(std::move(score)), std::runtime_error(message)
 		{
 		}
 
-		inline SerializingScore& getResult() { return partialResult; }
+		inline const Score& getScore() const { return partialScore; }
 
 	  private:
-		SerializingScore partialResult;
+		Score partialScore;
 	};
 }

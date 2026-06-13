@@ -14,6 +14,7 @@ namespace MikuMikuWorld
 
 	  public:
 		NotesPreset(id_t id, std::string name);
+		NotesPreset();
 
 		std::string name;
 		std::string description;
@@ -24,8 +25,8 @@ namespace MikuMikuWorld
 		inline std::string getFilename() const { return filename; }
 		inline id_t getID() const { return ID; };
 
-		Result read(const FilePath& filepath);
-		void write(FilePath filepath);
+		Result read(const std::string& filepath);
+		void write(std::string filepath, bool overwrite);
 	};
 
 	enum class UpdateMode
@@ -44,17 +45,18 @@ namespace MikuMikuWorld
 	  public:
 		std::unordered_map<int, NotesPreset> presets;
 
-		void loadPresets(const FilePath& libPath);
-		void savePresets(const FilePath& libPath);
+		void loadPresets(const std::string& path);
+		void savePresets(const std::string& path);
 
-		void createPreset(const ScoreContext& context, const std::string& name,
-		                  const std::string& desc);
+		void createPreset(const Score& score, const std::unordered_set<id_t>& selectedNotes,
+		                  const std::unordered_set<id_t>& selectedHiSpeedChanges,
+		                  const std::string& name, const std::string& desc);
 
 		void removePreset(int id);
 
 		// Replaces illegal filesystem characters with '_'
 		std::string fixFilename(const std::string& name);
 
-		void applyPreset(int presetId, PasteData& pasteData);
+		void applyPreset(int presetId, ScoreContext& context);
 	};
 }

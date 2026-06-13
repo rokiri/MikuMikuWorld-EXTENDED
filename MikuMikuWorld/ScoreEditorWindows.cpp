@@ -1018,7 +1018,7 @@ namespace MikuMikuWorld
 		if (ImGui::BeginPopupModal(MODAL_TITLE("about"), NULL, ImGuiWindowFlags_NoResize))
 		{
 			ImGui::Text(APP_NAME "\n"
-			                     "This application is based on MMW4UC and MMW4UC by Monchi.\n\n"
+			                     "This application is based on MikuMikuWorld Extended.\n\n"
 			                     "See LICENSE and NOTICE for license and attribution information.\n\n");
 			ImGui::Separator();
 
@@ -1339,23 +1339,25 @@ namespace MikuMikuWorld
 				for (int key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_MouseLeft; ++key)
 				{
 					bool isCtrl = key == ImGuiKey_LeftCtrl || key == ImGuiKey_RightCtrl ||
-					              key == ImGuiKey_ModCtrl;
+					              key == ImGuiMod_Ctrl;
 					bool isShift = key == ImGuiKey_LeftShift || key == ImGuiKey_RightShift ||
-					               key == ImGuiKey_ModShift;
+					               key == ImGuiMod_Shift;
 					bool isAlt = key == ImGuiKey_LeftAlt || key == ImGuiKey_RightAlt ||
-					             key == ImGuiKey_ModAlt;
+					             key == ImGuiMod_Alt;
 					bool isSuper = key == ImGuiKey_LeftSuper || key == ImGuiKey_RightSuper ||
-					               key == ImGuiKey_ModSuper;
+					               key == ImGuiMod_Super;
 
 					// execute if a non-modifier key is tapped
 					if (ImGui::IsKeyPressed((ImGuiKey)key) && !isCtrl && !isShift && !isAlt &&
 					    !isSuper)
 					{
 						bindings[selectedBindingIndex]->bindings[editBindingIndex] =
-						    InputBinding((ImGuiKey)key, (ImGuiModFlags_)ImGui::GetIO().KeyMods);
+						    InputBinding((ImGuiKey)key, (int)ImGui::GetIO().KeyMods);
 						listeningForInput = false;
 						editBindingIndex = -1;
 					}
+
+
 				}
 			}
 		}
@@ -1983,7 +1985,11 @@ namespace MikuMikuWorld
 						ImGui::Text("%s", layer.name.c_str());
 					}
 
-					ImGui::SameLine(width - rightPanelWidth);
+					float sameLineX = width - rightPanelWidth;
+					if (sameLineX > ImGui::GetStyle().FramePadding.x)
+						ImGui::SameLine(sameLineX);
+					else
+						ImGui::SameLine();
 
 					if (UI::transparentButton(layer.hidden ? ICON_FA_EYE_SLASH : ICON_FA_EYE, ImVec2(UI::btnSmall.x, layersButtonHeight), false))
 						toggleHideIndex = index;

@@ -1,339 +1,416 @@
 # code: id
 # key, value
 
-language_name, bahasa indonesia
-translator, rokiri (DC: jcrdmlz)
+language_name,Bahasa Indonesia
+translator,rokiri (DC: jcrdmlz)
 
 # menu bar
-file, Berkas
-new, Baru
-open, Buka
-open_recent, Buka terbaru
-clear, Bersihkan
-save, Simpan
-save_as, Simpan sebagai
-export_score, Ekspor skor
-exit, Keluar
-edit, Sunting
-undo, Batalkan
-redo, Ulangi
-select_all, Pilih semua
-view, Lihat
-settings, Setelan
-window, Jendela
-vsync, VSync
-show_fps, Tunjukkan FPS
-debug, Debug
-create_auto_save, Buat penyimpan otomatis
-help, Tolong
-about, Tentang
+file,Berkas
+new,Baru
+open,Buka
+open_recent,Berkas Terbaru
+clear,Kosongkan Riwayat
+file_open_gallery,Buka Galeri
+save,Simpan
+save_as,Simpan Sebagai
+export_score,Ekspor Skor
+exit,Keluar
+edit,Sunting
+undo,Urungkan
+redo,Redan
+select_all,Pilih Semua
+tools,Alat
+tools_straighten_3d,Luruskan 3D
+view,Lihat
+settings,Setelan
+window,Jendela
+vsync,VSync
+show_fps,Tampilkan FPS
+debug,Debug
+create_auto_save,Buat Cadangan Otomatis
+help,Bantuan
+about,Tentang
 
 # dialogs
-file_not_found, Berkas tidak ditemukan
-file_not_found_msg1, Berkas tersebut
-file_not_found_msg2, tidak dapat ditemukan
-remove_recent_file_not_found, Hapus dari berkas terbaru?
-yes, Ya
-no, Tidak
-property_enable, Mungkinkan
-unsaved_changes, Perubahan tidak tersimpan
-ask_save, Simpan perubahan?
-warn_unsaved, Semua perubahan yang belum disimpan akan hilang.
-save_changes, Simpan perubahan
-discard_changes, Abaikan perubahan
-update_available, Pembaruan tersedia!
-update_available_description, Versi terbaru: %s tersedia. Ingin membukanya di browser?
-score_file, Berkas skor
-export_successful, Ekspor berhasil
-unknown_file_format, Format berkas tidak diketahui
-open_as_file_format, Buka sebagai...
-export_as_file_format, Ekspor sebagai...
-error, Kesalahan
-error_load_score_file, Terjadi kesalahan saat memuat skor.
-error_save_score_file, Terjadi kesalahan saat menyimpan skor.
-error_load_music_file, Tidak dapat membuka berkas musik
-score_partially_missing, Sebagian komponen skor mungkin hilang!
-export_format_not_avail_extended, Format ini tidak tersedia untuk skor lengkap
-cancel, Batalkan
-general, Umum
-key_config, Konfigurasi kunci
-language, Bahasa
-minify, Perkecil
-auto, Otomatis
-auto_save, Simpan Otomatis
-auto_save_enable, Aktifkan simpan otomatis
-auto_save_interval, Interval simpan otomatis
-auto_save_count, Jumlah simpan otomatis
-accent_color, Warna Aksen
-accent_color_help, Pilih warna utama untuk antarmuka aplikasi.
-select_accent_color, Pilih Warna Aksen
-display_mode, Mode Tampilan
-theme, Tema
-base_theme, Tema Dasar
-theme_light, Terang
-theme_dark, Gelap
-custom_color, Warna Kustom
-timeline, Lini Masa
-match_timeline_size_to_window, Sesuaikan ukuran lini masa dengan jendela
-match_notes_size_to_timeline, Sesuaikan ukuran catatan dengan lini masa
-lane_width, Lebar Jalur
-notes_height, Tinggi Catatan
-scrolling, Pengguliran
-scroll_speed_normal, Kecepatan gulir normal
-scroll_speed_shift, Kecepatan gulir (Shift)
-use_smooth_scroll, Gunakan pengguliran halus
-smooth_scroll_time, Waktu pengguliran halus
-return_to_last_tick, Kembali ke posisi terakhir
-cursor_auto_scroll, Gulir otomatis kursor
-cursor_auto_scroll_amount, Jarak gulir otomatis kursor
-division_type, Jenis Pembagian
-background, Latar Belakang
-background_image, Gambar Latar Belakang
-draw_background, Tampilkan latar belakang
-background_brightness, Kecerahan latar belakang
-lanes_opacity, Opasitas Jalur
-video, Video
-visuals, Visual
-notes_skin, Tampilan Catatan
-notes_se, Efek Suara Catatan
-show_tick_in_properties, Tampilkan tick di properti
-warn_score_extension_disable, Peringatan: Ekstensi skor dinonaktifkan
+file_not_found,Berkas tidak ditemukan
+file_not_found_msg1,Berkas
+file_not_found_msg2,tidak dapat ditemukan
+remove_recent_file_not_found,Apakah Anda ingin menghapusnya dari daftar berkas terbaru?
+yes,Ya
+no,Tidak
+property_enable,Aktifkan
+unsaved_changes,Perubahan Belum Disimpan
+ask_save,Simpan perubahan saat ini?
+warn_unsaved,Perubahan yang belum disimpan akan hilang.
+save_changes,Simpan Perubahan
+discard_changes,Buang Perubahan
+update_available,Versi baru tersedia!
+update_available_description,Versi %s telah tersedia. Apakah Anda ingin membukanya di peramban?
+score_file,Berkas skor
+export_successful,Ekspor berhasil diselesaikan
+unknown_file_format,Format berkas tidak dikenal
+open_as_file_format,Apakah Anda ingin membukanya sebagai...
+export_as_file_format,Apakah Anda ingin mengekspornya sebagai...
+error,Kesalahan
+error_load_score_file,Terjadi kesalahan saat membaca berkas skor
+error_save_score_file,Terjadi kesalahan saat menyimpan berkas skor
+error_load_music_file,Tidak dapat membuka berkas musik
+score_partially_missing,Beberapa bagian dari skor mungkin hilang!
+export_format_not_avail_extended,Format ini tidak tersedia untuk skor penuh
+cancel,Batal
+general,Umum
+key_config,Konfigurasi Tombol
+language,Bahasa
+minify,Minifikasi
+auto,Otomatis
+auto_save,Simpan Otomatis
+auto_save_enable,Aktifkan Simpan Otomatis
+auto_save_interval,Interval Simpan Otomatis (menit)
+auto_save_count,Batas Maksimum Riwayat Simpan Otomatis
+accent_color,Warna Aksen
+accent_color_help,Pilih warna aksen untuk antarmuka. Slot pertama dapat dikustomisasi melalui kontrol warna di bawah.
+select_accent_color,Pilih warna aksen.
+display_mode,Mode Tampilan
+theme,Tema
+base_theme,Tema Dasar
+theme_light,Terang
+theme_dark,Gelap
+custom_color,Warna Kustom
+timeline,Lini Masa
+match_timeline_size_to_window,Sesuaikan ukuran lini masa dengan jendela
+match_notes_size_to_timeline,Sesuaikan ukuran note dengan lebar lini masa
+lane_width,Lebar Jalur
+notes_height,Tinggi Note
+scrolling,Pengguliran
+scroll_speed_normal,Kecepatan Gulir
+scroll_speed_shift,Kecepatan Gulir (Shift)
+use_smooth_scroll,Gunakan Pengguliran Halus
+smooth_scroll_time,Durasi Pengguliran Halus
+return_to_last_tick,Kembali ke Posisi Terakhir Saat Jeda
+cursor_auto_scroll,Gulir Otomatis Kursor
+cursor_auto_scroll_amount,Persentase Gulir Otomatis Kursor dari Lini Masa
+division_type,Jenis Pembagian
+background,Latar Belakang
+background_image,Gambar Latar Belakang
+draw_background,Tampilkan Gambar Latar Belakang
+background_brightness,Kecerahan Latar Belakang
+lanes_opacity,Opasitas Jalur
+video,Video
+visuals,Visual
+notes_skin,Tampilan Note
+notes_se,Efek Suara Note
+show_tick_in_properties,Tampilkan Tick di Jendela Properti Note
+warn_score_extension_disable,Peringatan: Ekstensi skor dinonaktifkan
 
 # score editor
-options, Opsi
-chart_properties, Properti Bagan
-note_properties, Properti Catatan
-notes_timeline, Lini Masa Catatan
-select, Pilih
-tap, Ketuk
-hold, Tahan
-hold_step, Langkah Tahan
-flick, Jentik
-critical, Kritikal
-dummy, Tiruan
-hold_dummy, Tahan Tiruan
-hold_critical, Tahan Kritikal
-hold_separator, Pemisah Tahan
-trace, Telusur
-guide, Panduan
-damage, Kerusakan
-bpm, BPM
-time_signature, Tanda Birama
-none, Tidak ada
-default, Bawaan
-left, Kiri
-right, Kanan
-down, Bawah
-down_left, Bawah Kiri
-down_right, Bawah Kanan
-normal, Normal
-hidden, Tersembunyi
-skip, Lewati
-linear, Linear
-ease_in, Perlambatan Masuk
-ease_out, Perlambatan Keluar
-ease_in_out, Perlambatan Masuk-Keluar
-ease_out_in, Perlambatan Keluar-Masuk
-ease_none, Tanpa Perlambatan
-sound_effect, Efek Suara
-sfx_default, Efek Suara Bawaan
-sfx_none, Tanpa Efek Suara
-sfx_tap, Efek Suara Ketuk
-sfx_flick, Efek Suara Jentik
-sfx_trace, Efek Suara Telusur
-sfx_tick, Efek Suara Tick
-sfx_crit_tap, Efek Suara Ketuk Kritikal
-sfx_crit_flick, Efek Suara Jentik Kritikal
-sfx_crit_trace, Efek Suara Telusur Kritikal
-sfx_crit_tick, Efek Suara Tick Kritikal
-sfx_damage, Efek Suara Kerusakan
-hold_layer_top, Lapisan Tahan Atas
-hold_layer_bottom, Lapisan Tahan Bawah
-hold_layer_tooltip, Tampilkan urutan lapisan untuk catatan tahan
-delete, Hapus
-copy, Salin
-cut, Potong
-paste, Tempel
-flip_paste, Tempel Terbalik
-duplicate, Gandakan
-flip_duplicate, Gandakan Terbalik
-flip, Balik
-note_width, Lebar Catatan
-note_align, Penyelarasan Catatan
-shrink_down, Perkecil ke Bawah
-shrink_up, Perkecil ke Atas
-compress_selection, Kompres Pilihan
-connect_holds, Hubungkan Catatan Tahan
-split_hold, Pisahkan Catatan Tahan
-repeat_hold_mids, Ulangi Titik Tengah Tahan
-hold_to_traces, Ubah Tahan ke Telusur
-add_traces_for_hold, Tambahkan Telusur untuk Tahan
-convert_hold_to_traces, Konversi Tahan ke Telusur
-convert_guide_hold, Konversi Panduan ke Tahan
-convert_guide_to_hold, Konversi Panduan menjadi Tahan
-convert_hold_to_guide, Konversi Tahan menjadi Panduan
-convert_hold_to_none, Konversi Tahan menjadi Tidak Ada
-lerp_hispeeds, Interpolasi Kecepatan Tinggi
-step_type, Jenis Langkah
-step_alpha, Opasitas Langkah
-ease_type, Jenis Perlambatan
-flick_type, Jenis Jentik
-hold_type, Jenis Tahan
-fade_type, Jenis Transisi
-hold_start_type, Jenis Awal Tahan
-hold_end_type, Jenis Akhir Tahan
-metadata, Metadata
-title, Judul
-designer, Perancang
-artist, Artis
-jacket, Sampul
-lane_extension, Ekstensi Jalur
-life_point, Poin Nyawa
-audio, Audio
-music_file, Berkas Musik
-music_offset, Ofset Musik
-volume_master, Volume Utama
-volume_bgm, Volume Musik (BGM)
-volume_se, Volume Efek Suara (SE)
-playback_speed, Kecepatan Putar
-statistics, Statistik
-hispeeds, Kecepatan Tinggi
-taps, Ketukan
-flicks, Jentikan
-holds, Tahanan
-steps, Langkah
-guides, Panduan
-traces, Telusuran
-total, Total
-combo, Kombo
-goto_measure, Lompat ke Birama
-division, Pembagian
-division_affix, Imbuhan Pembagian
-custom, Kustom
-snap_mode, Mode Snap
-snap_mode_relative, Snap Relatif
-snap_mode_absolute, Snap Absolut
-snap_mode_individual_absolute, Snap Absolut Individu
-zoom, Perbesaran
-zoom_sensitivity, Sensitivitas Perbesaran
-show_step_outlines, Tampilkan Garis Luar Langkah
-hide_step_outlines_during_playback, Sembunyikan Garis Luar Langkah Saat Putar
-draw_waveform, Tampilkan Bentuk Gelombang Audio
-stop_playback_at_music_end, Hentikan Putar Saat Musik Selesai
-edit_bpm, Sunting BPM
-tick, Tick
-remove, Hapus
-edit_time_signature, Sunting Tanda Birama
-measure, Birama
-skill, Keterampilan
-skill_effect, Efek Keterampilan
-skill_effect_score, Efek Keterampilan: Skor
-skill_effect_heal, Efek Keterampilan: Pulihkan Nyawa
-skill_effect_perfect, Efek Keterampilan: Penyempurna
-skill_level, Tingkat Keterampilan
-increase_note_size, Perbesar Ukuran Catatan
-decrease_note_size, Perkecil Ukuran Catatan
-hi_speed, Kecepatan Tinggi
-edit_hi_speed, Sunting Kecepatan Tinggi
-hi_speed_speed, Nilai Kecepatan Tinggi
-hi_speed_skip_beat, Lewati Ketukan Kecepatan Tinggi
-hi_speed_ease, Perlambatan Kecepatan Tinggi
-hi_speed_ease_none, Kecepatan Tinggi Tanpa Perlambatan
-hi_speed_ease_linear, Kecepatan Tinggi Linear
-hi_speed_hide_notes, Sembunyikan Catatan Kecepatan Tinggi
-fade_none, Tanpa Transisi
-fade_in, Memunculkan (Fade In)
-fade_out, Memudarkan (Fade Out)
-fade_custom, Transisi Kustom
-fade_classic, Transisi Klasik
-guide_color, Warna Panduan
-guide_neutral, Panduan Netral
-guide_red, Panduan Merah
-guide_blue, Panduan Biru
-guide_green, Panduan Hijau
-guide_yellow, Panduan Kuning
-guide_purple, Panduan Ungu
-guide_cyan, Panduan Sian
-guide_black, Panduan Hitam
-layer, Lapisan
-edit_skill, Sunting Keterampilan
-edit_fever, Sunting Fever
-edit_none, Sunting Tidak Ada
-edit_event, Sunting Peristiwa
-beat, Ketukan
-lane, Jalur
-width, Lebar
-advanced, Lanjutan
-note_properties_note, Properti Catatan: Catatan
-note_properties_hi_speed, Properti Catatan: Kecepatan Tinggi
-note_properties_hold_note, Properti Catatan: Catatan Tahan
-note_properties_guide, Properti Catatan: Panduan
-note_properties_not_selected, Properti Catatan: Tidak Ada yang Dipilih
-note_properties_mixed_value, Properti Catatan: Nilai Campuran
-translated_by, Diterjemahkan oleh
-zoom_tooltip, Tingkat Perbesaran Lini Masa
-timeline_context_not_selected, Klik kanan pada lini masa untuk menambahkan elemen
-extended_score, Skor Ekstensi
-note_select_tool_tip, Klik dan seret untuk memilih catatan
+options,Opsi
+chart_properties,Properti Chart
+note_properties,Properti Note
+notes_timeline,Lini Masa Note
+select,Pilih
+tap,Tap
+hold,Hold
+hold_step,Hold Mid
+flick,Flick
+critical,Critical
+dummy,Fake
+hold_dummy,Fake Hold
+hold_critical,Critical Hold
+hold_separator,Pemisah Hold
+trace,Trace
+guide,Guide
+damage,Damage
+bpm,BPM
+time_signature,Tanda Birama
+none,Tidak Ada
+default,Bawaan
+left,Kiri
+right,Kanan
+down,Bawah
+down_left,Bawah Kiri
+down_right,Bawah Kanan
+normal,Normal
+hidden,Tersembunyi
+skip,Lewati
+linear,Linear
+ease_in,Ease In
+ease_out,Ease Out
+ease_in_out,Ease In Out
+ease_out_in,Ease Out In
+ease_none,Tanpa Ease
+sound_effect,Efek Suara
+sfx_default,Efek Suara Bawaan
+sfx_none,Tanpa Efek Suara
+sfx_tap,Efek Suara Tap
+sfx_flick,Efek Suara Flick
+sfx_trace,Efek Suara Trace
+sfx_tick,Efek Suara Tick
+sfx_crit_tap,Efek Suara Critical Tap
+sfx_crit_flick,Efek Suara Critical Flick
+sfx_crit_trace,Efek Suara Critical Trace
+sfx_crit_tick,Efek Suara Critical Tick
+sfx_damage,Efek Suara Damage
+hold_layer_top,Lapisan Hold Atas
+hold_layer_bottom,Lapisan Hold Bawah
+hold_layer_tooltip,Tampilkan urutan lapisan untuk note hold
+delete,Hapus
+copy,Salin
+cut,Potong
+paste,Tempel
+flip_paste,Tempel Terbalik
+duplicate,Duplikat
+flip_duplicate,Duplikat Terbalik
+flip,Balik
+note_width,Lebar Note
+note_align,Penyelarasan Note
+shrink_down,Perkecil ke Bawah
+shrink_up,Perkecil ke Atas
+compress_selection,Kompres Pilihan
+connect_holds,Hubungkan Hold
+split_hold,Pisahkan Hold
+repeat_hold_mids,Ulangi Hold Mid
+hold_to_traces,Ubah Hold menjadi Trace
+add_traces_for_hold,Tambahkan Trace untuk Hold
+convert_hold_to_traces,Ubah Hold ke Trace
+convert_guide_hold,Ubah Hold-Guide
+convert_guide_to_hold,Ubah Guide menjadi Hold
+convert_hold_to_guide,Ubah Hold menjadi Guide
+convert_hold_to_none,Ubah Hold menjadi Tidak Ada
+lerp_hispeeds,Interpolasi Hi-Speed
+step_type,Jenis Hold Mid
+step_alpha,Opasitas Langkah
+ease_type,Jenis Ease
+flick_type,Jenis Flick
+hold_type,Jenis Hold
+fade_type,Jenis Fade
+hold_start_type,Jenis Awal Hold
+hold_end_type,Jenis Akhir Hold
+metadata,Metadata
+title,Judul
+designer,Perancang
+artist,Artis
+jacket,Sampul
+lane_extension,Ekstensi Jalur
+life_point,Poin Nyawa
+audio,Audio
+music_file,Berkas Musik
+music_offset,Ofset Musik
+volume_master,Volume Master
+volume_bgm,Volume BGM
+volume_se,Volume SE
+playback_speed,Kecepatan Putar
+statistics,Statistik
+hispeeds,Hi-Speed
+taps,Tap
+flicks,Flick
+holds,Hold
+steps,Hold Mid
+guides,Guide
+traces,Trace
+total,Total
+combo,Kombo
+goto_measure,Lompat ke Birama
+division,%d Pembagian
+division_affix,%d Pembagian
+custom,Kustom
+custom_division,Pembagian Kustom
+snap_mode,Snapping
+snap_mode_relative,Snap Relatif
+snap_mode_absolute,Snap Absolut
+snap_mode_individual_absolute,Snap Absolut Individu
+zoom,Zoom
+zoom_sensitivity,Sensitivitas Zoom
+show_step_outlines,Tampilkan Garis Luar Hold Mid
+hide_step_outlines_during_playback,Sembunyikan Garis Luar Langkah Saat Putar
+draw_waveform,Tampilkan Waveform
+stop_playback_at_music_end,Hentikan Putar Saat Musik Selesai
+edit_bpm,Sunting Tempo
+tick,Tick
+remove,Hapus
+edit_time_signature,Sunting Tanda Birama
+measure,Birama
+skill,Skill
+skill_effect,Efek Skill
+skill_effect_score,Efek Skill: Skor
+skill_effect_heal,Efek Skill: Pemulihan
+skill_effect_perfect,Efek Skill: Penyempurna
+skill_level,Tingkat Skill
+increase_note_size,Perbesar Ukuran Note
+decrease_note_size,Perkecil Ukuran Note
+hi_speed,Hi-Speed
+edit_hi_speed,Sunting Hi-Speed
+hi_speed_speed,Kecepatan
+hi_speed_skip_beat,Lewati
+hi_speed_ease,Ease
+hi_speed_ease_none,Tidak Ada
+hi_speed_ease_linear,Linear
+hi_speed_hide_notes,Sembunyikan Note
+fade_none,Tanpa Fade
+fade_in,Fade In
+fade_out,Fade Out
+fade_custom,Fade Kustom
+fade_classic,Fade Klasisk
+guide_color,Warna Guide
+guide_neutral,Netral
+guide_red,Merah
+guide_blue,Biru
+guide_green,Hijau
+guide_yellow,Kuning
+guide_purple,Ungu
+guide_cyan,Sian
+guide_black,Hitam
+layer,Lapisan
+edit_skill,Sunting Pemicu Skill
+edit_fever,Sunting Pemicu FEVER
+edit_none,Sunting
+edit_event,Sunting Event
+beat,Ketukan
+lane,Jalur
+width,Lebar
+advanced,Lanjutan
+note_properties_note,Properti Note
+note_properties_hi_speed,Properti Hi-Speed
+note_properties_hold_note,Properti Hold Note
+note_properties_guide,Properti Guide
+note_properties_not_selected,Tidak ada note atau hi-speed yang dipilih
+note_properties_many_hold_notes,Lebih dari satu hold note terpilih
+note_properties_mixed_value,Properti Note: Nilai Campuran
+translated_by,Diterjemahkan oleh
+zoom_tooltip,Ctrl+klik untuk menyunting nilai
+timeline_context_not_selected,Klik kanan pada lini masa untuk menambahkan elemen
+extended_score,Skor Ekstensi
+note_select_tool_tip,Klik dan seret untuk memilih note
 
 # preset manager
-presets, Preset
-no_presets, Tidak ada preset
-preset_name, Nama Preset
-description, Deskripsi
-create_preset, Buat Preset
-search, Cari
-confirm, Konfirmasi
+presets,Preset
+no_presets,Tidak ada preset yang tersedia
+preset_name,Nama
+description,Deskripsi
+create_preset,Buat Preset
+search,Cari...
+confirm,Konfirmasi
 
 # layer manager
-layers, Lapisan
-layer_name, Nama Lapisan
-layer_force_note_speed, Paksa Kecepatan Catatan Lapisan
-create_layer, Buat Lapisan
-show_all_layers, Tampilkan Semua Lapisan
-layer_rename, Ubah Nama Lapisan
-layer_up, Pindahkan Lapisan ke Atas
-layer_down, Pindahkan Lapisan ke Bawah
-layer_merge, Gabungkan Lapisan
-layer_delete, Hapus Lapisan
-layer_hide, Sembunyikan Lapisan
-layer_show, Tampilkan Lapisan
-layer_change_order, Ubah Urutan Lapisan
-layer_order_tooltip, Seret untuk mengatur ulang urutan lapisan
-layer_merge_warning, Apakah Anda yakin ingin menggabungkan lapisan ini? Tindakan ini tidak dapat dibatalkan.
+layers,Lapisan
+layer_name,Nama
+layer_force_note_speed,Paksa Kecepatan Note Lapisan
+create_layer,Buat Lapisan
+show_all_layers,Tampilkan Semua Lapisan
+layer_rename,Ubah Nama Lapisan
+layer_up,Pindahkan ke Atas
+layer_down,Pindahkan ke Bawah
+layer_merge,Gabungkan Lapisan
+layer_delete,Hapus Lapisan
+layer_hide,Sembunyikan Lapisan
+layer_show,Tampilkan Lapisan
+layer_change_order,Ubah Urutan Lapisan
+layer_order_tooltip,Seret untuk mengatur ulang urutan lapisan
+layer_merge_warning,Apakah Anda yakin ingin menggabungkan lapisan ini?
+layer_merge_confirm,Gabungkan Lapisan
+layer_merge_msg,Apakah Anda ingin menggabungkan lapisan ini dengan lapisan di bawahnya?
+layer_delete_confirm,Hapus Lapisan
+layer_delete_msg1,Apakah Anda yakin ingin menghapus lapisan ini?
+layer_delete_msg2,Semua note di dalamnya juga akan ikut dihapus.
+Tindakan ini tidak dapat dibatalkan.,Tindakan ini tidak dapat dibatalkan.
 
 # waypoint manager
-waypoints, Titik Jalan (Waypoint)
-create_waypoint, Buat Titik Jalan
-edit_waypoint, Sunting Titik Jalan
-waypoint_name, Nama Titik Jalan
-insert_skill, Masukkan Keterampilan
-set_fever_start, Atur Awal Fever
-set_fever_end, Atur Akhir Fever
+waypoints,Waypoint
+create_waypoint,Buat Waypoint
+edit_waypoint,Sunting Waypoint
+waypoint_name,Nama
+insert_skill,Sisipkan Skill
+set_fever_start,Atur Awal Fever
+set_fever_end,Atur Akhir Fever
 
 # commands
-action, Tindakan
-keys, Tombol
-add, Tambah
-cmd_key_listen, Tekan tombol kombinasi...
-new_chart, Bagan Baru
-toggle_playback, Putar/Jeda
-cancel_paste, Batalkan Tempel
-stop, Berhenti
-previous_tick, Tick Sebelumnya
-next_tick, Tick Berikutnya
-timeline_select, Lini Masa: Pilih
-timeline_tap, Lini Masa: Ketuk
-timeline_hold, Lini Masa: Tahan
-timeline_hold_step, Lini Masa: Langkah Tahan
-timeline_flick, Lini Masa: Jentik
-timeline_critical, Lini Masa: Kritikal
-timeline_trace, Lini Masa: Telusur
-timeline_guide, Lini Masa: Panduan
-timeline_damage, Lini Masa: Kerusakan
-timeline_dummy, Lini Masa: Tiruan
-timeline_bpm, Lini Masa: BPM
-timeline_time_signature, Lini Masa: Tanda Birama
-timeline_hi_speed, Lini Masa: Kecepatan Tinggi
-zoom_in, Perbesar
-zoom_out, Perkecil
+action,Tindakan
+keys,Tombol
+add,Tambah
+cmd_key_listen,Menunggu masukan...
+new_chart,Chart Baru
+toggle_playback,Putar / Jeda
+cancel_paste,Batalkan Tempel
+stop,Berhenti
+previous_tick,Tick Sebelumnya
+next_tick,Tick Berikutnya
+timeline_select,Lini Masa - Pilih
+timeline_tap,Lini Masa - Sisipkan Tap
+timeline_hold,Lini Masa - Sisipkan Hold
+timeline_hold_step,Lini Masa - Sisipkan Hold Mid
+timeline_flick,Lini Masa - Sisipkan Flick
+timeline_critical,Lini Masa - Sisipkan Critical
+timeline_trace,Lini Masa - Sisipkan Trace
+timeline_guide,Lini Masa - Sisipkan Guide
+timeline_damage,Lini Masa - Sisipkan Damage
+timeline_dummy,Lini Masa - Sisipkan Fake
+timeline_bpm,Lini Masa - Sisipkan BPM
+timeline_time_signature,Lini Masa - Sisipkan Tanda Birama
+timeline_hi_speed,Lini Masa - Sisipkan Perubahan Hi-Speed
+zoom_in,Perbesar
+zoom_out,Perkecil
+
+# プレビュー・キーコンフィグ関連
+preview,Pratinjau
+score_preview,Pratinjau Skor
+notes_speed,Kecepatan Note
+mirror_score,Skor Cermin (Mirror)
+preview_draw_toolbar,Tampilkan Toolbar Pratinjau
+stage_opacity,Opasitas Panggung
+stage_cover,Penutup Panggung (Vertikal)
+flicks_animation,Animasi Flick
+holds_animation,Animasi Hold
+simultaneous_lines,Garis Simultan
+holds_alpha,Opasitas Hold
+guides_alpha,Opasitas Guide
+sort_asc,Urutkan Naik
+sort_desc,Urutkan Turun
+new_waypoint,Waypoint Baru
+name,Nama
+time,Durasi
+
+# Gallery
+gallery_all,Semua
+gallery_recent,Terbaru
+gallery_favorites,Favorit
+gallery_team_projects,Proyek Tim
+gallery_personal,Pribadi
+gallery_no_charts,Chart tidak ditemukan.
+gallery_file,Nama Berkas
+gallery_format,Format
+gallery_title,Judul
+gallery_artist,Artis
+gallery_author,Pembuat Chart
+gallery_time,Durasi
+gallery_combo,Kombo
+gallery_move_to_folder,Pindahkan ke Folder
+gallery_uncategorized,- (Tanpa Kategori)
+gallery_create_new_chart,Buat Chart Baru
+gallery_recent_charts,Chart Terbaru
+gallery_more,Lebih Banyak
+gallery_all_charts,Semua Chart di PC
+gallery_add_path,Tambah Jalur:
+gallery_search_paths,Jalur Pencarian
+gallery_rescan_paths,Pindai Ulang Jalur
+gallery_browse_folder,Telusuri Folder
+gallery_path_input_hint,Masukkan jalur folder lalu tekan Enter
+gallery_folder_dialog_open,Pemilih folder sedang terbuka...
+gallery_invalid_search_path,Jalur tidak ada atau bukan merupakan folder.
+gallery_start_scan,Pindai Jalur
+gallery_delete_file,Hapus Berkas
+gallery_delete_confirm,Apakah Anda yakin ingin menghapus berkas ini secara permanen?
+gallery_type_file,Jenis: Berkas %s
+gallery_type_unknown,Jenis: Berkas Tidak Diketahui
+gallery_size_kb,Ukuran: %llu KB
+gallery_original_location,Lokasi Asli: %s
+gallery_yes_y,Ya
+gallery_no_n,Tidak
+gallery_show_search_paths,Tampilkan Jalur
+gallery_hide_search_paths,Sembunyikan Jalur
+gallery_search,Cari
+gallery_sort,Urutkan
+gallery_created,Dibuat
+gallery_name_sort,Nama
+gallery_sort_ascending,Naik
+gallery_sort_descending,Turun
+gallery_modified,Diubah
+gallery_return_to_editor,Kembali ke Editor

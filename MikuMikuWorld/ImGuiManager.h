@@ -1,27 +1,20 @@
-#pragma once
 #include "UI.h"
 #include <string>
-#include <memory>
 
 struct GLFWwindow;
-struct ImGuiStyle;
 
 namespace MikuMikuWorld
 {
 	class Result;
-	
 
 	class ImGuiManager
 	{
 	  private:
 		std::string configFilename{};
 
-		BaseTheme theme{ BaseTheme::DARK };
+		BaseTheme theme{};
 		int accentColor{ 1 };
 		float styleScale{ 1.0f };
-		std::unique_ptr<ImGuiStyle> baseStyle;
-
-		static void dockNodeSetFlag(ImGuiDockNode* node, ImGuiDockNodeFlags flag);
 
 	  public:
 		ImGuiManager();

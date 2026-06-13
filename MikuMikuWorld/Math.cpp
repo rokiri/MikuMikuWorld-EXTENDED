@@ -1,4 +1,5 @@
 #include "Math.h"
+#include <stdexcept>
 
 namespace MikuMikuWorld
 {
@@ -7,9 +8,12 @@ namespace MikuMikuWorld
 		return start + percentage * (end - start);
 	}
 
-	float unlerp(float start, float end, float value, float fallback)
+	float unlerp(float start, float end, float value)
 	{
-		return end != start ? (value - start) / (end - start) : fallback;
+		if (end != start)
+			return (value - start) / (end - start);
+		else
+			return 0;
 	}
 
 	double lerpD(double start, double end, double percentage)
@@ -17,16 +21,15 @@ namespace MikuMikuWorld
 		return start + percentage * (end - start);
 	}
 
-	double unlerpD(double start, double end, double value, double fallback)
+	double unlerpD(double start, double end, double value)
 	{
-		return end != start ? (value - start) / (end - start) : fallback;
+		if (end != start)
+			return (value - start) / (end - start);
+		else
+			return 0;
 	}
 
-	float easeIn(float start, float end, float ratio)
-	{
-		//
-		return lerp(start, end, ratio * ratio);
-	}
+	float easeIn(float start, float end, float ratio) { return lerp(start, end, ratio * ratio); }
 
 	float easeOut(float start, float end, float ratio)
 	{
@@ -57,18 +60,14 @@ namespace MikuMikuWorld
 		}
 	}
 
-	float easeNone(float start, float, float) { return start; }
-
 	float midpoint(float x1, float x2) { return (x1 + x2) * 0.5f; }
 
 	bool isWithinRange(float x, float left, float right) { return x >= left && x <= right; }
 
-	EaseFunction getEaseFunction(EaseType ease)
+	std::function<float(float, float, float)> getEaseFunction(EaseType ease)
 	{
 		switch (ease)
 		{
-		case EaseType::Linear:
-			return lerp;
 		case EaseType::EaseIn:
 			return easeIn;
 		case EaseType::EaseOut:
@@ -77,14 +76,32 @@ namespace MikuMikuWorld
 			return easeInOut;
 		case EaseType::EaseOutIn:
 			return easeOutIn;
-		case EaseType::EaseNone:
-			return easeNone;
 		default:
-			assert(false && "EaseType is not supported!");
 			break;
 		}
 
 		return lerp;
+	}
+
+	std::tuple<Vector2, Vector2, Vector2> convertToBezier(const Vector2& p1, const Vector2 p2,
+	                                                      EaseType ease)
+	{
+		Vector2 ctrlPoint = { 0, midpoint(p1.y, p2.y) };
+		switch (ease)
+		{
+		case EaseType::Linear:
+			ctrlPoint.x = midpoint(p1.x, p2.x);
+			break;
+		case EaseType::EaseIn:
+			ctrlPoint.x = p1.x;
+			break;
+		case EaseType::EaseOut:
+			ctrlPoint.x = p2.x;
+			break;
+		default:
+			throw std::runtime_error("Can't convert to specified EaseType");
+		}
+		return { p1, ctrlPoint, p2 };
 	}
 
 	uint32_t gcf(uint32_t a, uint32_t b)
