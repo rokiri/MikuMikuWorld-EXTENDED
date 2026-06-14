@@ -11,6 +11,8 @@
 #include "Utilities.h"
 #include <glad/glad.h>
 
+
+
 namespace MikuMikuWorld
 {
 	struct PreviewPlaybackState
@@ -126,6 +128,7 @@ namespace MikuMikuWorld
 			if (useDefaultTexture && IO::File::exists(jacket.getFilename()))
 				updateDrawDefaultJacket(renderer, jacket);
 		}
+
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		backgroundTex.dispose();
 	}
@@ -264,12 +267,153 @@ namespace MikuMikuWorld
 		noteEffectsCamera.setRotation(-90.f, 27.1f);
 		noteEffectsCamera.setPosition({ 0, 5.32f, -5.86f, 0 });
 		noteEffectsCamera.positionCamNormal();
+
+		const std::string comboDir = Application::getAppDir() + "res\\textures\\combo\\";
+		for (int i = 0; i <= 9; i++)
+			ResourceManager::loadTexture(comboDir + "p" + std::to_string(i) + ".png");
+		ResourceManager::loadTexture(comboDir + "pt.png");
 	}
 
 	ScorePreviewWindow::~ScorePreviewWindow() {}
 
+	static int getComboAtTick(const Score& score, int currentTick)
+	{
+		int combo = 0;
+		constexpr int halfBeat = TICKS_PER_BEAT / 2;
+
+		for (const auto& [id, note] : score.notes)
+		{
+			if (note.tick > currentTick) continue;
+			if (note.dummy) continue;
+			if (note.getType() == NoteType::HoldMid) continue;
+			auto holdIt = score.holdNotes.find(id);
+			if (holdIt != score.holdNotes.end())
+			{
+				const HoldNote& hold = holdIt->second;
+				if (hold.isGuide()) continue;
+				if (hold.startType != HoldNoteType::Normal) continue;
+			}
+			combo++;
+		}
+
+		for (const auto& [id, hold] : score.holdNotes)
+		{
+			if (hold.isGuide()) continue;
+			if (hold.dummy) continue;
+			int startTick = score.notes.at(id).tick;
+			int endTick = score.notes.at(hold.end).tick;
+			if (startTick > currentTick) continue;
+			int eighthTick = startTick + halfBeat;
+			if (eighthTick % halfBeat) eighthTick -= (eighthTick % halfBeat);
+			if (eighthTick == startTick || eighthTick >= endTick) continue;
+			int clampedEnd = std::min(endTick, currentTick);
+			if (clampedEnd % halfBeat) clampedEnd += halfBeat - (clampedEnd % halfBeat);
+			clampedEnd = std::min(clampedEnd, endTick);
+			if (clampedEnd > eighthTick) combo += (clampedEnd - eighthTick) / halfBeat;
+			if (score.notes.at(hold.end).tick <= currentTick &&
+			    hold.endType == HoldNoteType::Normal && !score.notes.at(hold.end).dummy)
+				combo++;
+		}
+
+		return combo;
+	}
+
+	static int s_lastCombo = -1;
+	static float s_comboAnimTimer = 0.f;
+
+	static void drawComboOverlay(const ScoreContext& context, ImDrawList* drawList, ImVec2 position, ImVec2 size)
+	{
+		if (!drawList || size.x <= 1.f || size.y <= 1.f) return;
+
+		const int combo = getComboAtTick(context.score, context.currentTick);
+		if (combo <= 0) return;
+
+		ImGuiIO& io = ImGui::GetIO();
+		if (combo != s_lastCombo)
+		{
+			s_comboAnimTimer = 0.f;
+			s_lastCombo = combo;
+		}
+		s_comboAnimTimer = std::min(s_comboAnimTimer + io.DeltaTime / 0.15f, 1.f);
+		auto easeOut = [](float t) { return 1.f - (1.f - t) * (1.f - t) * (1.f - t); };
+		const float animScale = 0.75f + 0.25f * easeOut(s_comboAnimTimer);
+
+		const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
+		const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
+		const float offsetY = (size.y - 1080.f * uiScale) * 0.5f;
+
+		auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
+		auto py = [&](float y) { return position.y + offsetY + y * uiScale; };
+		auto ps = [&](float v) { return v * uiScale; };
+
+		constexpr float COMBO_DIGIT_STEP = 52.f;
+		constexpr float COMBO_GROUP_CENTER_X = 1634.f;
+		constexpr float COMBO_GROUP_CENTER_Y = 478.f;
+		constexpr float COMBO_GROUP_SCALE = 1.8f;
+		constexpr float COMBO_GROUP_OFFSET_Y = -12.f;
+		constexpr float COMBO_BASE_SCALE = 1.0f;
+		constexpr float comboCenterYOffset = 18.f;
+
+		auto comboGroupX = [&](float x) {
+			return COMBO_GROUP_CENTER_X + (x - COMBO_GROUP_CENTER_X) * COMBO_GROUP_SCALE;
+		};
+		auto comboGroupY = [&](float y) {
+			return COMBO_GROUP_CENTER_Y + (y - COMBO_GROUP_CENTER_Y) * COMBO_GROUP_SCALE + COMBO_GROUP_OFFSET_Y;
+		};
+		auto comboGroupS = [&](float v) { return v * COMBO_GROUP_SCALE; };
+
+		const std::string comboDir = Application::getAppDir() + "res\\textures\\combo\\";
+
+		const int labelIdx = ResourceManager::getTextureByFilename(comboDir + "pt.png");
+		if (labelIdx != -1)
+		{
+			const Texture& labelTex = ResourceManager::textures[labelIdx];
+			constexpr float comboTagWidth = 180.f;
+			constexpr float comboTagHeight = 60.f;
+			const float x = px(comboGroupX(COMBO_GROUP_CENTER_X - comboTagWidth * 0.5f));
+			const float y = py(comboGroupY(COMBO_GROUP_CENTER_Y - 52.f - comboTagHeight * 0.5f));
+			const float w = ps(comboGroupS(comboTagWidth));
+			const float h = ps(comboGroupS(comboTagHeight));
+			drawList->AddImage(
+				(ImTextureID)(size_t)labelTex.getID(),
+				ImVec2(x, y), ImVec2(x + w, y + h),
+				ImVec2(0, 0), ImVec2(1, 1),
+				IM_COL32(255, 255, 255, 255)
+			);
+		}
+
+		const std::string comboText = std::to_string(combo);
+		const float mid = static_cast<float>(comboText.size()) / 2.f;
+
+		for (size_t i = 0; i < comboText.size(); ++i)
+		{
+			const char ch = comboText[i];
+			const int digitIdx = ResourceManager::getTextureByFilename(comboDir + "p" + ch + ".png");
+			if (digitIdx == -1) continue;
+			const Texture& digitTex = ResourceManager::textures[digitIdx];
+
+			const float left = (static_cast<float>(i) - mid + 0.5f) * COMBO_DIGIT_STEP * COMBO_BASE_SCALE;
+			const float centerX = comboGroupX(COMBO_GROUP_CENTER_X + left);
+			const float centerY = comboGroupY(COMBO_GROUP_CENTER_Y + comboCenterYOffset * COMBO_BASE_SCALE);
+			const float h = ps(comboGroupS(134.f * COMBO_BASE_SCALE * animScale ));
+			const float w = h * (static_cast<float>(digitTex.getWidth()) / static_cast<float>(digitTex.getHeight()));
+
+			drawList->AddImage(
+				(ImTextureID)(size_t)digitTex.getID(),
+				ImVec2(px(centerX) - w * 0.5f, py(centerY) - h * 0.5f),
+				ImVec2(px(centerX) + w * 0.5f, py(centerY) + h * 0.5f),
+				ImVec2(0, 0), ImVec2(1, 1),
+				IM_COL32(255, 255, 255, 255)
+			);
+		}
+	}
+
 	void ScorePreviewWindow::update(ScoreContext& context, Renderer* renderer)
 	{
+
+		
+
+
 		bool isWindowActive =  !ImGui::IsWindowDocked() || ImGui::GetCurrentWindow()->TabId == ImGui::GetWindowDockNode()->SelectedTabId;
 		if (!isWindowActive) return;
 
@@ -406,6 +550,7 @@ namespace MikuMikuWorld
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 		drawList->AddImage((ImTextureID)(size_t)previewBuffer.getTexture(), position, position + size, {0, 0}, {1, 1});
+		drawComboOverlay(context, drawList, position, size);
 	}
 
 	void ScorePreviewWindow::updateUI(ScoreEditorTimeline& timeline, ScoreContext& context)

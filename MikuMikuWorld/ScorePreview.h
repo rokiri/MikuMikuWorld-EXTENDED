@@ -44,7 +44,6 @@ namespace MikuMikuWorld
 		float scaledAspectRatio;
 
 		mutable bool fullWindow{};
-
 		const Texture& getNoteTexture();
 
 		void drawNoteBase(Renderer* renderer, const Note& note, float left, float right, float y, float zScalar = 1);
