@@ -293,8 +293,20 @@ namespace MikuMikuWorld
 			return score;
 
 		std::string signature = reader.readString();
-		if (signature != UC_MMWS_SIGNATURE)
+		bool isUCFormat = (signature == UC_MMWS_SIGNATURE);
+		bool isLegacyFormat = (signature == "MMWS");
+		if (!isUCFormat && !isLegacyFormat)
+		{
+			reader.close();
 			throw std::runtime_error("Invalid MMWS file. Unrecognized signature");
+		}
+			
+		if (isLegacyFormat)
+		{
+			reader.close();
+			throw std::runtime_error("This file was created with an older version of MikuMikuWorld "
+			                         "and cannot be opened.");
+		}
 
 		int version = reader.readUInt32();
 		(void)version;

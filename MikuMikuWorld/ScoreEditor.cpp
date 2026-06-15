@@ -425,7 +425,15 @@ namespace MikuMikuWorld
 			return;
 
 		timeline.setPlaying(context, false);
-		serializeWindow.deserialize(filename);
+		try
+		{
+			serializeWindow.deserialize(filename);
+		}
+		catch (const std::exception& e)
+		{
+			IO::messageBox(APP_NAME, e.what(), IO::MessageBoxButtons::Ok, IO::MessageBoxIcon::Error,
+			               Application::windowState.windowHandle);
+		}
 		updateRecentFilesList(filename);
 	}
 

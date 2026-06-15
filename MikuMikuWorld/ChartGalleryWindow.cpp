@@ -166,9 +166,13 @@ namespace MikuMikuWorld
 				if (!IO::File::exists(absAudioPath)) {
 					absAudioPath = IO::File::getFilepath(filepath) + tempScore.metadata.musicFile;
 				}
-				if (IO::File::exists(absAudioPath)) {
+				auto audioFileSize = std::filesystem::file_size(absAudioPath);
+				if (IO::File::exists(absAudioPath) && audioFileSize < 50 * 1024 * 1024)
+				{
 					Audio::SoundBuffer tempBuffer;
-					if (Audio::decodeAudioFile(absAudioPath, tempBuffer).isOk()) {
+					if (Audio::decodeAudioFile(absAudioPath, tempBuffer).isOk())
+					{
+
 						if (tempBuffer.sampleRate > 0) {
 							double totalSeconds = static_cast<double>(tempBuffer.frameCount) / tempBuffer.sampleRate;
 							int minutes = static_cast<int>(totalSeconds / 60);
