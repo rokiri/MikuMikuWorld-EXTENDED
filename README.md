@@ -16,7 +16,7 @@ fork of [MMW4UC](https://github.com/UntitledCharts/MikuMikuWorld4UC), merged wit
 
 If you want to contribute a translation, please see [the guide](./TRANSLATION.md).
 
-Translation attribution is maintained in [NOTICE](./NOTICE).
+Translation attribution and proper credits is in [NOTICE](./NOTICE).
 
 ## Requirements
 
