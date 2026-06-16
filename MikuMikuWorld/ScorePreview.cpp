@@ -339,6 +339,27 @@ namespace MikuMikuWorld
 		for (int i = 0; i <= 9; i++)
 			ResourceManager::loadTexture(comboDir + "p" + std::to_string(i) + ".png");
 		ResourceManager::loadTexture(comboDir + "pt.png");
+
+		const std::string scoreDir = Application::getAppDir() + "res\\textures\\score\\";
+		const std::string lifeDir = Application::getAppDir() + "res\\textures\\life\\";
+
+		ResourceManager::loadTexture(scoreDir + "bg.png");
+		ResourceManager::loadTexture(scoreDir + "bar.png");
+		ResourceManager::loadTexture(scoreDir + "fg.png");
+		for (char r : { 'd', 'c', 'b', 'a', 's' })
+		{
+			ResourceManager::loadTexture(scoreDir + "rank\\chr\\" + r + ".png");
+			ResourceManager::loadTexture(scoreDir + "rank\\txt\\en\\" + r + ".png");
+		}
+		for (int i = 0; i <= 9; i++)
+		{
+			ResourceManager::loadTexture(scoreDir + "digit\\" + std::to_string(i) + ".png");
+			ResourceManager::loadTexture(scoreDir + "digit\\s" + std::to_string(i) + ".png");
+			ResourceManager::loadTexture(lifeDir + "digit\\" + std::to_string(i) + ".png");
+			ResourceManager::loadTexture(lifeDir + "digit\\s" + std::to_string(i) + ".png");
+		}
+		ResourceManager::loadTexture(lifeDir + "bg.png");
+		ResourceManager::loadTexture(lifeDir + "normal.png");
 	}
 
 	ScorePreviewWindow::~ScorePreviewWindow() {}
@@ -498,6 +519,183 @@ namespace MikuMikuWorld
 			}
 		}
 
+		static void drawHudImage(ImDrawList* drawList, const Texture& tex, float x, float y,
+	                             float w, float h, float alpha = 1.f)
+	    {
+		    if (!drawList || tex.getID() == 0 || w <= 0.1f || h <= 0.1f)
+			    return;
+		    const int a = static_cast<int>(std::max(0.f, std::min(1.f, alpha)) * 255.f);
+		    if (a <= 0)
+			    return;
+		    drawList->AddImage((ImTextureID)(size_t)tex.getID(), ImVec2(x, y), ImVec2(x + w, y + h),
+		                       ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, a));
+	    }
+
+	    static void drawHudImageClipX(ImDrawList* drawList, const Texture& tex, float x, float y,
+	                                  float w, float h, float ratio, float alpha = 1.f)
+	    {
+		    if (!drawList || tex.getID() == 0 || w <= 0.1f || h <= 0.1f)
+			    return;
+		    const float r = std::max(0.f, std::min(1.f, ratio));
+		    if (r <= 0.001f)
+			    return;
+		    const int a = static_cast<int>(std::max(0.f, std::min(1.f, alpha)) * 255.f);
+		    if (a <= 0)
+			    return;
+		    drawList->AddImage((ImTextureID)(size_t)tex.getID(), ImVec2(x, y),
+		                       ImVec2(x + w * r, y + h), ImVec2(0, 0), ImVec2(r, 1),
+		                       IM_COL32(255, 255, 255, a));
+	    }
+
+	    static const Texture* getHudTexture(const std::string& subfolder,
+	                                        const std::string& filename)
+	    {
+		    const std::string path =
+		        Application::getAppDir() + "res\\textures\\" + subfolder + "\\" + filename;
+		    const int idx = ResourceManager::getTextureByFilename(path);
+		    return idx >= 0 ? &ResourceManager::textures[idx] : nullptr;
+	    }
+
+	    static std::string scoreDigitsText(int score)
+	    {
+		    std::string text = std::to_string(std::max(0, score));
+		    while (text.size() < 8)
+			    text.insert(text.begin(), 'n');
+		    return text;
+	    }
+
+		static void drawHudOverlay(const ScoreContext& context, ImDrawList* drawList,
+	                               ImVec2 position, ImVec2 size)
+	    {
+		    if (!drawList || size.x <= 1.f || size.y <= 1.f)
+			    return;
+
+		    const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
+		    const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
+
+		    auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
+		    auto tpy = [&](float y) { return position.y + y * uiScale; };
+		    auto ps = [&](float v) { return v * uiScale; };
+
+		    auto drawTop =
+		        [&](const Texture* tex, float x, float y, float w, float h, float alpha = 1.f)
+		    {
+			    if (tex)
+				    drawHudImage(drawList, *tex, px(x), tpy(y), ps(w), ps(h), alpha);
+		    };
+		    auto drawTopClipX = [&](const Texture* tex, float x, float y, float w, float h,
+		                            float ratio, float alpha = 1.f)
+		    {
+			    if (tex)
+				    drawHudImageClipX(drawList, *tex, px(x), tpy(y), ps(w), ps(h), ratio, alpha);
+		    };
+
+		    constexpr float SCORE_ROOT_SCALE = 1.5f;
+		    constexpr float SCORE_BAR_W = 354.f;
+		    constexpr float HUD_LIFE_Y = 11.f;
+		    constexpr float HUD_LIFE_H = 104.f;
+
+		    auto sx = [&](float v) { return 36.f + v * SCORE_ROOT_SCALE; };
+		    auto sy = [&](float v) { return -3.f + v * SCORE_ROOT_SCALE; };
+		    auto ss = [&](float v) { return v * SCORE_ROOT_SCALE; };
+
+		    // Resolve current score/rank from drawData
+		    const auto& drawData = context.scorePreviewDrawData;
+		    const auto& comboTimes = drawData.comboTimes;
+		    const float chartTime = static_cast<float>(context.getTimeAtCurrentTick());
+
+		    int latestComboIndex = -1;
+		    if (!comboTimes.empty())
+		    {
+			    const auto it =
+			        std::upper_bound(comboTimes.begin(), comboTimes.end(), chartTime + 0.0001f);
+			    latestComboIndex = static_cast<int>(std::distance(comboTimes.begin(), it)) - 1;
+		    }
+
+		    const int hudScore =
+		        (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudScores.size())
+		            ? drawData.hudScores[latestComboIndex]
+		            : 0;
+		    const char hudRank =
+		        (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudRanks.size())
+		            ? drawData.hudRanks[latestComboIndex]
+		            : 'd';
+		    const float hudScoreBar =
+		        (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudScoreBars.size())
+		            ? drawData.hudScoreBars[latestComboIndex]
+		            : 0.f;
+
+		    if (config.pvDrawScoreHud)
+		    {
+			    drawTop(getHudTexture("score", "bg.png"), sx(0), sy(0), ss(444), ss(96));
+			    drawTopClipX(getHudTexture("score", "bar.png"), sx(79), sy(37), ss(SCORE_BAR_W),
+			                 ss(16), hudScoreBar);
+			    drawTop(getHudTexture("score", "fg.png"), sx(0), sy(0), ss(444), ss(96));
+			    drawTop(getHudTexture("score", std::string("rank\\chr\\") + hudRank + ".png"),
+			            sx(10), sy(13), ss(49), ss(58));
+			    drawTop(getHudTexture("score", std::string("rank\\txt\\en\\") + hudRank + ".png"),
+			            sx(6), sy(77), ss(60), ss(8));
+
+			    const std::string scoreText = scoreDigitsText(hudScore);
+			    for (size_t i = 0; i < scoreText.size(); ++i)
+			    {
+				    const char ch = scoreText[i];
+				    const Texture* shadow =
+				        getHudTexture("score", std::string("digit\\s") + ch + ".png");
+				    const Texture* main =
+				        getHudTexture("score", std::string("digit\\") + ch + ".png");
+				    if (!shadow || !main)
+					    continue;
+
+				    const float slotX = sx(82.f + static_cast<float>(i) * 22.f);
+				    const float slotY = sy(60.f);
+				    const float shadowH = ps(ss(36.f));
+				    const float mainH = ps(ss(29.f));
+				    const float shadowW =
+				        shadowH * ((float)shadow->getWidth() / (float)shadow->getHeight());
+				    const float mainW =
+				        mainH * ((float)main->getWidth() / (float)main->getHeight());
+				    const float centerX = px(slotX + ss(11.f));
+				    drawHudImage(drawList, *shadow, centerX - shadowW * 0.5f, tpy(slotY - ss(4.f)),
+				                 shadowW, shadowH);
+				    drawHudImage(drawList, *main, centerX - mainW * 0.5f, tpy(slotY), mainW, mainH);
+			    }
+		    }
+
+		    if (config.pvDrawLifeHud)
+		    {
+			    constexpr float lifeRatio = 1.f;
+			    drawTop(getHudTexture("life", "bg.png"), 1442.f, HUD_LIFE_Y, 444.f, HUD_LIFE_H);
+			    drawTopClipX(getHudTexture("life", "normal.png"), 1442.f, HUD_LIFE_Y, 444.f,
+			                 HUD_LIFE_H, lifeRatio);
+
+			    const std::string lifeText =
+			        std::to_string(static_cast<int>(std::lround(1000.f * lifeRatio)));
+			    for (size_t i = 0; i < lifeText.size(); ++i)
+			    {
+				    const char ch = lifeText[lifeText.size() - 1 - i];
+				    const Texture* shadow =
+				        getHudTexture("life", std::string("digit\\s") + ch + ".png");
+				    const Texture* main =
+				        getHudTexture("life", std::string("digit\\") + ch + ".png");
+				    if (!shadow || !main)
+					    continue;
+
+				    const float slotX = 1442.f + 319.f - static_cast<float>(i) * 22.f;
+				    const float shadowH = ps(37.f);
+				    const float mainH = ps(34.f);
+				    const float shadowW =
+				        shadowH * ((float)shadow->getWidth() / (float)shadow->getHeight());
+				    const float mainW =
+				        mainH * ((float)main->getWidth() / (float)main->getHeight());
+				    const float centerX = px(slotX + 13.f);
+				    drawHudImage(drawList, *shadow, centerX - shadowW * 0.5f, tpy(19.f), shadowW,
+				                 shadowH);
+				    drawHudImage(drawList, *main, centerX - mainW * 0.5f, tpy(21.f), mainW, mainH);
+			    }
+		    }
+	    }
+
 		void ScorePreviewWindow::update(ScoreContext & context, Renderer * renderer)
 		{
 
@@ -655,6 +853,7 @@ namespace MikuMikuWorld
 			drawList->AddImage((ImTextureID)(size_t)previewBuffer.getTexture(), position,
 			                   position + size, { 0, 0 }, { 1, 1 });
 			drawComboOverlay(context, drawList, position, size);
+		    drawHudOverlay(context, drawList, position, size);
 		}
 
 		void ScorePreviewWindow::updateUI(ScoreEditorTimeline & timeline, ScoreContext & context)
@@ -679,6 +878,10 @@ namespace MikuMikuWorld
 						setFullWindow(_fullWindow);
 
 					ImGui::MenuItem(getString("preview_draw_toolbar"), NULL, &config.pvDrawToolbar);
+				    ImGui::MenuItem(getString("preview_draw_score_hud"), NULL,
+				                    &config.pvDrawScoreHud);
+				    ImGui::MenuItem(getString("preview_draw_life_hud"), NULL,
+				                    &config.pvDrawLifeHud);
 					ImGui::MenuItem(getString("return_to_last_tick"), NULL,
 					                &config.returnToLastSelectedTickOnPause);
 					ImGui::EndPopup();

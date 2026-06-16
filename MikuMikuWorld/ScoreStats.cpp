@@ -108,4 +108,87 @@ namespace MikuMikuWorld
 			combo += (endTick - eighthTick) / halfBeat;
 		}
 	}
+
+	std::vector<ComboEvent> calculateComboEvents(const Score& score)
+	{
+		std::vector<ComboEvent> comboEvents;
+		comboEvents.reserve(score.notes.size());
+
+		for (const auto& [id, note] : score.notes)
+		{
+			if (note.dummy)
+				continue;
+			const HoldNote* hold = nullptr;
+			const NoteType type = note.getType();
+
+			if (type == NoteType::Hold)
+			{
+				const auto holdIt = score.holdNotes.find(note.ID);
+				if (holdIt == score.holdNotes.end())
+					continue;
+				hold = &holdIt->second;
+				if (hold->startType != HoldNoteType::Normal)
+					continue;
+			}
+			else if (type == NoteType::HoldEnd)
+			{
+				const auto holdIt = score.holdNotes.find(note.parentID);
+				if (holdIt == score.holdNotes.end())
+					continue;
+				hold = &holdIt->second;
+				if (hold->endType != HoldNoteType::Normal)
+					continue;
+			}
+			else if (type == NoteType::HoldMid)
+			{
+				const auto holdIt = score.holdNotes.find(note.parentID);
+				if (holdIt == score.holdNotes.end())
+					continue;
+				hold = &holdIt->second;
+				const int stepIndex = findHoldStep(*hold, note.ID);
+				if (stepIndex != -1 && hold->steps[stepIndex].type == HoldStepType::Hidden)
+					continue;
+			}
+
+			if (hold != nullptr && hold->isGuide())
+				continue;
+
+			float weight = 1.0f;
+			if (note.isFlick() || note.friction || type == NoteType::HoldMid)
+				weight = note.critical ? 0.2f : 0.1f;
+			else
+				weight = note.critical ? 2.0f : 1.0f;
+
+			comboEvents.push_back({ note.tick, weight, true });
+		}
+
+		constexpr int halfBeat = TICKS_PER_BEAT / 2;
+		for (const auto& [holdId, hold] : score.holdNotes)
+		{
+			if (hold.isGuide() || hold.dummy)
+				continue;
+			const auto holdStartIt = score.notes.find(holdId);
+			const auto holdEndIt = score.notes.find(hold.end);
+			if (holdStartIt == score.notes.end() || holdEndIt == score.notes.end())
+				continue;
+
+			const Note& holdStart = holdStartIt->second;
+			const int startTick = holdStart.tick;
+			int endTick = holdEndIt->second.tick;
+			int eighthTick = startTick + halfBeat;
+			if (eighthTick % halfBeat)
+				eighthTick -= eighthTick % halfBeat;
+			if (eighthTick == startTick || eighthTick == endTick)
+				continue;
+			if (endTick % halfBeat)
+				endTick += halfBeat - (endTick % halfBeat);
+
+			for (int tick = eighthTick; tick < endTick; tick += halfBeat)
+				comboEvents.push_back({ tick, holdStart.critical ? 0.2f : 0.1f, false });
+		}
+
+		std::stable_sort(comboEvents.begin(), comboEvents.end(),
+		                 [](const ComboEvent& a, const ComboEvent& b) { return a.tick < b.tick; });
+		return comboEvents;
+	}
 }

@@ -138,6 +138,8 @@ namespace MikuMikuWorld
 		bool pvFlickAnimation{ true };
 		int pvEffectsProfile{ 0 };
 		bool pvDrawToolbar{ true };
+		bool pvDrawScoreHud{ true };
+		bool pvDrawLifeHud{ true };
 		float pvBackgroundBrightness{ 0.5f };
 
 		InputConfiguration input;

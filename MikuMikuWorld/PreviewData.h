@@ -85,6 +85,12 @@ namespace MikuMikuWorld::Engine
 		std::vector<DrawingHoldTick> drawingHoldTicks;
 		std::vector<DrawingHoldSegment> drawingHoldSegments;
 
+		std::vector<float> comboTimes;
+		std::vector<int> hudScores;
+		std::vector<char> hudRanks;
+		std::vector<float> hudScoreBars;
+		std::vector<float> hudJudgeTimes;
+
 		std::vector<LayerHiSpeedCache> hsCache;
 
 		Effect::EffectView effectView;

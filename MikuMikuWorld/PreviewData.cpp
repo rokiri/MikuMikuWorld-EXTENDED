@@ -8,6 +8,7 @@
 #include "ResourceManager.h"
 #include "ScoreContext.h"
 #include <algorithm>
+#include "ScoreStats.h"
 
 namespace MikuMikuWorld::Engine
 {
@@ -76,6 +77,87 @@ namespace MikuMikuWorld::Engine
 			}
 
 			this->noteSpeed = config.pvNoteSpeed;
+
+			{
+				constexpr float SCORE_TEAM_POWER = 300000.0f;
+				constexpr float SCORE_RATING = 26.0f;
+
+				auto lerpScore = [](float value, float start, float end, float startPos,
+				                    float endPos) -> float
+				{
+					if (end <= start)
+						return endPos;
+					return ((value - start) / (end - start)) * (endPos - startPos) + startPos;
+				};
+
+				auto scoreRankAndBar = [&](float score) -> std::pair<char, float>
+				{
+					const float rankBorder = 1200000.0f + (SCORE_RATING - 5.0f) * 4100.0f;
+					const float rankS = 1040000.0f + (SCORE_RATING - 5.0f) * 5200.0f;
+					const float rankA = 840000.0f + (SCORE_RATING - 5.0f) * 4200.0f;
+					const float rankB = 400000.0f + (SCORE_RATING - 5.0f) * 2000.0f;
+					const float rankC = 20000.0f + (SCORE_RATING - 5.0f) * 100.0f;
+
+					constexpr float rankBorderPos = 1650.0f / 1650.0f;
+					constexpr float rankSPos = 1478.0f / 1650.0f;
+					constexpr float rankAPos = 1234.0f / 1650.0f;
+					constexpr float rankBPos = 990.0f / 1650.0f;
+					constexpr float rankCPos = 746.0f / 1650.0f;
+
+					auto clamp01 = [](float v) { return std::max(0.0f, std::min(1.0f, v)); };
+
+					if (score >= rankBorder)
+						return { 's', rankBorderPos };
+					if (score >= rankS)
+						return { 's', clamp01(lerpScore(score, rankS, rankBorder, rankSPos,
+							                            rankBorderPos)) };
+					if (score >= rankA)
+						return { 'a', clamp01(lerpScore(score, rankA, rankS, rankAPos, rankSPos)) };
+					if (score >= rankB)
+						return { 'b', clamp01(lerpScore(score, rankB, rankA, rankBPos, rankAPos)) };
+					if (score >= rankC)
+						return { 'c', clamp01(lerpScore(score, rankC, rankB, rankCPos, rankBPos)) };
+					return { 'd', clamp01((score / std::max(rankC, 1.0f)) * rankCPos) };
+				};
+
+				const std::vector<ComboEvent> comboEvents = calculateComboEvents(score);
+				comboTimes.reserve(comboEvents.size());
+				hudScores.reserve(comboEvents.size());
+				hudRanks.reserve(comboEvents.size());
+				hudScoreBars.reserve(comboEvents.size());
+				hudJudgeTimes.reserve(comboEvents.size());
+
+				float weightedCount = 0.0f;
+				for (const ComboEvent& e : comboEvents)
+					weightedCount += std::max(0.0f, e.weight);
+				weightedCount = std::max(weightedCount, 1.0f);
+
+				const float levelFactor = (SCORE_RATING - 5.0f) * 0.005f + 1.0f;
+				int combo = 0;
+				float comboFactor = 1.0f;
+				float hudScore = 0.0f;
+
+				for (const ComboEvent& e : comboEvents)
+				{
+					const float timeSec =
+					    accumulateDuration(e.tick, TICKS_PER_BEAT, score.tempoChanges);
+					const float weight = std::max(0.0f, e.weight);
+					combo++;
+					if (combo % 100 == 1 && combo > 1)
+						comboFactor = std::min(comboFactor + 0.01f, 1.1f);
+
+					hudScore += (SCORE_TEAM_POWER / weightedCount) * 4.0f * weight * levelFactor *
+					            comboFactor;
+					const auto [rank, scoreBar] = scoreRankAndBar(hudScore);
+
+					comboTimes.push_back(timeSec);
+					hudScores.push_back(std::max(0, static_cast<int>(std::lround(hudScore))));
+					hudRanks.push_back(rank);
+					hudScoreBars.push_back(scoreBar);
+					if (e.showJudge)
+						hudJudgeTimes.push_back(timeSec);
+				}
+			}
 
 			// =========================================================================
 			// 【変更】同じTickに存在するノーツの <中心X座標, レイヤー> のリストを保持する
@@ -151,6 +233,12 @@ namespace MikuMikuWorld::Engine
 		drawingNotes.clear();
 		drawingHoldTicks.clear();
 		drawingHoldSegments.clear();
+
+		comboTimes.clear();
+		hudScores.clear();
+		hudRanks.clear();
+		hudScoreBars.clear();
+		hudJudgeTimes.clear();
 
 		maxTicks = 1;
 	}

@@ -1,8 +1,18 @@
 #pragma once
+#include <vector>
 
 namespace MikuMikuWorld
 {
 	struct Score;
+
+	struct ComboEvent
+	{
+		int tick{};
+		float weight{};
+		bool showJudge{};
+	};
+
+	std::vector<ComboEvent> calculateComboEvents(const Score& score);
 
 	class ScoreStats
 	{

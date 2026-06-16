@@ -113,6 +113,8 @@ namespace MikuMikuWorld
 			pvSimultaneousLine = jsonIO::tryGetValue<bool>(config["preview"], "simultaneous_line", true);
 			pvHoldAlpha = jsonIO::tryGetValue<float>(config["preview"], "hold_alpha", 0.6f);
 			pvGuideAlpha = jsonIO::tryGetValue<float>(config["preview"], "guide_alpha", 0.4f);
+			pvDrawScoreHud = jsonIO::tryGetValue<bool>(config["preview"], "draw_score_hud", true);
+			pvDrawLifeHud = jsonIO::tryGetValue<bool>(config["preview"], "draw_life_hud", true);
 		}
 
 		if (jsonIO::keyExists(config, "theme"))
@@ -218,7 +220,9 @@ namespace MikuMikuWorld
 			{ "hold_animation", pvHoldAnimation },
 			{ "simultaneous_line", pvSimultaneousLine },
 			{ "hold_alpha", pvHoldAlpha },
-			{ "guide_alpha", pvGuideAlpha }
+			{ "guide_alpha", pvGuideAlpha },
+			{ "draw_score_hud", pvDrawScoreHud },
+			{ "draw_life_hud",  pvDrawLifeHud  }
 		};
 
 		config["theme"] = { { "accent_color", accentColor },
@@ -283,6 +287,8 @@ namespace MikuMikuWorld
 		backgroundBrightness = 0.5f;
 		drawBackground = true;
 		backgroundImage = "";
+		pvDrawScoreHud = true;
+		pvDrawLifeHud = true;
 		useSmoothScrolling = true;
 		smoothScrollingTime = 48.0f;
 		scrollSpeedNormal = 2.0f;
