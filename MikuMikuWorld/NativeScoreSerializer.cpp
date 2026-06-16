@@ -43,16 +43,19 @@ namespace MikuMikuWorld
 			writer.writeInt32(flags);
 		}
 
-		Note readNote(IO::BinaryReader& reader)
+		Note readNote(IO::BinaryReader& reader, NoteType type = NoteType::Tap)
 		{
-			Note note;
+			Note note(type);
 			note.tick = reader.readUInt32();
 			note.lane = reader.readSingle();
 			note.width = reader.readSingle();
 			note.layer = reader.readUInt32();
-			note.flick = static_cast<FlickType>(reader.readUInt32());
-			if (note.flick >= FlickType::FlickTypeCount)
-				note.flick = FlickType::None;
+			if (!note.hasEase())
+			{
+				note.flick = static_cast<FlickType>(reader.readUInt32());
+				if (note.flick >= FlickType::FlickTypeCount)
+					note.flick = FlickType::None;
+			}
 			unsigned int flags = reader.readUInt32();
 			note.critical = (bool)(flags & NOTE_CRITICAL);
 			note.friction = (bool)(flags & NOTE_FRICTION);
@@ -194,6 +197,7 @@ namespace MikuMikuWorld
 		uint32_t tapsAddress = writer.getStreamPosition();
 		writer.writeNull(sizeof(uint32_t));
 
+
 		int noteCount = 0;
 		for (const auto& [_, note] : score.notes)
 		{
@@ -318,6 +322,7 @@ namespace MikuMikuWorld
 		uint32_t damagesAddress = reader.readUInt32();
 		uint32_t layersAddress = reader.readUInt32();
 		uint32_t waypointsAddress = reader.readUInt32();
+		uint32_t fileSize = (uint32_t)reader.getFileSize();
 
 		reader.seek(metadataAddress);
 		score.metadata = readMetadata(reader);
@@ -330,7 +335,7 @@ namespace MikuMikuWorld
 		id_t nextID = 0;
 		for (int i = 0; i < noteCount; ++i)
 		{
-			Note note = readNote(reader);
+			Note note = readNote(reader, NoteType::Tap);
 			note.ID = nextID++;
 			score.notes[note.ID] = note;
 		}
@@ -352,7 +357,7 @@ namespace MikuMikuWorld
 			if (flags & HOLD_DUMMY)
 				hold.dummy = true;
 
-			Note startNote = readNote(reader);
+			Note startNote = readNote(reader, NoteType::Hold);
 			startNote.ID = nextID++;
 			hold.start.ID = startNote.ID;
 			hold.start.ease = static_cast<EaseType>(reader.readUInt32());
@@ -364,29 +369,39 @@ namespace MikuMikuWorld
 			int stepCount = reader.readUInt32();
 			for (int j = 0; j < stepCount; ++j)
 			{
-				Note mid = readNote(reader);
+				Note mid = readNote(reader, NoteType::HoldMid);
 				mid.ID = nextID++;
 				HoldStep step;
 				step.ID = mid.ID;
 				step.type = static_cast<HoldStepType>(reader.readUInt32());
 				step.ease = static_cast<EaseType>(reader.readUInt32());
 				hold.steps.push_back(step);
+				mid.parentID = startNote.ID;
 				score.notes[mid.ID] = mid;
 			}
 
-			Note endNote = readNote(reader);
+			Note endNote = readNote(reader, NoteType::HoldEnd);
 			endNote.ID = nextID++;
 			hold.end = endNote.ID;
+			endNote.parentID = startNote.ID;
 			score.notes[endNote.ID] = endNote;
 
-			score.holdNotes[nextHoldID++] = hold;
+			score.holdNotes[hold.start.ID] = hold;
+		}
+
+		for (auto& [holdID, hold] : score.holdNotes)
+		{
+			score.notes[hold.start.ID].parentID = hold.start.ID;
+			for (const auto& step : hold.steps)
+				score.notes[step.ID].parentID = hold.start.ID;
+			score.notes[hold.end].parentID = hold.start.ID;
 		}
 
 		reader.seek(damagesAddress);
 		int damageCount = reader.readUInt32();
 		for (int i = 0; i < damageCount; ++i)
 		{
-			Note note = readNote(reader);
+			Note note = readNote(reader, NoteType::Damage);
 			note.ID = nextID++;
 			score.notes[note.ID] = note;
 		}

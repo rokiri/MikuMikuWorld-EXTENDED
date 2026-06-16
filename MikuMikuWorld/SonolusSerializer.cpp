@@ -60,7 +60,8 @@ namespace MikuMikuWorld
 	LevelDataEntity SonolusEngine::toBpmChangeEntity(const Tempo& tempo)
 	{
 		return { "#BPM_CHANGE",
-			     { { "#BEAT", ticksToBeats(tempo.tick) }, { "#BPM", static_cast<RealType>(tempo.bpm) } } };
+			     { { "#BEAT", ticksToBeats(tempo.tick) },
+			       { "#BPM", static_cast<RealType>(tempo.bpm) } } };
 	}
 
 	SonolusEngine::RealType SonolusEngine::ticksToBeats(TickType ticks, TickType beatTicks)
@@ -120,7 +121,8 @@ namespace MikuMikuWorld
 		LevelData levelData;
 		levelData.bgmOffset = toBgmOffset(score.metadata.musicOffset);
 
-		levelData.entities.emplace_back("#BPM_CHANGE",
+		levelData.entities.emplace_back(
+		    "#BPM_CHANGE",
 		    LevelDataEntity::MapDataType{ { "#BEAT", RealType(0) }, { "#BPM", RealType(120) } });
 
 		for (const auto& tempo : score.tempoChanges)
@@ -140,7 +142,8 @@ namespace MikuMikuWorld
 		for (const auto& [_, hs] : score.hiSpeedChanges)
 		{
 			int layer = hs.layer;
-			size_t groupIdx = layerGroupIndex.count(layer) ? layerGroupIndex[layer] : layerGroupIndex[0];
+			size_t groupIdx =
+			    layerGroupIndex.count(layer) ? layerGroupIndex[layer] : layerGroupIndex[0];
 			size_t prevIdx = lastHiSpeedIndex.count(layer) ? lastHiSpeedIndex[layer] : groupIdx;
 
 			size_t newIdx = levelData.entities.size();
@@ -182,7 +185,8 @@ namespace MikuMikuWorld
 			if (note.isHold())
 				continue;
 			int layer = note.layer;
-			size_t groupIdx = layerGroupIndex.count(layer) ? layerGroupIndex[layer] : layerGroupIndex[0];
+			size_t groupIdx =
+			    layerGroupIndex.count(layer) ? layerGroupIndex[layer] : layerGroupIndex[0];
 			std::string groupName;
 			if (!levelData.entities[groupIdx].name.empty())
 				groupName = levelData.entities[groupIdx].name;
@@ -192,7 +196,8 @@ namespace MikuMikuWorld
 				groupName = levelData.entities[groupIdx].name;
 			}
 			size_t entIdx = levelData.entities.size();
-			levelData.entities.emplace_back(toNoteEntity(note, getSingleNoteArchetype(note), groupName));
+			levelData.entities.emplace_back(
+			    toNoteEntity(note, getSingleNoteArchetype(note), groupName));
 			simBuilder.emplace(note.tick, entIdx);
 		}
 
@@ -200,7 +205,8 @@ namespace MikuMikuWorld
 		{
 			const Note& startNote = score.notes.at(hold.start.ID);
 			int layer = startNote.layer;
-			size_t groupIdx = layerGroupIndex.count(layer) ? layerGroupIndex[layer] : layerGroupIndex[0];
+			size_t groupIdx =
+			    layerGroupIndex.count(layer) ? layerGroupIndex[layer] : layerGroupIndex[0];
 			std::string groupName;
 			if (!levelData.entities[groupIdx].name.empty())
 				groupName = levelData.entities[groupIdx].name;
@@ -212,7 +218,8 @@ namespace MikuMikuWorld
 
 			size_t startIdx = levelData.entities.size();
 			levelData.entities.emplace_back(
-			    toNoteEntity(startNote, getHoldNoteArchetype(startNote, true, false), groupName, &hold, &hold.start));
+			    toNoteEntity(startNote, getHoldNoteArchetype(startNote, true, false), groupName,
+			                 &hold, &hold.start));
 			std::string startName = IO::formatString("n%d", (int)startIdx);
 			levelData.entities[startIdx].name = startName;
 			simBuilder.emplace(startNote.tick, startIdx);
@@ -223,7 +230,8 @@ namespace MikuMikuWorld
 				const HoldStep& step = hold.steps[i];
 				const Note& midNote = score.notes.at(step.ID);
 				int midLayer = midNote.layer;
-				size_t midGroupIdx = layerGroupIndex.count(midLayer) ? layerGroupIndex[midLayer] : layerGroupIndex[0];
+				size_t midGroupIdx = layerGroupIndex.count(midLayer) ? layerGroupIndex[midLayer]
+				                                                     : layerGroupIndex[0];
 				std::string midGroupName;
 				if (!levelData.entities[midGroupIdx].name.empty())
 					midGroupName = levelData.entities[midGroupIdx].name;
@@ -235,7 +243,8 @@ namespace MikuMikuWorld
 
 				size_t midIdx = levelData.entities.size();
 				levelData.entities.emplace_back(
-				    toNoteEntity(midNote, getHoldNoteArchetype(midNote, false, false), midGroupName, &hold, &step));
+				    toNoteEntity(midNote, getHoldNoteArchetype(midNote, false, false), midGroupName,
+				                 &hold, &step));
 				std::string midName = IO::formatString("n%d", (int)midIdx);
 				levelData.entities[midIdx].name = midName;
 				levelData.entities[prevIdx].data["next"] = midName;
@@ -245,7 +254,8 @@ namespace MikuMikuWorld
 
 			const Note& endNote = score.notes.at(hold.end);
 			int endLayer = endNote.layer;
-			size_t endGroupIdx = layerGroupIndex.count(endLayer) ? layerGroupIndex[endLayer] : layerGroupIndex[0];
+			size_t endGroupIdx =
+			    layerGroupIndex.count(endLayer) ? layerGroupIndex[endLayer] : layerGroupIndex[0];
 			std::string endGroupName;
 			if (!levelData.entities[endGroupIdx].name.empty())
 				endGroupName = levelData.entities[endGroupIdx].name;
@@ -256,8 +266,8 @@ namespace MikuMikuWorld
 			}
 
 			size_t endIdx = levelData.entities.size();
-			levelData.entities.emplace_back(
-			    toNoteEntity(endNote, getHoldNoteArchetype(endNote, false, true), endGroupName, &hold, nullptr));
+			levelData.entities.emplace_back(toNoteEntity(
+			    endNote, getHoldNoteArchetype(endNote, false, true), endGroupName, &hold, nullptr));
 			std::string endName = IO::formatString("n%d", (int)endIdx);
 			levelData.entities[endIdx].name = endName;
 			levelData.entities[prevIdx].data["next"] = endName;
@@ -272,16 +282,17 @@ namespace MikuMikuWorld
 			for (auto jt = rangeBegin; jt != rangeEnd; ++jt)
 				simEntities.push_back(jt->second);
 			std::sort(simEntities.begin(), simEntities.end(),
-			    [&](size_t a, size_t b)
-			    {
-				    return levelData.entities[a].getDataValue<RealType>("lane") <
-				           levelData.entities[b].getDataValue<RealType>("lane");
-			    });
+			          [&](size_t a, size_t b)
+			          {
+				          return levelData.entities[a].getDataValue<RealType>("lane") <
+				                 levelData.entities[b].getDataValue<RealType>("lane");
+			          });
 			for (size_t i = 1; i < simEntities.size(); ++i)
 			{
-				levelData.entities.push_back({ "SimLine",
-				    { { "left", levelData.entities[simEntities[i - 1]].name },
-				      { "right", levelData.entities[simEntities[i]].name } } });
+				levelData.entities.push_back(
+				    { "SimLine",
+				      { { "left", levelData.entities[simEntities[i - 1]].name },
+				        { "right", levelData.entities[simEntities[i]].name } } });
 			}
 			it = rangeEnd;
 		}
@@ -382,6 +393,7 @@ namespace MikuMikuWorld
 		}
 
 		std::unordered_map<RefType, size_t> notePrevMap;
+		std::unordered_map<RefType, size_t> activeHeadMap;
 		std::vector<size_t> noteEntities;
 		for (size_t i = 0; i < levelData.entities.size(); ++i)
 		{
@@ -393,7 +405,12 @@ namespace MikuMikuWorld
 			RefType next;
 			if (e.tryGetDataValue("next", next))
 				notePrevMap.emplace(next, i);
+			RefType activeHead;
+			if (e.tryGetDataValue("activeHead", activeHead))
+				activeHeadMap.emplace(activeHead, i);
 		}
+
+		const bool usesActiveHead = !activeHeadMap.empty() && notePrevMap.empty();
 
 		id_t nextNoteID = 0;
 		id_t nextHoldID = 0;
@@ -401,85 +418,201 @@ namespace MikuMikuWorld
 		const auto hasParent = [&](const LevelDataEntity& e)
 		{ return e.name.size() && notePrevMap.find(e.name) != notePrevMap.end(); };
 
-		for (size_t entIdx : noteEntities)
+		const auto hasTail = [&](const LevelDataEntity& e)
+		{ return e.name.size() && activeHeadMap.find(e.name) != activeHeadMap.end(); };
+
+		if (!usesActiveHead)
 		{
-			const auto& e = levelData.entities[entIdx];
-			if (e.dataExists("next") || hasParent(e))
-				continue;
-			Note note;
-			if (!fromTapNoteEntity(e, note, groupNameMap))
-				continue;
-			note.ID = nextNoteID++;
-			score.notes.emplace(note.ID, note);
+			for (size_t entIdx : noteEntities)
+			{
+				const auto& e = levelData.entities[entIdx];
+				if (e.dataExists("next") || hasParent(e))
+					continue;
+				Note note;
+				if (!fromTapNoteEntity(e, note, groupNameMap))
+					continue;
+				note.ID = nextNoteID++;
+				score.notes.emplace(note.ID, note);
+			}
+
+			for (size_t entIdx : noteEntities)
+			{
+				const auto& startEnt = levelData.entities[entIdx];
+				if (!startEnt.dataExists("next") || hasParent(startEnt))
+					continue;
+
+				HoldNote hold;
+				std::vector<Note> holdNotes;
+				std::vector<size_t> holdEntIndices;
+				size_t curIdx = entIdx;
+				bool valid = true;
+
+				while (true)
+				{
+					const auto& cur = levelData.entities[curIdx];
+					Note n;
+					if (!fromHoldMidEntity(cur, n, groupNameMap))
+					{
+						valid = false;
+						break;
+					}
+					holdNotes.push_back(n);
+					holdEntIndices.push_back(curIdx);
+
+					RefType next;
+					if (!cur.tryGetDataValue("next", next))
+						break;
+					auto it = entityNameMap.find(next);
+					if (it == entityNameMap.end())
+					{
+						valid = false;
+						break;
+					}
+					curIdx = it->second;
+				}
+
+				if (!valid || holdNotes.size() < 2)
+					continue;
+
+				for (auto& hn : holdNotes)
+				{
+					hn.ID = nextNoteID++;
+					score.notes.emplace(hn.ID, hn);
+				}
+
+				hold.start.ID = holdNotes.front().ID;
+				hold.start.type = HoldStepType::Normal;
+				hold.start.ease = EaseType::Linear;
+				hold.end = holdNotes.back().ID;
+				hold.startType = HoldNoteType::Normal;
+				hold.endType = HoldNoteType::Normal;
+				hold.fadeType = FadeType::Out;
+
+				for (size_t i = 1; i + 1 < holdNotes.size(); ++i)
+				{
+					HoldStep step;
+					step.ID = holdNotes[i].ID;
+					step.type = HoldStepType::Normal;
+					step.ease = EaseType::Linear;
+					int ease;
+					const auto& midEnt = levelData.entities[holdEntIndices[i]];
+					if (midEnt.tryGetDataValue("connectorEase", ease))
+						step.ease = fromEaseNumeric(ease);
+					hold.steps.push_back(step);
+				}
+
+				hold.dummy = false;
+				score.holdNotes.emplace(hold.start.ID, hold);
+				// Rebuild parentID
+				score.notes[hold.start.ID].parentID = hold.start.ID;
+				for (const auto& step : hold.steps)
+					score.notes[step.ID].parentID = hold.start.ID;
+				score.notes[hold.end].parentID = hold.start.ID;
+			}
 		}
-
-		for (size_t entIdx : noteEntities)
+		else
 		{
-			const auto& startEnt = levelData.entities[entIdx];
-			if (!startEnt.dataExists("next") || hasParent(startEnt))
-				continue;
-
-			HoldNote hold;
-			std::vector<Note> holdNotes;
-			size_t curIdx = entIdx;
-			bool valid = true;
-
-			while (true)
+			for (size_t entIdx : noteEntities)
 			{
-				const auto& cur = levelData.entities[curIdx];
-				Note n;
-				if (!fromHoldMidEntity(cur, n, groupNameMap))
+				const auto& e = levelData.entities[entIdx];
+				if (e.dataExists("activeHead") || hasTail(e))
+					continue;
+				Note note;
+				if (!fromTapNoteEntity(e, note, groupNameMap))
+					continue;
+				note.ID = nextNoteID++;
+				score.notes.emplace(note.ID, note);
+			}
+
+			for (size_t entIdx : noteEntities)
+			{
+				const auto& tailEnt = levelData.entities[entIdx];
+				RefType activeHead;
+				if (!tailEnt.tryGetDataValue("activeHead", activeHead))
+					continue;
+
+				auto headIt = entityNameMap.find(activeHead);
+				if (headIt == entityNameMap.end())
+					continue;
+
+				size_t headIdx = headIt->second;
+				const auto& headEnt = levelData.entities[headIdx];
+
+				std::vector<Note> holdNotes;
+				std::vector<size_t> holdEntIndices;
+
+				Note headNote;
+				if (!fromTapNoteEntity(headEnt, headNote, groupNameMap))
+					continue;
+				holdNotes.push_back(headNote);
+				holdEntIndices.push_back(headIdx);
+
+				for (size_t midIdx : noteEntities)
 				{
-					valid = false;
-					break;
+					const auto& midEnt = levelData.entities[midIdx];
+					if (midIdx == headIdx || midIdx == entIdx)
+						continue;
+					RefType midHead;
+					if (!midEnt.tryGetDataValue("activeHead", midHead))
+						continue;
+					if (midHead == activeHead)
+					{
+						Note midNote;
+						if (fromHoldMidEntity(midEnt, midNote, groupNameMap))
+						{
+							holdNotes.push_back(midNote);
+							holdEntIndices.push_back(midIdx);
+						}
+					}
 				}
-				holdNotes.push_back(n);
 
-				RefType next;
-				if (!cur.tryGetDataValue("next", next))
-					break;
-				auto it = entityNameMap.find(next);
-				if (it == entityNameMap.end())
+				Note tailNote;
+				if (!fromTapNoteEntity(tailEnt, tailNote, groupNameMap))
+					continue;
+				holdNotes.push_back(tailNote);
+				holdEntIndices.push_back(entIdx);
+
+				if (holdNotes.size() < 2)
+					continue;
+
+				std::sort(holdNotes.begin(), holdNotes.end(),
+				          [](const Note& a, const Note& b) { return a.tick < b.tick; });
+
+				for (auto& hn : holdNotes)
 				{
-					valid = false;
-					break;
+					hn.ID = nextNoteID++;
+					score.notes.emplace(hn.ID, hn);
 				}
-				curIdx = it->second;
+
+				HoldNote hold;
+				hold.start.ID = holdNotes.front().ID;
+				hold.start.type = HoldStepType::Normal;
+				hold.start.ease = EaseType::Linear;
+				hold.end = holdNotes.back().ID;
+				hold.startType = HoldNoteType::Normal;
+				hold.endType = HoldNoteType::Normal;
+				hold.fadeType = FadeType::Out;
+				hold.dummy = false;
+
+				for (size_t i = 1; i + 1 < holdNotes.size(); ++i)
+				{
+					HoldStep step;
+					step.ID = holdNotes[i].ID;
+					step.type = HoldStepType::Normal;
+					step.ease = EaseType::Linear;
+					int ease;
+					const auto& midEnt = levelData.entities[holdEntIndices[i]];
+					if (midEnt.tryGetDataValue("connectorEase", ease))
+						step.ease = fromEaseNumeric(ease);
+					hold.steps.push_back(step);
+				}
+
+				score.holdNotes.emplace(hold.start.ID, hold);
+				score.notes[hold.start.ID].parentID = hold.start.ID;
+				for (const auto& step : hold.steps)
+					score.notes[step.ID].parentID = hold.start.ID;
+				score.notes[hold.end].parentID = hold.start.ID;
 			}
-
-			if (!valid || holdNotes.size() < 2)
-				continue;
-
-			for (auto& hn : holdNotes)
-			{
-				hn.ID = nextNoteID++;
-				score.notes.emplace(hn.ID, hn);
-			}
-
-			hold.start.ID = holdNotes.front().ID;
-			hold.start.type = HoldStepType::Normal;
-			hold.start.ease = holdNotes.front().flick != FlickType::None ? EaseType::Linear : EaseType::Linear;
-			hold.end = holdNotes.back().ID;
-			hold.startType = HoldNoteType::Normal;
-			hold.endType = HoldNoteType::Normal;
-			hold.fadeType = FadeType::Out;
-
-			for (size_t i = 1; i + 1 < holdNotes.size(); ++i)
-			{
-				HoldStep step;
-				step.ID = holdNotes[i].ID;
-				step.type = HoldStepType::Normal;
-				step.ease = EaseType::Linear;
-				int ease;
-				const auto& midEnt = levelData.entities[noteEntities[i]];
-				if (midEnt.tryGetDataValue("connectorEase", ease))
-					step.ease = fromEaseNumeric(ease);
-				hold.steps.push_back(step);
-			}
-
-			hold.dummy = false;
-			id_t hid = nextHoldID++;
-			score.holdNotes.emplace(hid, hold);
 		}
 
 		return score;
@@ -493,7 +626,7 @@ namespace MikuMikuWorld
 	}
 
 	LevelDataEntity PySekaiEngine::toTimeScaleEntity(const HiSpeedChange& hispeed,
-	                                                  const RefType& groupName)
+	                                                 const RefType& groupName)
 	{
 		return { "#TIMESCALE_CHANGE",
 			     { { "#BEAT", ticksToBeats(hispeed.tick) },
@@ -517,8 +650,8 @@ namespace MikuMikuWorld
 	}
 
 	LevelDataEntity PySekaiEngine::toNoteEntity(const Note& note, const std::string& archetype,
-	                                             const RefType& groupName, const HoldNote* hold,
-	                                             const HoldStep* holdStep)
+	                                            const RefType& groupName, const HoldNote* hold,
+	                                            const HoldStep* holdStep)
 	{
 		return { archetype,
 			     { { "#TIMESCALE_GROUP", groupName },
@@ -562,22 +695,32 @@ namespace MikuMikuWorld
 	}
 
 	void PySekaiEngine::insertTransientTickNote(size_t, size_t, bool,
-	                                             std::vector<Sonolus::LevelDataEntity>&) {}
+	                                            std::vector<Sonolus::LevelDataEntity>&)
+	{
+	}
 
 	void PySekaiEngine::estimateAttachEntity(Sonolus::LevelDataEntity&,
-	                                          const Sonolus::LevelDataEntity&,
-	                                          const Sonolus::LevelDataEntity&) {}
+	                                         const Sonolus::LevelDataEntity&,
+	                                         const Sonolus::LevelDataEntity&)
+	{
+	}
 
 	int PySekaiEngine::toDirectionNumeric(FlickType flick)
 	{
 		switch (flick)
 		{
-		case FlickType::Left:   return 1;
-		case FlickType::Right:  return 2;
-		case FlickType::Down:   return 3;
-		case FlickType::DownLeft:  return 4;
-		case FlickType::DownRight: return 5;
-		default:                return 0;
+		case FlickType::Left:
+			return 1;
+		case FlickType::Right:
+			return 2;
+		case FlickType::Down:
+			return 3;
+		case FlickType::DownLeft:
+			return 4;
+		case FlickType::DownRight:
+			return 5;
+		default:
+			return 0;
 		}
 	}
 
@@ -585,12 +728,18 @@ namespace MikuMikuWorld
 	{
 		switch (ease)
 		{
-		case EaseType::Linear:   return 1;
-		case EaseType::EaseIn:   return 2;
-		case EaseType::EaseOut:  return 3;
-		case EaseType::EaseInOut: return 4;
-		case EaseType::EaseOutIn: return 5;
-		default:                  return 1;
+		case EaseType::Linear:
+			return 1;
+		case EaseType::EaseIn:
+			return 2;
+		case EaseType::EaseOut:
+			return 3;
+		case EaseType::EaseInOut:
+			return 4;
+		case EaseType::EaseOutIn:
+			return 5;
+		default:
+			return 1;
 		}
 	}
 
@@ -607,9 +756,9 @@ namespace MikuMikuWorld
 	}
 
 	bool PySekaiEngine::fromTimeScaleEntity(const Sonolus::LevelDataEntity& timescaleEntity,
-	                                         const Sonolus::LevelDataEntity& groupEntity,
-	                                         HiSpeedChange& hispeed,
-	                                         std::unordered_map<RefType, size_t>& groupNameMap)
+	                                        const Sonolus::LevelDataEntity& groupEntity,
+	                                        HiSpeedChange& hispeed,
+	                                        std::unordered_map<RefType, size_t>& groupNameMap)
 	{
 		float beat;
 		if (!timescaleEntity.tryGetDataValue("#BEAT", beat))
@@ -629,7 +778,7 @@ namespace MikuMikuWorld
 	}
 
 	bool PySekaiEngine::fromSkillEntity(const Sonolus::LevelDataEntity& skillEntity,
-	                                     SkillTrigger& skill)
+	                                    SkillTrigger& skill)
 	{
 		float beat;
 		if (!skillEntity.tryGetDataValue("#BEAT", beat))
@@ -651,12 +800,11 @@ namespace MikuMikuWorld
 	}
 
 	int PySekaiEngine::fromNoteEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
-	                                   const std::unordered_map<RefType, size_t>& groupNameMap)
+	                                  const std::unordered_map<RefType, size_t>& groupNameMap)
 	{
 		float beat, lane, size;
 		if (!noteEntity.tryGetDataValue("#BEAT", beat) ||
-		    !noteEntity.tryGetDataValue("lane", lane) ||
-		    !noteEntity.tryGetDataValue("size", size))
+		    !noteEntity.tryGetDataValue("lane", lane) || !noteEntity.tryGetDataValue("size", size))
 			return 0;
 		note.tick = beatsToTicks(beat);
 		note.width = sizeToWidth(size);
@@ -673,20 +821,19 @@ namespace MikuMikuWorld
 	}
 
 	int PySekaiEngine::fromTapNoteEntity(const Sonolus::LevelDataEntity& tapNoteEntity, Note& note,
-	                                      const std::unordered_map<RefType, size_t>& groupNameMap)
+	                                     const std::unordered_map<RefType, size_t>& groupNameMap)
 	{
 		int status = fromNoteEntity(tapNoteEntity, note, groupNameMap);
 		if (!status)
 			return 0;
 		const std::string& arch = tapNoteEntity.archetype;
-		if (arch.find("Critical") != std::string::npos)
-			note.critical = true;
-		if (arch.find("Flick") != std::string::npos)
-		{
-			int dir = 0;
-			tapNoteEntity.tryGetDataValue("direction", dir);
-			note.flick = fromDirectionNumeric(dir);
-		}
+		bool isCritical = arch.find("Critical") != std::string::npos;
+		bool isTrace = arch.find("Trace") != std::string::npos;
+		bool isFlick = arch.find("Flick") != std::string::npos;
+		int flickDir = 0;
+		if (isFlick)
+			tapNoteEntity.tryGetDataValue("direction", flickDir);
+
 		if (arch.find("Damage") != std::string::npos)
 		{
 			note = Note(NoteType::Damage, note.tick, note.lane, note.width);
@@ -694,24 +841,43 @@ namespace MikuMikuWorld
 		else if (arch.find("Tick") != std::string::npos)
 		{
 			note = Note(NoteType::HoldMid, note.tick, note.lane, note.width);
-			note.critical = arch.find("Critical") != std::string::npos;
+			note.critical = isCritical;
+			note.friction = isTrace;
+		}
+		else if (arch.find("Head") != std::string::npos)
+		{
+			note = Note(NoteType::Hold, note.tick, note.lane, note.width);
+			note.critical = isCritical;
+			note.friction = isTrace;
+		}
+		else if (arch.find("Tail") != std::string::npos ||
+		         arch.find("Release") != std::string::npos)
+		{
+			note = Note(NoteType::HoldEnd, note.tick, note.lane, note.width);
+			note.critical = isCritical;
+			note.friction = isTrace;
+			if (isFlick)
+				note.flick = fromDirectionNumeric(flickDir);
+		}
+		else if (arch.find("Anchor") != std::string::npos)
+		{
+			note = Note(NoteType::Tap, note.tick, note.lane, note.width);
+			note.critical = isCritical;
+			note.friction = true;
 		}
 		else
 		{
 			note = Note(NoteType::Tap, note.tick, note.lane, note.width);
-			note.critical = arch.find("Critical") != std::string::npos;
-			if (arch.find("Flick") != std::string::npos)
-			{
-				int dir = 0;
-				tapNoteEntity.tryGetDataValue("direction", dir);
-				note.flick = fromDirectionNumeric(dir);
-			}
+			note.critical = isCritical;
+			note.friction = isTrace;
+			if (isFlick)
+				note.flick = fromDirectionNumeric(flickDir);
 		}
 		return status;
 	}
 
 	int PySekaiEngine::fromHoldMidEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
-	                                      const std::unordered_map<RefType, size_t>& groupNameMap)
+	                                     const std::unordered_map<RefType, size_t>& groupNameMap)
 	{
 		return fromTapNoteEntity(noteEntity, note, groupNameMap);
 	}
@@ -730,13 +896,20 @@ namespace MikuMikuWorld
 	{
 		switch (direction)
 		{
-		case 0: return FlickType::Default;
-		case 1: return FlickType::Left;
-		case 2: return FlickType::Right;
-		case 3: return FlickType::Down;
-		case 4: return FlickType::DownLeft;
-		case 5: return FlickType::DownRight;
-		default: return FlickType::None;
+		case 0:
+			return FlickType::Default;
+		case 1:
+			return FlickType::Left;
+		case 2:
+			return FlickType::Right;
+		case 3:
+			return FlickType::Down;
+		case 4:
+			return FlickType::DownLeft;
+		case 5:
+			return FlickType::DownRight;
+		default:
+			return FlickType::None;
 		}
 	}
 
@@ -744,12 +917,18 @@ namespace MikuMikuWorld
 	{
 		switch (ease)
 		{
-		case 1: return EaseType::Linear;
-		case 2: return EaseType::EaseIn;
-		case 3: return EaseType::EaseOut;
-		case 4: return EaseType::EaseInOut;
-		case 5: return EaseType::EaseOutIn;
-		default: return EaseType::Linear;
+		case 1:
+			return EaseType::Linear;
+		case 2:
+			return EaseType::EaseIn;
+		case 3:
+			return EaseType::EaseOut;
+		case 4:
+			return EaseType::EaseInOut;
+		case 5:
+			return EaseType::EaseOutIn;
+		default:
+			return EaseType::Linear;
 		}
 	}
 

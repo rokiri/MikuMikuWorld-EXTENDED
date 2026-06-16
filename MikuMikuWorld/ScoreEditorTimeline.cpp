@@ -3205,9 +3205,12 @@ namespace MikuMikuWorld
 			if (offsetNoteTime >= timeLastFrame && offsetNoteTime < time)
 			{
 				singleNoteSEFunc(note, notePlayTime - audioOffsetCorrection);
-				if (note.getType() == NoteType::Hold &&
-				    !context.score.holdNotes.at(note.ID).isGuide())
-					holdNoteSEFunc(note, notePlayTime - audioOffsetCorrection);
+				if (note.getType() == NoteType::Hold)
+				{
+					auto holdIt = context.score.holdNotes.find(note.ID);
+					if (holdIt != context.score.holdNotes.end() && !holdIt->second.isGuide())
+						holdNoteSEFunc(note, notePlayTime - audioOffsetCorrection);
+				}
 			}
 			else if (time == playStartTime)
 			{
@@ -3216,15 +3219,17 @@ namespace MikuMikuWorld
 					singleNoteSEFunc(note, notePlayTime);
 
 				// Playback started mid-hold
-				if (note.getType() == NoteType::Hold &&
-				    !context.score.holdNotes.at(note.ID).isGuide())
+				if (note.getType() == NoteType::Hold)
 				{
-					int endTick =
-					    context.score.notes.at(context.score.holdNotes.at(note.ID).end).tick;
-					float endTime =
-					    accumulateDuration(endTick, TICKS_PER_BEAT, context.score.tempoChanges);
-					if ((noteTime - time) <= audioLookAhead && endTime > time)
-						holdNoteSEFunc(note, std::max(0.0f, notePlayTime));
+					auto holdIt2 = context.score.holdNotes.find(note.ID);
+					if (holdIt2 != context.score.holdNotes.end() && !holdIt2->second.isGuide())
+					{
+						int endTick = context.score.notes.at(holdIt2->second.end).tick;
+						float endTime =
+						    accumulateDuration(endTick, TICKS_PER_BEAT, context.score.tempoChanges);
+						if ((noteTime - time) <= audioLookAhead && endTime > time)
+							holdNoteSEFunc(note, std::max(0.0f, notePlayTime));
+					}
 				}
 			}
 		}
