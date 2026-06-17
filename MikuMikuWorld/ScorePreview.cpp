@@ -360,6 +360,10 @@ namespace MikuMikuWorld
 		}
 		ResourceManager::loadTexture(lifeDir + "bg.png");
 		ResourceManager::loadTexture(lifeDir + "normal.png");
+		const std::string skillEffectDir =
+		    Application::getAppDir() + "res\\textures\\skilleffect\\";
+		ResourceManager::loadTexture(skillEffectDir + "lifeup.png");
+		ResourceManager::loadTexture(skillEffectDir + "scoreup.png");
 	}
 
 	ScorePreviewWindow::~ScorePreviewWindow() {}
@@ -662,15 +666,34 @@ namespace MikuMikuWorld
 			    }
 		    }
 
-		    if (config.pvDrawLifeHud)
+			if (config.pvDrawLifeHud)
 		    {
-			    constexpr float lifeRatio = 1.f;
+			    constexpr float LIFE_DEFAULT = 1000.f;
+			    constexpr float LIFE_FULL = 1000.f;
+			    constexpr float LIFE_MAX = 2000.f;
+
+			    const auto& lifeTimes = drawData.lifeTimes;
+			    int latestLifeIndex = -1;
+			    if (!lifeTimes.empty())
+			    {
+				    const auto it =
+				        std::upper_bound(lifeTimes.begin(), lifeTimes.end(), chartTime + 0.0001f);
+				    latestLifeIndex = static_cast<int>(std::distance(lifeTimes.begin(), it)) - 1;
+			    }
+
+			    const int currentLife =
+			        (latestLifeIndex >= 0 && latestLifeIndex < (int)drawData.hudLives.size())
+			            ? drawData.hudLives[latestLifeIndex]
+			            : static_cast<int>(LIFE_DEFAULT);
+
+			    const float lifeRatio =
+			        std::max(0.f, std::min(1.f, static_cast<float>(currentLife) / LIFE_FULL));
+
 			    drawTop(getHudTexture("life", "bg.png"), 1442.f, HUD_LIFE_Y, 444.f, HUD_LIFE_H);
 			    drawTopClipX(getHudTexture("life", "normal.png"), 1442.f, HUD_LIFE_Y, 444.f,
 			                 HUD_LIFE_H, lifeRatio);
 
-			    const std::string lifeText =
-			        std::to_string(static_cast<int>(std::lround(1000.f * lifeRatio)));
+			    const std::string lifeText = std::to_string(currentLife);
 			    for (size_t i = 0; i < lifeText.size(); ++i)
 			    {
 				    const char ch = lifeText[lifeText.size() - 1 - i];
@@ -693,6 +716,103 @@ namespace MikuMikuWorld
 				                 shadowH);
 				    drawHudImage(drawList, *main, centerX - mainW * 0.5f, tpy(21.f), mainW, mainH);
 			    }
+		    }
+	    }
+
+		static void drawSkillLifePopup(const ScoreContext& context, ImDrawList* drawList,
+	                                   ImVec2 position, ImVec2 size)
+	    {
+		    if (!drawList || size.x <= 1.f || size.y <= 1.f)
+			    return;
+
+		    const auto& drawData = context.scorePreviewDrawData;
+		    const auto& lifeTimes = drawData.lifeTimes;
+		    if (lifeTimes.empty())
+			    return;
+
+		    constexpr float POPUP_SLIDE_IN = 0.18f;
+		    constexpr float POPUP_SLIDE_OUT = 0.22f;
+		    constexpr float POPUP_TOTAL = 2.0f;
+		    constexpr float LIFE_DEFAULT = 1000.f;
+
+		    const float chartTime = static_cast<float>(context.getTimeAtCurrentTick());
+
+		    const auto it =
+		        std::upper_bound(lifeTimes.begin(), lifeTimes.end(), chartTime + 0.0001f);
+		    const int idx = static_cast<int>(std::distance(lifeTimes.begin(), it)) - 1;
+		    if (idx < 0 || idx >= (int)drawData.hudLives.size())
+			    return;
+
+		    const float t = chartTime - lifeTimes[idx];
+		    if (t < 0.f || t > POPUP_TOTAL)
+			    return;
+
+		    const int prevLife =
+		        (idx > 0) ? drawData.hudLives[idx - 1] : static_cast<int>(LIFE_DEFAULT);
+		    const int gained = std::max(0, drawData.hudLives[idx] - prevLife);
+		    if (gained <= 0)
+			    return;
+
+		    auto easeOut = [](float x) { return 1.f - (1.f - x) * (1.f - x) * (1.f - x); };
+
+		    float alpha = 1.f;
+		    float slideOffset = 0.f;
+		    if (t < POPUP_SLIDE_IN)
+		    {
+			    const float p = easeOut(t / POPUP_SLIDE_IN);
+			    alpha = p;
+			    slideOffset = (1.f - p) * 40.f;
+		    }
+		    else if (t > POPUP_TOTAL - POPUP_SLIDE_OUT)
+		    {
+			    const float p = (t - (POPUP_TOTAL - POPUP_SLIDE_OUT)) / POPUP_SLIDE_OUT;
+			    alpha = 1.f - easeOut(p);
+		    }
+
+		    const Texture* banner = getHudTexture("skilleffect", "lifeup.png");
+		    if (!banner)
+			    return;
+
+		    const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
+		    const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
+		    auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
+		    auto tpy = [&](float y) { return position.y + y * uiScale; };
+		    auto ps = [&](float v) { return v * uiScale; };
+
+		    constexpr float SKILL_POPUP_X = 36.f;
+		    constexpr float SKILL_POPUP_Y = 225.f;
+		    constexpr float SKILL_POPUP_H = 140.f;
+		    const float bannerW =
+		        SKILL_POPUP_H * ((float)banner->getWidth() / (float)banner->getHeight());
+
+		    const float bannerX = SKILL_POPUP_X - slideOffset;
+		    const float bannerY = SKILL_POPUP_Y;
+
+		    drawHudImage(drawList, *banner, px(bannerX), tpy(bannerY), ps(bannerW),
+		                 ps(SKILL_POPUP_H), alpha);
+
+		    const std::string gainText = std::to_string(gained);
+		    const ImU32 tintColor = IM_COL32(255, 255, 255, static_cast<int>(alpha * 255.f));
+
+		    constexpr float DIGIT_OFFSET_X = 0.73f; 
+		    constexpr float DIGIT_OFFSET_Y = 0.68f; 
+		    constexpr float DIGIT_H = 0.26f;
+
+		    const float digitH = ps(SKILL_POPUP_H * DIGIT_H);
+		    float digitX = px(bannerX + bannerW * DIGIT_OFFSET_X);
+		    const float digitY = tpy(bannerY + SKILL_POPUP_H * DIGIT_OFFSET_Y);
+
+		    for (char ch : gainText)
+		    {
+			    const Texture* digit = getHudTexture("life", std::string("digit\\") + ch + ".png");
+			    if (!digit)
+				    continue;
+			    const float digitW =
+			        digitH * ((float)digit->getWidth() / (float)digit->getHeight());
+			    drawList->AddImage((ImTextureID)(size_t)digit->getID(), ImVec2(digitX, digitY),
+			                       ImVec2(digitX + digitW, digitY + digitH), ImVec2(0, 0),
+			                       ImVec2(1, 1), tintColor);
+			    digitX += digitW;
 		    }
 	    }
 
@@ -852,8 +972,9 @@ namespace MikuMikuWorld
 
 			drawList->AddImage((ImTextureID)(size_t)previewBuffer.getTexture(), position,
 			                   position + size, { 0, 0 }, { 1, 1 });
-			drawComboOverlay(context, drawList, position, size);
+		    drawComboOverlay(context, drawList, position, size);
 		    drawHudOverlay(context, drawList, position, size);
+		    drawSkillLifePopup(context, drawList, position, size);
 		}
 
 		void ScorePreviewWindow::updateUI(ScoreEditorTimeline & timeline, ScoreContext & context)

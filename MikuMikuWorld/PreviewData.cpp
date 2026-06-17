@@ -157,6 +157,31 @@ namespace MikuMikuWorld::Engine
 					if (e.showJudge)
 						hudJudgeTimes.push_back(timeSec);
 				}
+				{
+					constexpr float LIFE_DEFAULT = 1000.f;
+					constexpr float LIFE_MAX = 2000.f;
+					constexpr float LIFE_PER_SKILL = 250.f;
+
+					std::vector<int> skillTicks;
+					skillTicks.reserve(score.skills.size());
+					for (const auto& [id, skill] : score.skills)
+						skillTicks.push_back(skill.tick);
+					std::sort(skillTicks.begin(), skillTicks.end());
+
+					lifeTimes.reserve(skillTicks.size());
+					hudLives.reserve(skillTicks.size());
+
+					float currentLife = LIFE_DEFAULT;
+					for (int tick : skillTicks)
+					{
+						currentLife = std::min(currentLife + LIFE_PER_SKILL, LIFE_MAX);
+						const float timeSec =
+						    accumulateDuration(tick, TICKS_PER_BEAT, score.tempoChanges);
+
+						lifeTimes.push_back(timeSec);
+						hudLives.push_back(static_cast<int>(std::lround(currentLife)));
+					}
+				}
 			}
 
 			// =========================================================================
@@ -239,6 +264,8 @@ namespace MikuMikuWorld::Engine
 		hudRanks.clear();
 		hudScoreBars.clear();
 		hudJudgeTimes.clear();
+		lifeTimes.clear();
+		hudLives.clear();
 
 		maxTicks = 1;
 	}

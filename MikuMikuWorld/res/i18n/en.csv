@@ -196,6 +196,9 @@ remove,Remove
 edit_time_signature,Edit Time Signature
 measure,Measure
 skill,Skill
+insert_skill_trigger,Insert Skill Trigger
+insert_fever_start,Insert Fever Start
+insert_fever_end,Insert Fever End
 increase_note_size,Increase Note Size
 decrease_note_size,Decrease Note Size
 hi_speed,Hi-Speed

@@ -19,6 +19,10 @@
 #include <shobjidl.h> // フォルダ選択ダイアログを使用するために追加
 #include <filesystem>
 #include <fstream>
+#include "ScoreEditorTimeline.h"
+#include "Tempo.h"
+#include "Score.h"
+#include "ScoreContext.h"
 
 using nlohmann::json;
 
@@ -731,6 +735,47 @@ namespace MikuMikuWorld
 
 			if (ImGui::MenuItem(getString("about")))
 				aboutDialog.open = true;
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu(getString("Event")))
+		{
+			if (ImGui::MenuItem(getString("insert_skill_trigger")))
+			{
+				bool duplicate = false;
+				for (const auto& [_, sk] : context.score.skills)
+					if (sk.tick == context.currentTick)
+					{
+						duplicate = true;
+						break;
+					}
+
+				if (!duplicate)
+				{
+					Score prev = context.score;
+					id_t id = getNextSkillID();
+					SkillTrigger skill{};
+					skill.ID = id;
+					skill.tick = context.currentTick;
+					context.score.skills[id] = skill;
+					context.pushHistory("Insert skill trigger", prev, context.score);
+				}
+			}
+
+			if (ImGui::MenuItem(getString("insert_fever_start")))
+			{
+				Score prev = context.score;
+				context.score.fever.startTick = context.currentTick;
+				context.pushHistory("Set fever start", prev, context.score);
+			}
+
+			if (ImGui::MenuItem(getString("insert_fever_end")))
+			{
+				Score prev = context.score;
+				context.score.fever.endTick = context.currentTick;
+				context.pushHistory("Set fever end", prev, context.score);
+			}
 
 			ImGui::EndMenu();
 		}

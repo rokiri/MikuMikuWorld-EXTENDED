@@ -195,34 +195,35 @@ namespace MikuMikuWorld
 		Fever fever{ -1, -1 };
 
 		std::unordered_set<std::string> cyanvasStyleCriticalTraces;
-
-		// Cyanvas extension: disable fever and skills
+		id_t nextSkillID = 10000;
 
 		for (const auto& note : sus.taps)
 		{
-			/* if (note.type == 4) */
-			/* { */
-			/* skills.push_back(SkillTrigger{ nextSkillID++, note.tick }); */
-			/* } */
-			/* else if (note.lane == 15 && note.width == 1) */
-			/* { */
-			/* 	if (note.type == 1) */
-			/* 		fever.startTick = note.tick; */
-			/* 	else if (note.type == 2) */
-			/* 		fever.endTick = note.tick; */
-			/* } */
-			/* else if (note.type == 7 || note.type == 8) */
-			/* { */
-			/* 	// Invisible slide tap point */
-			/* 	continue; */
-			/* } */
+			if (note.type == 4)
+			{
+				SkillTrigger skill{};
+				skill.ID = nextSkillID++;
+				skill.tick = note.tick;
+				skills[skill.ID] = skill;
+				continue;
+			}
+			else if (note.lane == 15 && note.width == 1)
+			{
+				if (note.type == 1)
+					fever.startTick = note.tick;
+				else if (note.type == 2)
+					fever.endTick = note.tick;
+			}
+			else if (note.type == 7 || note.type == 8)
+			{
+				continue;
+			}
 
 			if (!sus.sideLane && (note.lane - 2 < MIN_LANE || note.lane - 2 > MAX_LANE))
 				continue;
 
 			const std::string key = noteKey(note);
 
-			// Conflict with skip slide steps and hidden holds
 			if (slideKeys.find(key) != slideKeys.end())
 				continue;
 

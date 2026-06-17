@@ -90,6 +90,8 @@ namespace MikuMikuWorld::Engine
 		std::vector<char> hudRanks;
 		std::vector<float> hudScoreBars;
 		std::vector<float> hudJudgeTimes;
+		std::vector<float> lifeTimes;
+		std::vector<int> hudLives;
 
 		std::vector<LayerHiSpeedCache> hsCache;
 
