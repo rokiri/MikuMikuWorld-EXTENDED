@@ -381,13 +381,29 @@ namespace MikuMikuWorld
 				continue;
 			if (note.getType() == NoteType::HoldMid)
 				continue;
-			auto holdIt = score.holdNotes.find(id);
-			if (holdIt != score.holdNotes.end())
+
+			const NoteType type = note.getType();
+			const HoldNote* hold = nullptr;
+			if (type == NoteType::Hold)
 			{
-				const HoldNote& hold = holdIt->second;
-				if (hold.isGuide())
+				auto holdIt = score.holdNotes.find(id);
+				if (holdIt != score.holdNotes.end())
+					hold = &holdIt->second;
+			}
+			else if (type == NoteType::HoldEnd)
+			{
+				auto holdIt = score.holdNotes.find(note.parentID);
+				if (holdIt != score.holdNotes.end())
+					hold = &holdIt->second;
+			}
+
+			if (hold != nullptr)
+			{
+				if (hold->isGuide())
 					continue;
-				if (hold.startType != HoldNoteType::Normal)
+				if (type == NoteType::Hold && hold->startType != HoldNoteType::Normal)
+					continue;
+				if (type == NoteType::HoldEnd && hold->endType != HoldNoteType::Normal)
 					continue;
 			}
 			combo++;
