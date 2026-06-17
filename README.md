@@ -7,9 +7,12 @@ fork of [MMW4UC](https://github.com/UntitledCharts/MikuMikuWorld4UC), merged wit
 - SUS: import and export capabilities
 - USC: import and export capabilities
 - Preview HUD
-
-// Up Coming:
 - Preview skill trigger
+
+## TODO
+
+- Dynamic stage
+- Extended feature
 
 ## Translations
 
