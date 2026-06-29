@@ -14,25 +14,31 @@ MikuMikuWorld
 -> MikuMikuWorld for Untitled Sekai
 -> MikuMikuWorld for UntitledCharts
 -> MikuMikuWorld for UntitledCharts by Monchi / MMW4UCbyMonchi
--> MikuMikuWorld for UntitledCharts Extended / MMW4UC-EXTENDED
+-> MikuMikuWorld Extended / MMW++
 
 Copyright and License
 ---------------------
 
 The original MikuMikuWorld project is licensed under the MIT License.
-See LICENSE for the original license text and copyright notice.
+See the Licenses/ directory for the original MIT license text.
 
-This project includes modifications from downstream forks in the lineage above.
-Attribution is preserved here so individual names do not need to be displayed in
-prominent application UI.
+This project as a whole is licensed under the GNU Affero General Public
+License v3.0 (AGPL-3.0-only), due to the inclusion of assets derived from:
 
-Known copyright notices inherited from project metadata include:
+  - watagashi-uni/External-Unofficial-ChartMaker (AGPL-3.0)
+    https://github.com/watagashi-uni/External-Unofficial-ChartMaker
 
-- Copyright (c) 2022 Crash5b
-- Copyright (c) 2024 Nanashi
+    Which itself includes assets from:
+  - TootieJin/pjsekai-overlay-APPEND (AGPL-3.0)
+    https://github.com/TootieJin/pjsekai-overlay-APPEND
+
+Known copyright notices inherited from the project lineage:
+
+  - Copyright (c) 2022 Crash5b
+  - Copyright (c) 2024 Nanashi
+  - Copyright (c) monti114514
 
 These notices are preserved for license and attribution compliance.
-They are not intended as current endorsement or involvement in this fork.
 
 Third-Party Licenses
 --------------------
@@ -46,6 +52,7 @@ Special Thanks
 
 - monti114514 (Monchi) - MikuMikuWorld4UC by Monchi
 - watagashi-uni - HUD Preview code reference
+- nonspicyburrito & qwewqa (next-sekai), purplaxo (suupernova) - Dynamic stage reference
 
 Translations
 ------------

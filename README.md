@@ -1,6 +1,8 @@
 ## MikuMikuWorld++
 
-fork of [MMW4UC](https://github.com/UntitledCharts/MikuMikuWorld4UC), merged with [MMW4UC By Monchi](https://github.com/monti114514/MikuMikuWorld4UC)
+fork of [MMW4UC](https://github.com/UntitledCharts/MikuMikuWorld4UC), merged with [MMW4UC By Monchi](https://github.com/monti114514/MikuMikuWorld4UC-by-Monchi)
+
+> **License:** This project is licensed under [AGPL-3.0](./LICENSE) due to inclusion of assets from [watagashi-uni/External-Unofficial-ChartMaker](https://github.com/watagashi-uni/External-Unofficial-ChartMaker). The original MikuMikuWorld codebase remains under MIT (see [NOTICE](./NOTICE)).
 
 ## Added Features
 
@@ -30,5 +32,4 @@ Earlier versions of Windows may work but are not tested.
 
 ## Download
 
-The latest version can be downloaded from the [releases page](https://github.com/UntitledCharts/MikuMikuWorld4UC/releases/latest).
-
+The latest version can be downloaded from the [releases page](../../releases/latest).
