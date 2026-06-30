@@ -7,6 +7,7 @@ namespace MikuMikuWorld
 	constexpr uint64_t HASH_SEED = 0x3939cc00;
 	// TODO: Make it uint64_t
 	typedef int id_t;
+	constexpr id_t NO_ID = -1;
 
 	constexpr int TICKS_PER_BEAT = 480;
 

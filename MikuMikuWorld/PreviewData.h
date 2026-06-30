@@ -80,6 +80,8 @@ namespace MikuMikuWorld::Engine
 	{
 		float noteSpeed;
 		int maxTicks;
+		int cachedBaseLifePoint = -1;
+		bool cachedIsExtended = false;      
 		std::vector<DrawingNote> drawingNotes;
 		std::vector<DrawingLine> drawingLines;
 		std::vector<DrawingHoldTick> drawingHoldTicks;
@@ -92,6 +94,9 @@ namespace MikuMikuWorld::Engine
 		std::vector<float> hudJudgeTimes;
 		std::vector<float> lifeTimes;
 		std::vector<int> hudLives;
+		std::vector<uint8_t> hudSkillEffects;
+		std::vector<uint8_t> hudSkillLevels;
+
 
 		std::vector<LayerHiSpeedCache> hsCache;
 

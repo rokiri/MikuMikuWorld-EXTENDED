@@ -72,9 +72,11 @@ namespace MikuMikuWorld
 			writer.writeSingle(metadata.musicOffset);
 			writer.writeString(metadata.jacketFile);
 			writer.writeInt32(metadata.laneExtension);
+			writer.writeInt32(metadata.isExtendedScore ? 1 : 0);
+			writer.writeInt32(metadata.baseLifePoint);
 		}
 
-		ScoreMetadata readMetadata(IO::BinaryReader& reader)
+		ScoreMetadata readMetadata(IO::BinaryReader& reader, int version = UC_MMWS_VERSION)
 		{
 			ScoreMetadata metadata;
 			metadata.title = reader.readString();
@@ -84,6 +86,11 @@ namespace MikuMikuWorld
 			metadata.musicOffset = reader.readSingle();
 			metadata.jacketFile = reader.readString();
 			metadata.laneExtension = reader.readUInt32();
+			if (version >= 3)
+			{
+				metadata.isExtendedScore = reader.readUInt32() != 0;
+				metadata.baseLifePoint = reader.readUInt32();
+			}
 			return metadata;
 		}
 
@@ -117,13 +124,17 @@ namespace MikuMikuWorld
 
 			writer.writeInt32((int)score.skills.size());
 			for (const auto& [_, skill] : score.skills)
+			{
 				writer.writeInt32(skill.tick);
+				writer.writeInt32(static_cast<int>(skill.effect));
+				writer.writeInt32(static_cast<int>(skill.level));
+			}
 
 			writer.writeInt32(score.fever.startTick);
 			writer.writeInt32(score.fever.endTick);
 		}
 
-		void readScoreEvents(Score& score, IO::BinaryReader& reader)
+		void readScoreEvents(Score& score, IO::BinaryReader& reader, int version = UC_MMWS_VERSION)
 		{
 			int tsCount = reader.readUInt32();
 			score.timeSignatures.clear();
@@ -168,6 +179,11 @@ namespace MikuMikuWorld
 				SkillTrigger skill;
 				skill.ID = nextSkillID++;
 				skill.tick = reader.readUInt32();
+				if (version >= 3)
+				{
+					skill.effect = static_cast<SkillEffect>(reader.readUInt32());
+					skill.level = static_cast<uint8_t>(reader.readUInt32());
+				}
 				score.skills[skill.ID] = skill;
 			}
 
@@ -297,50 +313,228 @@ namespace MikuMikuWorld
 			return score;
 
 		std::string signature = reader.readString();
-		bool isUCFormat = (signature == UC_MMWS_SIGNATURE);
-		bool isLegacyFormat = (signature == "MMWS");
-		if (!isUCFormat && !isLegacyFormat)
+		const bool isUC = (signature == UC_MMWS_SIGNATURE);
+		const bool isCC = (signature == "MMWSCC");
+		const bool isMCH = (signature == "MMWSMCH");
+		const bool isLegacy = (signature == "MMWS");
+
+		if (!isUC && !isCC && !isMCH && !isLegacy)
 		{
 			reader.close();
 			throw std::runtime_error("Invalid MMWS file. Unrecognized signature");
 		}
-			
-		if (isLegacyFormat)
+
+		// Version reading
+		int baseVersion = 0, ccVersion = 0, ucVersion = 0, mchVersion = 0;
+		if (isMCH)
 		{
-			reader.close();
-			throw std::runtime_error("This file was created with an older version of MikuMikuWorld "
-			                         "and cannot be opened.");
+			mchVersion = reader.readUInt32();
+			ccVersion = CC_MMWS_VERSION;
+			ucVersion = 2;
+			baseVersion = MMWS_VERSION;
+		}
+		else if (isUC)
+		{
+			ucVersion = reader.readUInt32();
+			ccVersion = CC_MMWS_VERSION;
+			baseVersion = MMWS_VERSION;
+		}
+		else if (isCC)
+		{
+			ccVersion = reader.readUInt16();
+			baseVersion = reader.readUInt16();
+		}
+		else
+		{
+			baseVersion = reader.readUInt32();
 		}
 
-		int version = reader.readUInt32();
-		(void)version;
+		// Feature flags based on version
+		const bool supportsAddress = (baseVersion >= 3);
+		const bool supportsSkillFever = (baseVersion >= 2);
+		const bool supportsJacket = (baseVersion >= 2);
+		const bool supportsHispeed = (baseVersion >= 3);
+		const bool supportsGuideNote = (baseVersion >= 4);
+		const bool supportsDamage = (ccVersion >= 1);
+		const bool supportsLaneExtension = (ccVersion >= 1);
+		const bool supportsFadeType = (ccVersion >= 2);
+		const bool supportsGuideColor = (ccVersion >= 3);
+		const bool supportsLayers = (ccVersion >= 4);
+		const bool supportsWaypoints = (ccVersion >= 5);
+		const bool supportsFloat = (ccVersion >= 6);
+		const bool supportsDummy = (ccVersion >= 6 && ucVersion >= 1);
+		const bool supportsHispeedSkipEase = (ucVersion >= 2);
+		const bool supportsDownFlick = (ucVersion >= 2);
+		const bool supportsExtNote = !isMCH && (ucVersion >= 3);
+		const bool supportsExtSkill = isMCH || (ucVersion >= 3);
+		const bool supportsSoundEffect = isMCH || (ucVersion >= 3);
+		const bool supportsLifePoint = isMCH || (ucVersion >= 3);
+		const bool supportsHoldLayer = isMCH || (ucVersion >= 3);
+		const bool supportsForceNoteSpeed = isMCH || (ucVersion >= 4);
 
-		uint32_t metadataAddress = reader.readUInt32();
-		uint32_t eventsAddress = reader.readUInt32();
-		uint32_t tapsAddress = reader.readUInt32();
-		uint32_t holdsAddress = reader.readUInt32();
-		uint32_t damagesAddress = reader.readUInt32();
-		uint32_t layersAddress = reader.readUInt32();
-		uint32_t waypointsAddress = reader.readUInt32();
-		uint32_t fileSize = (uint32_t)reader.getFileSize();
+		uint32_t metadataAddress = 0, eventsAddress = 0, tapsAddress = 0, holdsAddress = 0;
+		uint32_t damagesAddress = 0, layersAddress = 0, waypointsAddress = 0;
+		if (supportsAddress)
+		{
+			metadataAddress = reader.readUInt32();
+			eventsAddress = reader.readUInt32();
+			tapsAddress = reader.readUInt32();
+			holdsAddress = reader.readUInt32();
+			if (supportsDamage)
+				damagesAddress = reader.readUInt32();
+			if (supportsLayers)
+				layersAddress = reader.readUInt32();
+			if (supportsWaypoints)
+				waypointsAddress = reader.readUInt32();
+			reader.seek(metadataAddress);
+		}
 
-		reader.seek(metadataAddress);
-		score.metadata = readMetadata(reader);
+		// Metadata
+		score.metadata.title = reader.readString();
+		score.metadata.author = reader.readString();
+		score.metadata.artist = reader.readString();
+		score.metadata.musicFile = reader.readString();
+		score.metadata.musicOffset = reader.readSingle();
+		if (supportsJacket)
+			score.metadata.jacketFile = reader.readString();
+		if (supportsLaneExtension)
+			score.metadata.laneExtension = reader.readUInt32();
+		if (supportsExtNote)
+			reader.readUInt32(); // isExtendedScore
+		if (supportsLifePoint)
+			score.metadata.baseLifePoint = reader.readUInt32();
 
-		reader.seek(eventsAddress);
-		readScoreEvents(score, reader);
+		if (supportsAddress)
+			reader.seek(eventsAddress);
 
-		reader.seek(tapsAddress);
-		int noteCount = reader.readUInt32();
+		// Time signatures
+		int tsCount = reader.readUInt32();
+		for (int i = 0; i < tsCount; ++i)
+		{
+			int measure = reader.readUInt32();
+			int num = reader.readUInt32();
+			int den = reader.readUInt32();
+			score.timeSignatures[measure] = { measure, num, den };
+		}
+
+		// Tempos
+		int tempoCount = reader.readUInt32();
+		for (int i = 0; i < tempoCount; ++i)
+		{
+			int tick = reader.readUInt32();
+			float bpm = reader.readSingle();
+			score.tempoChanges.push_back({ tick, bpm });
+		}
+
+		// HiSpeeds
+		if (supportsHispeed)
+		{
+			int hsCount = reader.readUInt32();
+			id_t nextHsID = 0;
+			for (int i = 0; i < hsCount; ++i)
+			{
+				HiSpeedChange hs;
+				hs.ID = nextHsID++;
+				hs.tick = reader.readUInt32();
+				hs.speed = reader.readSingle();
+				hs.layer = reader.readUInt32();
+				if (supportsHispeedSkipEase)
+				{
+					hs.skips = reader.readSingle();
+					hs.ease = static_cast<HiSpeedEaseType>(reader.readUInt16());
+					hs.hideNotes = reader.readUInt16() != 0;
+				}
+				score.hiSpeedChanges[hs.ID] = hs;
+			}
+		}
+
+		// Skills
+		if (supportsSkillFever)
+		{
+			int skillCount = reader.readUInt32();
+			id_t nextSkillID = 0;
+			for (int i = 0; i < skillCount; ++i)
+			{
+				SkillTrigger skill;
+				skill.ID = nextSkillID++;
+				skill.tick = reader.readUInt32();
+				if (supportsExtSkill)
+				{
+					skill.effect = static_cast<SkillEffect>(reader.readUInt32());
+					skill.level = reader.readUInt32();
+				}
+				score.skills[skill.ID] = skill;
+			}
+			score.fever.startTick = reader.readUInt32();
+			score.fever.endTick = reader.readUInt32();
+		}
+
+		// Notes helper
+		auto readNote = [&](NoteType type) -> Note
+		{
+			Note note(type);
+			if (supportsFloat)
+			{
+				note.tick = reader.readUInt32();
+				note.lane = reader.readSingle();
+				note.width = reader.readSingle();
+			}
+			else
+			{
+				note.tick = reader.readUInt32();
+				note.lane = static_cast<float>(reader.readUInt32());
+				note.width = static_cast<float>(reader.readUInt32());
+			}
+			if (supportsSoundEffect)
+				reader.readUInt32(); // soundEffect — MMW-Ext Note gak punya field ini
+			if (supportsLayers)
+				note.layer = reader.readUInt32();
+			unsigned int storedFlags = 0;
+			EaseType ease = EaseType::Linear;
+			if (supportsExtNote)
+			{
+				reader.readUInt32(); // storedType
+				storedFlags = reader.readUInt32();
+				note.flick = static_cast<FlickType>(reader.readUInt32());
+				ease = static_cast<EaseType>(reader.readUInt32());
+				reader.readSingle(); // guideAlpha
+				note.critical = (storedFlags & 0x01) != 0;
+				note.friction = (storedFlags & 0x02) != 0;
+				note.dummy = (storedFlags & 0x04) != 0;
+			}
+			else
+			{
+				if (!note.hasEase())
+				{
+					note.flick = static_cast<FlickType>(reader.readUInt32());
+					if (!supportsDownFlick && note.flick >= FlickType::Down)
+						note.flick = FlickType::None;
+				}
+				unsigned int flags = reader.readUInt32();
+				note.critical = (flags & 0x01) != 0;
+				note.friction = (flags & 0x02) != 0;
+				note.dummy = supportsDummy && (flags & 0x04) != 0;
+			}
+			return note;
+		};
+
+		if (supportsAddress)
+			reader.seek(tapsAddress);
+
+		// Tap notes
 		id_t nextID = 0;
+		int noteCount = reader.readUInt32();
 		for (int i = 0; i < noteCount; ++i)
 		{
-			Note note = readNote(reader, NoteType::Tap);
+			Note note = readNote(NoteType::Tap);
 			note.ID = nextID++;
 			score.notes[note.ID] = note;
 		}
 
-		reader.seek(holdsAddress);
+		if (supportsAddress)
+			reader.seek(holdsAddress);
+
+		// Hold notes
 		int holdCount = reader.readUInt32();
 		id_t nextHoldID = 0;
 		for (int i = 0; i < holdCount; ++i)
@@ -348,45 +542,80 @@ namespace MikuMikuWorld
 			HoldNote hold;
 			unsigned int flags = reader.readUInt32();
 
-			if (flags & HOLD_GUIDE)
+			if (flags & 0x04) // HOLD_GUIDE
 				hold.startType = hold.endType = HoldNoteType::Guide;
-			if (flags & HOLD_START_HIDDEN)
+			if (flags & 0x01) // HOLD_START_HIDDEN
 				hold.startType = HoldNoteType::Hidden;
-			if (flags & HOLD_END_HIDDEN)
+			if (flags & 0x02) // HOLD_END_HIDDEN
 				hold.endType = HoldNoteType::Hidden;
-			if (flags & HOLD_DUMMY)
+			if (flags & 0x08) // HOLD_DUMMY
 				hold.dummy = true;
 
-			Note startNote = readNote(reader, NoteType::Hold);
+			Note startNote = readNote(NoteType::Hold);
 			startNote.ID = nextID++;
 			hold.start.ID = startNote.ID;
-			hold.start.ease = static_cast<EaseType>(reader.readUInt32());
-			hold.start.type = HoldStepType::Normal;
-			hold.fadeType = static_cast<FadeType>(reader.readUInt32());
-			hold.guideColor = static_cast<GuideColor>(reader.readUInt32());
+			if (!supportsExtNote)
+			{
+				hold.start.ease = static_cast<EaseType>(reader.readUInt32());
+				hold.start.type = HoldStepType::Normal;
+			}
+			if (supportsFadeType)
+				hold.fadeType = static_cast<FadeType>(reader.readUInt32());
+			if (supportsGuideColor)
+				hold.guideColor = static_cast<GuideColor>(reader.readUInt32());
+			else
+				hold.guideColor = startNote.critical ? GuideColor::Yellow : GuideColor::Green;
+			if (supportsHoldLayer && !supportsExtNote)
+				reader.readUInt32(); // holdStep layer — MMW-Ext gak punya field ini
 			score.notes[startNote.ID] = startNote;
 
 			int stepCount = reader.readUInt32();
 			for (int j = 0; j < stepCount; ++j)
 			{
-				Note mid = readNote(reader, NoteType::HoldMid);
+				Note mid = readNote(NoteType::HoldMid);
 				mid.ID = nextID++;
-				HoldStep step;
-				step.ID = mid.ID;
-				step.type = static_cast<HoldStepType>(reader.readUInt32());
-				step.ease = static_cast<EaseType>(reader.readUInt32());
-				hold.steps.push_back(step);
 				mid.parentID = startNote.ID;
 				score.notes[mid.ID] = mid;
+
+				HoldStep step{};
+				step.ID = mid.ID;
+				if (supportsExtNote)
+				{
+					// type encoded in storedFlags — tapi readNote udah baca dan discard
+					// default ke Normal
+					step.type = HoldStepType::Normal;
+					step.ease = EaseType::Linear;
+				}
+				else
+				{
+					step.type = static_cast<HoldStepType>(reader.readUInt32());
+					step.ease = static_cast<EaseType>(reader.readUInt32());
+					if (supportsHoldLayer)
+						reader.readUInt32(); // holdStep layer
+				}
+				hold.steps.push_back(step);
 			}
 
-			Note endNote = readNote(reader, NoteType::HoldEnd);
+			Note endNote = readNote(NoteType::HoldEnd);
 			endNote.ID = nextID++;
-			hold.end = endNote.ID;
 			endNote.parentID = startNote.ID;
 			score.notes[endNote.ID] = endNote;
 
+			if (supportsExtNote)
+			{
+				int separatorCount = reader.readUInt32();
+				for (int s = 0; s < separatorCount; ++s)
+				{
+					reader.readUInt32(); // stepIndex
+					reader.readUInt32(); // separator flags
+					reader.readUInt32(); // guide color
+					reader.readUInt32(); // holdStep layer
+				}
+			}
+
+			hold.end = endNote.ID;
 			score.holdNotes[hold.start.ID] = hold;
+			++nextHoldID;
 		}
 
 		for (auto& [holdID, hold] : score.holdNotes)
@@ -397,29 +626,45 @@ namespace MikuMikuWorld
 			score.notes[hold.end].parentID = hold.start.ID;
 		}
 
-		reader.seek(damagesAddress);
-		int damageCount = reader.readUInt32();
-		for (int i = 0; i < damageCount; ++i)
+		if (supportsDamage && supportsAddress)
 		{
-			Note note = readNote(reader, NoteType::Damage);
-			note.ID = nextID++;
-			score.notes[note.ID] = note;
+			reader.seek(damagesAddress);
+			int damageCount = reader.readUInt32();
+			for (int i = 0; i < damageCount; ++i)
+			{
+				Note note = readNote(NoteType::Damage);
+				note.ID = nextID++;
+				score.notes[note.ID] = note;
+			}
 		}
 
-		reader.seek(layersAddress);
-		int layerCount = reader.readUInt32();
-		score.layers.clear();
-		for (int i = 0; i < layerCount; ++i)
-			score.layers.push_back({ reader.readString() });
-
-		reader.seek(waypointsAddress);
-		int waypointCount = reader.readUInt32();
-		score.waypoints.clear();
-		for (int i = 0; i < waypointCount; ++i)
+		if (supportsLayers && supportsAddress)
 		{
-			std::string name = reader.readString();
-			int tick = reader.readUInt32();
-			score.waypoints.push_back({ name, tick });
+			reader.seek(layersAddress);
+			score.layers.clear();
+			int layerCount = reader.readUInt32();
+			for (int i = 0; i < layerCount; ++i)
+			{
+				std::string layerName = reader.readString();
+				if (supportsForceNoteSpeed)
+					reader.readSingle();
+				Layer layer;
+				layer.name = layerName;
+				score.layers.push_back(layer);
+			}
+		}
+
+		if (supportsWaypoints && supportsAddress)
+		{
+			reader.seek(waypointsAddress);
+			int waypointCount = reader.readUInt32();
+			score.waypoints.clear();
+			for (int i = 0; i < waypointCount; ++i)
+			{
+				std::string name = reader.readString();
+				int tick = reader.readUInt32();
+				score.waypoints.push_back({ name, tick });
+			}
 		}
 
 		reader.close();

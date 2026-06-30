@@ -30,6 +30,10 @@ namespace MikuMikuWorld
 		{
 			return SerializeFormat::LvlDataFormat;
 		}
+		else if (hasExtension(filename, ".mmwpps"))
+		{
+			return SerializeFormat::ExtendedNativeFormat;
+		}
 		return SerializeFormat::FormatCount;
 	}
 
@@ -45,6 +49,8 @@ namespace MikuMikuWorld
 		{
 		case SerializeFormat::NativeFormat:
 			return IO::mmwsFilter;
+		case SerializeFormat::ExtendedNativeFormat:
+			return IO::mmwppsFilter;
 		case SerializeFormat::SusFormat:
 			return IO::susFilter;
 		case SerializeFormat::UscFormat:
@@ -62,6 +68,8 @@ namespace MikuMikuWorld
 		{
 		case SerializeFormat::NativeFormat:
 			return "unchmmws";
+		case SerializeFormat::ExtendedNativeFormat:
+			return "mmwpps";
 		case SerializeFormat::SusFormat:
 			return "sus";
 		case SerializeFormat::UscFormat:

@@ -178,6 +178,8 @@
     <ClCompile Include="BinaryReader.cpp" />
     <ClCompile Include="BinaryWriter.cpp" />
     <ClCompile Include="ChartGalleryWindow.cpp" />
+    <ClCompile Include="DynamicStage.cpp" />
+    <ClCompile Include="ExtendedNativeScoreSerializer.cpp" />
     <ClCompile Include="File.cpp" />
     <ClCompile Include="HistoryManager.cpp" />
     <ClCompile Include="ImGuiManager.cpp" />
@@ -245,6 +247,8 @@
     <ClInclude Include="ChartGalleryWindow.h" />
     <ClInclude Include="Colors.h" />
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="DynamicStage.h" />
+    <ClInclude Include="ExtendedNativeScoreSerializer.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HistoryManager.h" />
     <ClInclude Include="IconsFontAwesome5.h" />

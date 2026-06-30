@@ -36,6 +36,50 @@ namespace MikuMikuWorld
 		levelFile.close();
 	}
 
+	static bool tryGetGuideColorFromSegmentKind(const Sonolus::LevelDataEntity& e,
+	                                            GuideColor& outColor)
+	{
+		int kind = 0;
+		if (!e.tryGetDataValue("segmentKind", kind))
+			return false;
+		if (kind < 101 || kind > 108)
+			return false;
+		outColor = static_cast<GuideColor>(kind - 101);
+		return true;
+	}
+
+	static void applyHiddenOrGuideInfo(HoldNote& hold, const std::vector<size_t>& holdEntIndices,
+	                                   const std::vector<Sonolus::LevelDataEntity>& entities)
+	{
+		GuideColor guideColor;
+		bool anyGuide = false;
+		for (size_t idx : holdEntIndices)
+		{
+			if (tryGetGuideColorFromSegmentKind(entities[idx], guideColor))
+			{
+				anyGuide = true;
+				break;
+			}
+		}
+		if (anyGuide)
+		{
+			hold.startType = HoldNoteType::Guide;
+			hold.endType = HoldNoteType::Guide;
+			hold.guideColor = guideColor;
+			return;
+		}
+
+		if (entities[holdEntIndices.front()].archetype.find("Anchor") != std::string::npos)
+			hold.startType = HoldNoteType::Hidden;
+		if (entities[holdEntIndices.back()].archetype.find("Anchor") != std::string::npos)
+			hold.endType = HoldNoteType::Hidden;
+		for (size_t i = 1; i + 1 < holdEntIndices.size(); ++i)
+		{
+			if (entities[holdEntIndices[i]].archetype.find("Anchor") != std::string::npos)
+				hold.steps[i - 1].type = HoldStepType::Hidden;
+		}
+	}
+
 	Score SonolusSerializer::deserialize(std::string filename)
 	{
 		if (!IO::File::exists(filename))
@@ -121,6 +165,133 @@ namespace MikuMikuWorld
 		LevelData levelData;
 		levelData.bgmOffset = toBgmOffset(score.metadata.musicOffset);
 
+		size_t initIdx = levelData.entities.size();
+		levelData.entities.emplace_back(toInitializationEntity());
+		levelData.entities[initIdx].data["initialLife"] =
+		    static_cast<IntegerType>(score.metadata.baseLifePoint);
+
+		std::unordered_map<id_t, size_t> stageEntityIndex;
+		for (const auto& [id, stage] : score.stages)
+		{
+			size_t idx = levelData.entities.size();
+			levelData.entities.emplace_back(toStageEntity(stage));
+			levelData.entities[idx].name = IO::formatString("stage%d", (int)idx);
+			stageEntityIndex[id] = idx;
+		}
+
+		{
+			std::vector<const CameraChangeEvent*> cameraList;
+			cameraList.reserve(score.cameraChanges.size());
+			for (const auto& [_, c] : score.cameraChanges)
+				cameraList.push_back(&c);
+			std::sort(cameraList.begin(), cameraList.end(),
+			          [](const CameraChangeEvent* a, const CameraChangeEvent* b)
+			          { return a->tick < b->tick; });
+
+			size_t prevIdx = initIdx;
+			for (const CameraChangeEvent* camera : cameraList)
+			{
+				size_t newIdx = levelData.entities.size();
+				levelData.entities.emplace_back(toCameraChangeEntity(*camera));
+				std::string newName = IO::formatString("camera%d", (int)newIdx);
+				levelData.entities[newIdx].name = newName;
+
+				if (prevIdx == initIdx)
+					levelData.entities[prevIdx].data["firstCamera"] = newName;
+				else
+					levelData.entities[prevIdx].data["next"] = newName;
+
+				prevIdx = newIdx;
+			}
+		}
+
+		for (const auto& [stageID, stageIdx] : stageEntityIndex)
+		{
+			std::vector<const StageMaskChangeEvent*> maskList;
+			for (const auto& [_, mask] : score.stageMaskChanges)
+				if (mask.stageID == stageID)
+					maskList.push_back(&mask);
+			std::sort(maskList.begin(), maskList.end(),
+			          [](const StageMaskChangeEvent* a, const StageMaskChangeEvent* b)
+			          { return a->tick < b->tick; });
+
+			std::string stageName = levelData.entities[stageIdx].name;
+			size_t prevIdx = stageIdx;
+			for (const StageMaskChangeEvent* mask : maskList)
+			{
+				size_t newIdx = levelData.entities.size();
+				levelData.entities.emplace_back(toStageMaskChangeEntity(*mask));
+				levelData.entities[newIdx].data["stage"] = stageName;
+				std::string newName = IO::formatString("mask%d", (int)newIdx);
+				levelData.entities[newIdx].name = newName;
+
+				if (prevIdx == stageIdx)
+					levelData.entities[prevIdx].data["firstMaskChange"] = newName;
+				else
+					levelData.entities[prevIdx].data["next"] = newName;
+
+				prevIdx = newIdx;
+			}
+		}
+
+		for (const auto& [stageID, stageIdx] : stageEntityIndex)
+		{
+			std::vector<const StagePivotChangeEvent*> pivotList;
+			for (const auto& [_, pivot] : score.stagePivotChanges)
+				if (pivot.stageID == stageID)
+					pivotList.push_back(&pivot);
+			std::sort(pivotList.begin(), pivotList.end(),
+			          [](const StagePivotChangeEvent* a, const StagePivotChangeEvent* b)
+			          { return a->tick < b->tick; });
+
+			std::string stageName = levelData.entities[stageIdx].name;
+			size_t prevIdx = stageIdx;
+			for (const StagePivotChangeEvent* pivot : pivotList)
+			{
+				size_t newIdx = levelData.entities.size();
+				levelData.entities.emplace_back(toStagePivotChangeEntity(*pivot));
+				levelData.entities[newIdx].data["stage"] = stageName;
+				std::string newName = IO::formatString("pivot%d", (int)newIdx);
+				levelData.entities[newIdx].name = newName;
+
+				if (prevIdx == stageIdx)
+					levelData.entities[prevIdx].data["firstPivotChange"] = newName;
+				else
+					levelData.entities[prevIdx].data["next"] = newName;
+
+				prevIdx = newIdx;
+			}
+		}
+
+		for (const auto& [stageID, stageIdx] : stageEntityIndex)
+		{
+			std::vector<const StageStyleChangeEvent*> styleList;
+			for (const auto& [_, style] : score.stageStyleChanges)
+				if (style.stageID == stageID)
+					styleList.push_back(&style);
+			std::sort(styleList.begin(), styleList.end(),
+			          [](const StageStyleChangeEvent* a, const StageStyleChangeEvent* b)
+			          { return a->tick < b->tick; });
+
+			std::string stageName = levelData.entities[stageIdx].name;
+			size_t prevIdx = stageIdx;
+			for (const StageStyleChangeEvent* style : styleList)
+			{
+				size_t newIdx = levelData.entities.size();
+				levelData.entities.emplace_back(toStageStyleChangeEntity(*style));
+				levelData.entities[newIdx].data["stage"] = stageName;
+				std::string newName = IO::formatString("style%d", (int)newIdx);
+				levelData.entities[newIdx].name = newName;
+
+				if (prevIdx == stageIdx)
+					levelData.entities[prevIdx].data["firstStyleChange"] = newName;
+				else
+					levelData.entities[prevIdx].data["next"] = newName;
+
+				prevIdx = newIdx;
+			}
+		}
+
 		levelData.entities.emplace_back(
 		    "#BPM_CHANGE",
 		    LevelDataEntity::MapDataType{ { "#BEAT", RealType(0) }, { "#BPM", RealType(120) } });
@@ -196,8 +367,13 @@ namespace MikuMikuWorld
 				groupName = levelData.entities[groupIdx].name;
 			}
 			size_t entIdx = levelData.entities.size();
-			levelData.entities.emplace_back(
-			    toNoteEntity(note, getSingleNoteArchetype(note), groupName));
+			RefType noteStageRef;
+			auto noteStageIt = stageEntityIndex.find(note.stageID);
+			if (noteStageIt != stageEntityIndex.end())
+				noteStageRef = levelData.entities[noteStageIt->second].name;
+			float notePivotLane = getActiveStagePivotLane(score, note.stageID, note.tick);
+			levelData.entities.emplace_back(toNoteEntity(note, getSingleNoteArchetype(note),
+			                                             groupName, noteStageRef, notePivotLane));
 			simBuilder.emplace(note.tick, entIdx);
 		}
 
@@ -217,9 +393,16 @@ namespace MikuMikuWorld
 			}
 
 			size_t startIdx = levelData.entities.size();
+			RefType startStageRef;
+			auto startStageIt = stageEntityIndex.find(startNote.stageID);
+			if (startStageIt != stageEntityIndex.end())
+				startStageRef = levelData.entities[startStageIt->second].name;
+			float startPivotLane =
+			    getActiveStagePivotLane(score, startNote.stageID, startNote.tick);
+			bool startIsAnchor = hold.isGuide() || hold.startType != HoldNoteType::Normal;
 			levelData.entities.emplace_back(
-			    toNoteEntity(startNote, getHoldNoteArchetype(startNote, true, false), groupName,
-			                 &hold, &hold.start));
+			    toNoteEntity(startNote, getHoldNoteArchetype(startNote, true, false, startIsAnchor),
+			                 groupName, startStageRef, startPivotLane, &hold, &hold.start));
 			std::string startName = IO::formatString("n%d", (int)startIdx);
 			levelData.entities[startIdx].name = startName;
 			simBuilder.emplace(startNote.tick, startIdx);
@@ -242,9 +425,15 @@ namespace MikuMikuWorld
 				}
 
 				size_t midIdx = levelData.entities.size();
+				RefType midStageRef;
+				auto midStageIt = stageEntityIndex.find(midNote.stageID);
+				if (midStageIt != stageEntityIndex.end())
+					midStageRef = levelData.entities[midStageIt->second].name;
+				float midPivotLane = getActiveStagePivotLane(score, midNote.stageID, midNote.tick);
+				bool midIsAnchor = hold.isGuide() || step.type == HoldStepType::Hidden;
 				levelData.entities.emplace_back(
-				    toNoteEntity(midNote, getHoldNoteArchetype(midNote, false, false), midGroupName,
-				                 &hold, &step));
+				    toNoteEntity(midNote, getHoldNoteArchetype(midNote, false, false, midIsAnchor),
+				                 midGroupName, midStageRef, midPivotLane, &hold, &step));
 				std::string midName = IO::formatString("n%d", (int)midIdx);
 				levelData.entities[midIdx].name = midName;
 				levelData.entities[prevIdx].data["next"] = midName;
@@ -266,8 +455,15 @@ namespace MikuMikuWorld
 			}
 
 			size_t endIdx = levelData.entities.size();
-			levelData.entities.emplace_back(toNoteEntity(
-			    endNote, getHoldNoteArchetype(endNote, false, true), endGroupName, &hold, nullptr));
+			RefType endStageRef;
+			auto endStageIt = stageEntityIndex.find(endNote.stageID);
+			if (endStageIt != stageEntityIndex.end())
+				endStageRef = levelData.entities[endStageIt->second].name;
+			float endPivotLane = getActiveStagePivotLane(score, endNote.stageID, endNote.tick);
+			bool endIsAnchor = hold.isGuide() || hold.endType != HoldNoteType::Normal;
+			levelData.entities.emplace_back(
+			    toNoteEntity(endNote, getHoldNoteArchetype(endNote, false, true, endIsAnchor),
+			                 endGroupName, endStageRef, endPivotLane, &hold, nullptr));
 			std::string endName = IO::formatString("n%d", (int)endIdx);
 			levelData.entities[endIdx].name = endName;
 			levelData.entities[prevIdx].data["next"] = endName;
@@ -323,6 +519,118 @@ namespace MikuMikuWorld
 		}
 		if (score.tempoChanges.empty())
 			score.tempoChanges.push_back(Tempo(0, 120.f));
+
+		std::unordered_map<RefType, id_t> stageNameToID;
+		for (const auto& e : levelData.entities)
+		{
+			if (e.archetype != "Stage")
+				continue;
+			Stage stage;
+			fromStageEntity(e, stage);
+			stage.ID = getNextStageID();
+			score.stages[stage.ID] = stage;
+			score.stageOrder.push_back(stage.ID);
+			if (!e.name.empty())
+				stageNameToID[e.name] = stage.ID;
+		}
+
+		for (const auto& e : levelData.entities)
+		{
+			if (e.archetype != "Stage" || e.name.empty())
+				continue;
+			auto stageIt = stageNameToID.find(e.name);
+			if (stageIt == stageNameToID.end())
+				continue;
+			id_t stageID = stageIt->second;
+
+			RefType nextMask;
+			if (e.tryGetDataValue("firstMaskChange", nextMask))
+			{
+				while (!nextMask.empty())
+				{
+					auto it = entityNameMap.find(nextMask);
+					if (it == entityNameMap.end())
+						break;
+					const auto& maskEnt = levelData.entities[it->second];
+					StageMaskChangeEvent mask;
+					if (fromStageMaskChangeEntity(maskEnt, mask))
+					{
+						mask.ID = getNextStageMaskChangeID();
+						mask.stageID = stageID;
+						score.stageMaskChanges[mask.ID] = mask;
+					}
+					nextMask.clear();
+					maskEnt.tryGetDataValue("next", nextMask);
+				}
+			}
+
+			RefType nextPivot;
+			if (e.tryGetDataValue("firstPivotChange", nextPivot))
+			{
+				while (!nextPivot.empty())
+				{
+					auto it = entityNameMap.find(nextPivot);
+					if (it == entityNameMap.end())
+						break;
+					const auto& pivotEnt = levelData.entities[it->second];
+					StagePivotChangeEvent pivot;
+					if (fromStagePivotChangeEntity(pivotEnt, pivot))
+					{
+						pivot.ID = getNextStagePivotChangeID();
+						pivot.stageID = stageID;
+						score.stagePivotChanges[pivot.ID] = pivot;
+					}
+					nextPivot.clear();
+					pivotEnt.tryGetDataValue("next", nextPivot);
+				}
+			}
+
+			RefType nextStyle;
+			if (e.tryGetDataValue("firstStyleChange", nextStyle))
+			{
+				while (!nextStyle.empty())
+				{
+					auto it = entityNameMap.find(nextStyle);
+					if (it == entityNameMap.end())
+						break;
+					const auto& styleEnt = levelData.entities[it->second];
+					StageStyleChangeEvent style;
+					if (fromStageStyleChangeEntity(styleEnt, style))
+					{
+						style.ID = getNextStageStyleChangeID();
+						style.stageID = stageID;
+						score.stageStyleChanges[style.ID] = style;
+					}
+					nextStyle.clear();
+					styleEnt.tryGetDataValue("next", nextStyle);
+				}
+			}
+		}
+
+		for (const auto& e : levelData.entities)
+		{
+			if (e.archetype != "Initialization")
+				continue;
+			RefType nextCamera;
+			if (!e.tryGetDataValue("firstCamera", nextCamera))
+				break;
+			while (!nextCamera.empty())
+			{
+				auto it = entityNameMap.find(nextCamera);
+				if (it == entityNameMap.end())
+					break;
+				const auto& cameraEnt = levelData.entities[it->second];
+				CameraChangeEvent camera;
+				if (fromCameraChangeEntity(cameraEnt, camera))
+				{
+					camera.ID = getNextCameraChangeID();
+					score.cameraChanges[camera.ID] = camera;
+				}
+				nextCamera.clear();
+				cameraEnt.tryGetDataValue("next", nextCamera);
+			}
+			break;
+		}
 
 		std::unordered_map<RefType, size_t> groupNameMap;
 		for (const auto& e : levelData.entities)
@@ -429,7 +737,7 @@ namespace MikuMikuWorld
 				if (e.dataExists("next") || hasParent(e))
 					continue;
 				Note note;
-				if (!fromTapNoteEntity(e, note, groupNameMap))
+				if (!fromTapNoteEntity(e, note, groupNameMap, stageNameToID))
 					continue;
 				note.ID = nextNoteID++;
 				score.notes.emplace(note.ID, note);
@@ -450,8 +758,13 @@ namespace MikuMikuWorld
 				while (true)
 				{
 					const auto& cur = levelData.entities[curIdx];
+					bool isFirst = holdNotes.empty();
+					RefType peekNext;
+					bool hasNext = cur.tryGetDataValue("next", peekNext);
+					NoteType posType = isFirst ? NoteType::Hold
+					                           : (hasNext ? NoteType::HoldMid : NoteType::HoldEnd);
 					Note n;
-					if (!fromHoldMidEntity(cur, n, groupNameMap))
+					if (!fromHoldMidEntity(cur, n, groupNameMap, stageNameToID, posType))
 					{
 						valid = false;
 						break;
@@ -459,10 +772,9 @@ namespace MikuMikuWorld
 					holdNotes.push_back(n);
 					holdEntIndices.push_back(curIdx);
 
-					RefType next;
-					if (!cur.tryGetDataValue("next", next))
+					if (!hasNext)
 						break;
-					auto it = entityNameMap.find(next);
+					auto it = entityNameMap.find(peekNext);
 					if (it == entityNameMap.end())
 					{
 						valid = false;
@@ -483,10 +795,21 @@ namespace MikuMikuWorld
 				hold.start.ID = holdNotes.front().ID;
 				hold.start.type = HoldStepType::Normal;
 				hold.start.ease = EaseType::Linear;
+				{
+					int startEase;
+					if (levelData.entities[holdEntIndices[0]].tryGetDataValue("connectorEase",
+					                                                          startEase))
+						hold.start.ease = fromEaseNumeric(startEase);
+				}
 				hold.end = holdNotes.back().ID;
 				hold.startType = HoldNoteType::Normal;
 				hold.endType = HoldNoteType::Normal;
 				hold.fadeType = FadeType::Out;
+				{
+					int fadeVal;
+					if (levelData.entities[holdEntIndices[0]].tryGetDataValue("fadeType", fadeVal))
+						hold.fadeType = fromFadeNumeric(fadeVal);
+				}
 
 				for (size_t i = 1; i + 1 < holdNotes.size(); ++i)
 				{
@@ -502,6 +825,7 @@ namespace MikuMikuWorld
 				}
 
 				hold.dummy = false;
+				applyHiddenOrGuideInfo(hold, holdEntIndices, levelData.entities);
 				score.holdNotes.emplace(hold.start.ID, hold);
 				// Rebuild parentID
 				score.notes[hold.start.ID].parentID = hold.start.ID;
@@ -518,7 +842,7 @@ namespace MikuMikuWorld
 				if (e.dataExists("activeHead") || hasTail(e))
 					continue;
 				Note note;
-				if (!fromTapNoteEntity(e, note, groupNameMap))
+				if (!fromTapNoteEntity(e, note, groupNameMap, stageNameToID))
 					continue;
 				note.ID = nextNoteID++;
 				score.notes.emplace(note.ID, note);
@@ -542,7 +866,8 @@ namespace MikuMikuWorld
 				std::vector<size_t> holdEntIndices;
 
 				Note headNote;
-				if (!fromTapNoteEntity(headEnt, headNote, groupNameMap))
+				if (!fromTapNoteEntity(headEnt, headNote, groupNameMap, stageNameToID,
+				                       NoteType::Hold))
 					continue;
 				holdNotes.push_back(headNote);
 				holdEntIndices.push_back(headIdx);
@@ -558,7 +883,7 @@ namespace MikuMikuWorld
 					if (midHead == activeHead)
 					{
 						Note midNote;
-						if (fromHoldMidEntity(midEnt, midNote, groupNameMap))
+						if (fromHoldMidEntity(midEnt, midNote, groupNameMap, stageNameToID))
 						{
 							holdNotes.push_back(midNote);
 							holdEntIndices.push_back(midIdx);
@@ -567,7 +892,8 @@ namespace MikuMikuWorld
 				}
 
 				Note tailNote;
-				if (!fromTapNoteEntity(tailEnt, tailNote, groupNameMap))
+				if (!fromTapNoteEntity(tailEnt, tailNote, groupNameMap, stageNameToID,
+				                       NoteType::HoldEnd))
 					continue;
 				holdNotes.push_back(tailNote);
 				holdEntIndices.push_back(entIdx);
@@ -588,10 +914,21 @@ namespace MikuMikuWorld
 				hold.start.ID = holdNotes.front().ID;
 				hold.start.type = HoldStepType::Normal;
 				hold.start.ease = EaseType::Linear;
+				{
+					int startEase;
+					if (levelData.entities[holdEntIndices[0]].tryGetDataValue("connectorEase",
+					                                                          startEase))
+						hold.start.ease = fromEaseNumeric(startEase);
+				}
 				hold.end = holdNotes.back().ID;
 				hold.startType = HoldNoteType::Normal;
 				hold.endType = HoldNoteType::Normal;
 				hold.fadeType = FadeType::Out;
+				{
+					int fadeVal;
+					if (levelData.entities[holdEntIndices[0]].tryGetDataValue("fadeType", fadeVal))
+						hold.fadeType = fromFadeNumeric(fadeVal);
+				}
 				hold.dummy = false;
 
 				for (size_t i = 1; i + 1 < holdNotes.size(); ++i)
@@ -607,6 +944,7 @@ namespace MikuMikuWorld
 					hold.steps.push_back(step);
 				}
 
+				applyHiddenOrGuideInfo(hold, holdEntIndices, levelData.entities);
 				score.holdNotes.emplace(hold.start.ID, hold);
 				score.notes[hold.start.ID].parentID = hold.start.ID;
 				for (const auto& step : hold.steps)
@@ -614,6 +952,9 @@ namespace MikuMikuWorld
 				score.notes[hold.end].parentID = hold.start.ID;
 			}
 		}
+
+		for (auto& [_, note] : score.notes)
+			note.lane += getActiveStagePivotLane(score, note.stageID, note.tick);
 
 		return score;
 	}
@@ -637,9 +978,168 @@ namespace MikuMikuWorld
 			       { "hideNotes", static_cast<IntegerType>(hispeed.hideNotes ? 1 : 0) } } };
 	}
 
+	LevelDataEntity PySekaiEngine::toInitializationEntity()
+	{
+		return { "Initialization", { { "initialLife", static_cast<IntegerType>(1000) } } };
+	}
+
 	Sonolus::LevelDataEntity PySekaiEngine::toSkillEntity(const SkillTrigger& skill)
 	{
 		return { "Skill", { { "#BEAT", ticksToBeats(skill.tick) } } };
+	}
+
+	LevelDataEntity PySekaiEngine::toStageEntity(const Stage& stage)
+	{
+		return { "Stage",
+			     { { "editorName", RefType(stage.editorName) },
+			       { "fromStart", static_cast<IntegerType>(stage.fromStart ? 1 : 0) },
+			       { "untilEnd", static_cast<IntegerType>(stage.untilEnd ? 1 : 0) },
+			       { "generateSimLines",
+			         static_cast<IntegerType>(stage.generateSimLinesIsolated ? 1 : 0) } } };
+	}
+
+	LevelDataEntity PySekaiEngine::toCameraChangeEntity(const CameraChangeEvent& camera)
+	{
+		return { "CameraChange",
+			     { { "#BEAT", ticksToBeats(camera.tick) },
+			       { "lane", toSonolusLane(camera.left, camera.size) },
+			       { "size", widthToSize(camera.size) },
+			       { "zoom", static_cast<RealType>(camera.zoom) },
+			       { "zoomTargetLane", static_cast<RealType>(camera.zoomTargetLane) },
+			       { "zoomTargetY", static_cast<RealType>(camera.zoomTargetY) },
+			       { "zoomVerticalAlign", static_cast<IntegerType>(camera.zoomVerticalAlign) },
+			       { "rotate", static_cast<RealType>(camera.rotate) },
+			       { "stageTilt", static_cast<RealType>(camera.stageTilt) },
+			       { "ease", static_cast<IntegerType>(toEaseNumeric(camera.ease)) } } };
+	}
+
+	LevelDataEntity PySekaiEngine::toStageMaskChangeEntity(const StageMaskChangeEvent& mask)
+	{
+		return { "StageMaskChange",
+			     { { "#BEAT", ticksToBeats(mask.tick) },
+			       { "lane", toSonolusLane(mask.left, mask.size) },
+			       { "size", widthToSize(mask.size) },
+			       { "ease", static_cast<IntegerType>(toEaseNumeric(mask.ease)) } } };
+	}
+
+	LevelDataEntity PySekaiEngine::toStagePivotChangeEntity(const StagePivotChangeEvent& pivot)
+	{
+		return { "StagePivotChange",
+			     { { "#BEAT", ticksToBeats(pivot.tick) },
+			       { "lane", toSonolusLane(pivot.lane, 0) },
+			       { "divisionSize", static_cast<IntegerType>(pivot.divisionSize) },
+			       { "divisionParity", static_cast<IntegerType>(pivot.divisionParityOdd ? 1 : 0) },
+			       { "yOffset", static_cast<RealType>(pivot.yOffset) },
+			       { "yBeatOffset", static_cast<RealType>(pivot.yOffsetBeat) },
+			       { "ease", static_cast<IntegerType>(toEaseNumeric(pivot.ease)) } } };
+	}
+
+	LevelDataEntity PySekaiEngine::toStageStyleChangeEntity(const StageStyleChangeEvent& style)
+	{
+		return { "StageStyleChange",
+			     { { "#BEAT", ticksToBeats(style.tick) },
+			       { "judgeLineColor", static_cast<IntegerType>(style.judgeLineColor) },
+			       { "leftBorderStyle", static_cast<IntegerType>(style.leftBorderStyle) },
+			       { "rightBorderStyle", static_cast<IntegerType>(style.rightBorderStyle) },
+			       { "alpha", static_cast<RealType>(style.alpha) },
+			       { "laneAlpha", static_cast<RealType>(style.laneAlpha) },
+			       { "judgeLineAlpha", static_cast<RealType>(style.judgeLineAlpha) },
+			       { "ease", static_cast<IntegerType>(toEaseNumeric(style.ease)) } } };
+	}
+
+	bool PySekaiEngine::fromStageEntity(const Sonolus::LevelDataEntity& e, Stage& stage)
+	{
+		e.tryGetDataValue("editorName", stage.editorName);
+		int fromStart = 1, untilEnd = 1, simLines = 0;
+		e.tryGetDataValue("fromStart", fromStart);
+		e.tryGetDataValue("untilEnd", untilEnd);
+		e.tryGetDataValue("generateSimLines", simLines);
+		stage.fromStart = fromStart != 0;
+		stage.untilEnd = untilEnd != 0;
+		stage.generateSimLinesIsolated = simLines != 0;
+		return true;
+	}
+
+	bool PySekaiEngine::fromCameraChangeEntity(const Sonolus::LevelDataEntity& e,
+	                                           CameraChangeEvent& camera)
+	{
+		float beat, lane, size;
+		if (!e.tryGetDataValue("#BEAT", beat) || !e.tryGetDataValue("lane", lane) ||
+		    !e.tryGetDataValue("size", size))
+			return false;
+		camera.tick = beatsToTicks(beat);
+		camera.size = sizeToWidth(size);
+		camera.left = toNativeLane(lane, size);
+		e.tryGetDataValue("zoom", camera.zoom);
+		e.tryGetDataValue("zoomTargetLane", camera.zoomTargetLane);
+		e.tryGetDataValue("zoomTargetY", camera.zoomTargetY);
+		int align = 0, ease = 1;
+		e.tryGetDataValue("zoomVerticalAlign", align);
+		camera.zoomVerticalAlign = static_cast<StageZoomVerticalAlign>(align);
+		e.tryGetDataValue("rotate", camera.rotate);
+		e.tryGetDataValue("stageTilt", camera.stageTilt);
+		e.tryGetDataValue("ease", ease);
+		camera.ease = fromEaseNumeric(ease);
+		return true;
+	}
+
+	bool PySekaiEngine::fromStageMaskChangeEntity(const Sonolus::LevelDataEntity& e,
+	                                              StageMaskChangeEvent& mask)
+	{
+		float beat, lane, size;
+		if (!e.tryGetDataValue("#BEAT", beat) || !e.tryGetDataValue("lane", lane) ||
+		    !e.tryGetDataValue("size", size))
+			return false;
+		mask.tick = beatsToTicks(beat);
+		mask.size = sizeToWidth(size);
+		mask.left = toNativeLane(lane, size);
+		int ease = 1;
+		e.tryGetDataValue("ease", ease);
+		mask.ease = fromEaseNumeric(ease);
+		return true;
+	}
+
+	bool PySekaiEngine::fromStagePivotChangeEntity(const Sonolus::LevelDataEntity& e,
+	                                               StagePivotChangeEvent& pivot)
+	{
+		float beat, lane;
+		if (!e.tryGetDataValue("#BEAT", beat) || !e.tryGetDataValue("lane", lane))
+			return false;
+		pivot.tick = beatsToTicks(beat);
+		pivot.lane = toNativeLane(lane, 0);
+		int divisionSize = 2, divisionParity = 0, ease = 1;
+		e.tryGetDataValue("divisionSize", divisionSize);
+		e.tryGetDataValue("divisionParity", divisionParity);
+		pivot.divisionSize = divisionSize;
+		pivot.divisionParityOdd = divisionParity != 0;
+		e.tryGetDataValue("yOffset", pivot.yOffset);
+		e.tryGetDataValue("yBeatOffset", pivot.yOffsetBeat);
+		e.tryGetDataValue("ease", ease);
+		pivot.ease = fromEaseNumeric(ease);
+		return true;
+	}
+
+	bool PySekaiEngine::fromStageStyleChangeEntity(const Sonolus::LevelDataEntity& e,
+	                                               StageStyleChangeEvent& style)
+	{
+		float beat;
+		if (!e.tryGetDataValue("#BEAT", beat))
+			return false;
+		style.tick = beatsToTicks(beat);
+		int judge = static_cast<int>(GuideColor::Purple), left = 0, right = 0, ease = 1;
+		e.tryGetDataValue("judgeLineColor", judge);
+		e.tryGetDataValue("leftBorderStyle", left);
+		e.tryGetDataValue("rightBorderStyle", right);
+		e.tryGetDataValue("ease", ease);
+		style.judgeLineColor = static_cast<GuideColor>(judge);
+		style.leftBorderStyle = static_cast<StageBorderStyle>(left);
+		style.rightBorderStyle = static_cast<StageBorderStyle>(right);
+		style.alpha = style.laneAlpha = style.judgeLineAlpha = 1.f;
+		e.tryGetDataValue("alpha", style.alpha);
+		e.tryGetDataValue("laneAlpha", style.laneAlpha);
+		e.tryGetDataValue("judgeLineAlpha", style.judgeLineAlpha);
+		style.ease = fromEaseNumeric(ease);
+		return true;
 	}
 
 	std::pair<Sonolus::LevelDataEntity, Sonolus::LevelDataEntity>
@@ -650,48 +1150,121 @@ namespace MikuMikuWorld
 	}
 
 	LevelDataEntity PySekaiEngine::toNoteEntity(const Note& note, const std::string& archetype,
-	                                            const RefType& groupName, const HoldNote* hold,
+	                                            const RefType& groupName, const RefType& stageRef,
+	                                            float pivotLane, const HoldNote* hold,
 	                                            const HoldStep* holdStep)
 	{
-		return { archetype,
-			     { { "#TIMESCALE_GROUP", groupName },
-			       { "#BEAT", ticksToBeats(note.tick) },
-			       { "lane", toSonolusLane(note.lane, note.width) },
-			       { "size", widthToSize(note.width) },
-			       { "direction", toDirectionNumeric(note.flick) },
-			       { "connectorEase", holdStep ? toEaseNumeric(holdStep->ease) : 1 },
-			       { "isSeparator", static_cast<IntegerType>(1) } } };
+		LevelDataEntity entity{ archetype,
+			                    { { "#TIMESCALE_GROUP", groupName },
+			                      { "#BEAT", ticksToBeats(note.tick) },
+			                      { "lane", toSonolusLane(note.lane, note.width) - pivotLane },
+			                      { "size", widthToSize(note.width) },
+			                      { "direction", toDirectionNumeric(note.flick) },
+			                      { "connectorEase", holdStep ? toEaseNumeric(holdStep->ease) : 1 },
+			                      { "isSeparator", static_cast<IntegerType>(1) },
+			                      { "isAttached", static_cast<IntegerType>(1) },
+			                      { "segmentKind", toSegmentNumeric(note, hold) },
+			                      { "segmentAlpha", 1.0 },
+			                      { "segmentLayer", static_cast<IntegerType>(0) },
+			                      { "effectKind", static_cast<IntegerType>(1) } } };
+		if (hold)
+			entity.data["fadeType"] = toFadeNumeric(hold->fadeType);
+		if (!stageRef.empty())
+			entity.data["stage"] = stageRef;
+		return entity;
+	}
+
+	float PySekaiEngine::getActiveStagePivotLane(const Score& score, id_t stageID, int tick)
+	{
+		if (stageID == NO_ID)
+			return 0;
+
+		bool found = false;
+		int bestTick = 0;
+		float bestLane = 0;
+		for (const auto& [_, pivot] : score.stagePivotChanges)
+		{
+			if (pivot.stageID != stageID || pivot.tick > tick)
+				continue;
+			if (!found || pivot.tick >= bestTick)
+			{
+				found = true;
+				bestTick = pivot.tick;
+				bestLane = pivot.lane;
+			}
+		}
+		if (!found)
+			return 0;
+		return toSonolusLane(bestLane, 0);
 	}
 
 	std::string PySekaiEngine::getSingleNoteArchetype(const Note& note)
 	{
-		std::string arch;
-		switch (note.getType())
-		{
-		case NoteType::Tap:
-			arch = note.critical ? "CriticalNormalTapNote" : "NormalTapNote";
-			if (note.isFlick())
-				arch = (note.critical ? "CriticalNormalFlickNote" : "NormalFlickNote");
-			break;
-		case NoteType::Damage:
-			arch = "DamageNote";
-			break;
-		default:
-			arch = "AnchorNote";
-			break;
-		}
-		return arch;
+		if (note.getType() == NoteType::Damage)
+			return "DamageNote";
+
+		std::string archetype = note.critical ? "Critical" : "Normal";
+		if (note.friction)
+			archetype += "Trace";
+		if (note.isFlick())
+			archetype += "Flick";
+		if (!note.friction && !note.isFlick())
+			archetype += "Tap";
+		archetype += "Note";
+		return archetype;
 	}
 
-	std::string PySekaiEngine::getHoldNoteArchetype(const Note& note, bool isHead, bool isTail)
+	std::string PySekaiEngine::getHoldNoteArchetype(const Note& note, bool isHead, bool isTail,
+	                                                bool isAnchor)
 	{
-		if (note.isFlick() && isTail)
-			return note.critical ? "CriticalNormalFlickNote" : "NormalFlickNote";
+		if (isAnchor)
+			return "AnchorNote";
+
+		if (!isHead && !isTail)
+			return note.critical ? "CriticalTickNote" : "NormalTickNote";
+
+		std::string archetype = note.critical ? "Critical" : "Normal";
 		if (isHead)
-			return note.critical ? "CriticalNormalHeadTapNote" : "NormalHeadTapNote";
+			archetype += "Head";
 		if (isTail)
-			return note.critical ? "CriticalNormalTailReleaseNote" : "NormalTailReleaseNote";
-		return note.critical ? "CriticalNormalTickNote" : "NormalTickNote";
+			archetype += "Tail";
+		if (note.friction)
+			archetype += "Trace";
+		if (note.isFlick())
+			archetype += "Flick";
+		if (!note.friction && !note.isFlick())
+			archetype += isTail ? "Release" : "Tap";
+		archetype += "Note";
+		return archetype;
+	}
+
+	int PySekaiEngine::toSegmentNumeric(const Note& note, const HoldNote* hold)
+	{
+		if (hold && hold->isGuide())
+		{
+			switch (hold->guideColor)
+			{
+			case GuideColor::Neutral:
+				return 101;
+			case GuideColor::Red:
+				return 102;
+			case GuideColor::Green:
+				return 103;
+			case GuideColor::Blue:
+				return 104;
+			case GuideColor::Yellow:
+				return 105;
+			case GuideColor::Purple:
+				return 106;
+			case GuideColor::Cyan:
+				return 107;
+			case GuideColor::Black:
+				return 108;
+			default:
+				return 101;
+			}
+		}
+		return (note.critical ? 2 : 1) + (note.dummy ? 50 : 0);
 	}
 
 	void PySekaiEngine::insertTransientTickNote(size_t, size_t, bool,
@@ -740,6 +1313,36 @@ namespace MikuMikuWorld
 			return 5;
 		default:
 			return 1;
+		}
+	}
+
+	int PySekaiEngine::toFadeNumeric(FadeType fade)
+	{
+		switch (fade)
+		{
+		case FadeType::Out:
+			return 0;
+		case FadeType::None:
+			return 1;
+		case FadeType::In:
+			return 2;
+		default:
+			return 0;
+		}
+	}
+
+	FadeType PySekaiEngine::fromFadeNumeric(int fade)
+	{
+		switch (fade)
+		{
+		case 0:
+			return FadeType::Out;
+		case 1:
+			return FadeType::None;
+		case 2:
+			return FadeType::In;
+		default:
+			return FadeType::Out;
 		}
 	}
 
@@ -800,7 +1403,8 @@ namespace MikuMikuWorld
 	}
 
 	int PySekaiEngine::fromNoteEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
-	                                  const std::unordered_map<RefType, size_t>& groupNameMap)
+	                                  const std::unordered_map<RefType, size_t>& groupNameMap,
+	                                  const std::unordered_map<RefType, id_t>& stageNameMap)
 	{
 		float beat, lane, size;
 		if (!noteEntity.tryGetDataValue("#BEAT", beat) ||
@@ -817,15 +1421,28 @@ namespace MikuMikuWorld
 			if (it != groupNameMap.end())
 				note.layer = static_cast<int>(it->second);
 		}
+
+		note.stageID = NO_ID;
+		RefType stageRef;
+		if (noteEntity.tryGetDataValue("stage", stageRef))
+		{
+			auto sIt = stageNameMap.find(stageRef);
+			if (sIt != stageNameMap.end())
+				note.stageID = sIt->second;
+		}
 		return 1;
 	}
 
 	int PySekaiEngine::fromTapNoteEntity(const Sonolus::LevelDataEntity& tapNoteEntity, Note& note,
-	                                     const std::unordered_map<RefType, size_t>& groupNameMap)
+	                                     const std::unordered_map<RefType, size_t>& groupNameMap,
+	                                     const std::unordered_map<RefType, id_t>& stageNameMap,
+	                                     NoteType anchorType)
 	{
-		int status = fromNoteEntity(tapNoteEntity, note, groupNameMap);
+		int status = fromNoteEntity(tapNoteEntity, note, groupNameMap, stageNameMap);
 		if (!status)
 			return 0;
+		int savedLayer = note.layer;
+		id_t savedStageID = note.stageID;
 		const std::string& arch = tapNoteEntity.archetype;
 		bool isCritical = arch.find("Critical") != std::string::npos;
 		bool isTrace = arch.find("Trace") != std::string::npos;
@@ -861,9 +1478,8 @@ namespace MikuMikuWorld
 		}
 		else if (arch.find("Anchor") != std::string::npos)
 		{
-			note = Note(NoteType::Tap, note.tick, note.lane, note.width);
+			note = Note(anchorType, note.tick, note.lane, note.width);
 			note.critical = isCritical;
-			note.friction = true;
 		}
 		else
 		{
@@ -873,13 +1489,19 @@ namespace MikuMikuWorld
 			if (isFlick)
 				note.flick = fromDirectionNumeric(flickDir);
 		}
+
+		note.layer = savedLayer;
+		note.stageID = savedStageID;
+
 		return status;
 	}
 
 	int PySekaiEngine::fromHoldMidEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
-	                                     const std::unordered_map<RefType, size_t>& groupNameMap)
+	                                     const std::unordered_map<RefType, size_t>& groupNameMap,
+	                                     const std::unordered_map<RefType, id_t>& stageNameMap,
+	                                     NoteType anchorType)
 	{
-		return fromTapNoteEntity(noteEntity, note, groupNameMap);
+		return fromTapNoteEntity(noteEntity, note, groupNameMap, stageNameMap, anchorType);
 	}
 
 	bool PySekaiEngine::isValidNoteState(const Note& note)

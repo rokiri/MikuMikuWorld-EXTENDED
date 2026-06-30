@@ -44,12 +44,15 @@ namespace MikuMikuWorld
 		float musicOffset{};
 		int laneExtension{};
 		Jacket jacket{};
+		bool isExtendedScore{};
+		int baseLifePoint{ 1000 };
 
 		EditorScoreData() {}
 		EditorScoreData(const ScoreMetadata& metadata, const std::string& filename)
 		    : title{ metadata.title }, designer{ metadata.author }, artist{ metadata.artist },
 		      musicFilename{ metadata.musicFile }, musicOffset{ metadata.musicOffset },
-		      laneExtension{ metadata.laneExtension }
+		      laneExtension{ metadata.laneExtension }, isExtendedScore{ metadata.isExtendedScore },
+		      baseLifePoint{ metadata.baseLifePoint }
 		{
 			this->filename = filename;
 			jacket.load(metadata.jacketFile);
@@ -57,7 +60,10 @@ namespace MikuMikuWorld
 
 		ScoreMetadata toScoreMetadata() const
 		{
-			return { title, artist, designer, musicFilename, jacket.getFilename(), musicOffset, laneExtension };
+			return {
+				title,       artist,        designer,        musicFilename, jacket.getFilename(),
+				musicOffset, laneExtension, isExtendedScore, baseLifePoint
+			};
 		}
 	};
 
@@ -96,6 +102,9 @@ namespace MikuMikuWorld
 
 		int selectedLayer = 0;
 		bool showAllLayers = false;
+
+		id_t selectedStage{ NO_ID };
+		StageEventEditMode stageEventEditMode{ StageEventEditMode::None };
 
 		bool hasSelection() const
 		{

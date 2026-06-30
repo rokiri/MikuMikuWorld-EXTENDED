@@ -74,6 +74,7 @@ namespace MikuMikuWorld
 		FlickType flick{ FlickType::None };
 
 		int layer{ 0 };
+		id_t stageID{ 0 };
 
 		explicit Note(NoteType _type);
 		explicit Note(NoteType _type, int tick, float lane, float width);

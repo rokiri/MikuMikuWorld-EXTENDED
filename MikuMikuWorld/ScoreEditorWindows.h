@@ -131,6 +131,17 @@ namespace MikuMikuWorld
 		void update(ScoreContext& context);
 	};
 
+	class StagesWindow
+	{
+	  private:
+		std::string stageName{};
+		id_t renameID{ NO_ID };
+		bool focusRenameInput{ false };
+
+	  public:
+		void update(ScoreContext& context);
+	};
+
 	class WaypointsWindow
 	{
 	  public:

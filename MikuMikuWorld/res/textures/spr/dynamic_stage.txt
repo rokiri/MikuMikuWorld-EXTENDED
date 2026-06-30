@@ -1,0 +1,56 @@
+# Sekai Lane Background
+6,6,1,120
+# Sekai Lane Divider
+17,6,6,120
+# Sekai Stage Border
+33,6,3,120
+# Sekai Judgment Background
+46,6,1,1
+# Sekai Judgment Center Black
+57,6,1,1
+# Sekai Judgment Center Blue
+68,6,1,1
+# Sekai Judgment Center Cyan
+79,6,1,1
+# Sekai Judgment Center Green
+90,6,1,1
+# Sekai Judgment Center Neutral
+101,6,1,1
+# Sekai Judgment Center Purple
+112,6,1,1
+# Sekai Judgment Center Red
+123,6,1,1
+# Sekai Judgment Center Yellow
+134,6,1,1
+# Sekai Judgment Edge Black
+145,6,1,1
+# Sekai Judgment Edge Blue
+156,6,1,1
+# Sekai Judgment Edge Cyan
+167,6,1,1
+# Sekai Judgment Edge Green
+178,6,1,1
+# Sekai Judgment Edge Neutral
+189,6,1,1
+# Sekai Judgment Edge Purple
+200,6,1,1
+# Sekai Judgment Edge Red
+211,6,1,1
+# Sekai Judgment Edge Yellow
+222,6,1,1
+# Sekai Judgment Gradient Black
+6,136,100,1
+# Sekai Judgment Gradient Blue
+116,136,100,1
+# Sekai Judgment Gradient Cyan
+6,147,100,1
+# Sekai Judgment Gradient Green
+116,147,100,1
+# Sekai Judgment Gradient Neutral
+6,158,100,1
+# Sekai Judgment Gradient Purple
+116,158,100,1
+# Sekai Judgment Gradient Red
+6,169,100,1
+# Sekai Judgment Gradient Yellow
+116,169,100,1

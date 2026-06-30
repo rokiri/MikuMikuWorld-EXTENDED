@@ -23,6 +23,7 @@
 #include "Tempo.h"
 #include "Score.h"
 #include "ScoreContext.h"
+#include "ExtendedNativeScoreSerializer.h"
 
 using nlohmann::json;
 
@@ -320,6 +321,14 @@ namespace MikuMikuWorld
 		updateAvailableDialog.update();
 		serializeWindow.update(*this, context, timeline);
 
+			if (ImGui::IsAnyPressed(config.input.cycleStageEditMode, false) &&
+		    !ImGui::GetIO().WantTextInput)
+		{
+			int next = ((int)context.stageEventEditMode + 1) %
+			           (int)StageEventEditMode::StageEventEditModeMax;
+			context.stageEventEditMode = (StageEventEditMode)next;
+		}
+
 		ImGui::Begin(IMGUI_TITLE(ICON_FA_MUSIC, "notes_timeline"), NULL,
 		             ImGuiWindowFlags_Static | ImGuiWindowFlags_NoScrollbar |
 		                 ImGuiWindowFlags_NoScrollWithMouse);
@@ -370,6 +379,12 @@ namespace MikuMikuWorld
 		if (ImGui::Begin(IMGUI_TITLE(ICON_FA_LAYER_GROUP, "layers"), NULL, ImGuiWindowFlags_Static))
 		{
 			layersWindow.update(context);
+		}
+		ImGui::End();
+
+		if (ImGui::Begin(IMGUI_TITLE(ICON_FA_LAYER_GROUP, "stages"), NULL, ImGuiWindowFlags_Static))
+		{
+			stagesWindow.update(context);
 		}
 		ImGui::End();
 
@@ -469,9 +484,11 @@ namespace MikuMikuWorld
 		fileDialog.parentWindowHandle = Application::windowState.windowHandle;
 		fileDialog.title = "Open Score File";
 		fileDialog.filters = { IO::combineFilters("All Supported Files",
-			                                      { IO::mmwsFilter, IO::susFilter, IO::uscFilter,
+			                                      { IO::mmwsFilter, IO::mmwppsFilter, IO::susFilter,
+			                                        IO::uscFilter,
 			                                        IO::lvlDatFilter }),
 			                   IO::mmwsFilter,
+			                   IO::mmwppsFilter,
 			                   IO::susFilter,
 			                   IO::uscFilter,
 			                   IO::lvlDatFilter,
@@ -496,7 +513,11 @@ namespace MikuMikuWorld
 		try
 		{
 			context.score.metadata = context.workingData.toScoreMetadata();
-			NativeScoreSerializer().serialize(context.score, filename);
+			std::string ext = IO::File::getFileExtension(filename);
+			if (ext == "mmwpps" || ext == ".mmwpps")
+				ExtendedNativeScoreSerializer().serialize(context.score, filename);
+			else
+				NativeScoreSerializer().serialize(context.score, filename);
 
 			UI::setWindowTitle(IO::File::getFilename(filename));
 			context.upToDate = true;
@@ -517,7 +538,7 @@ namespace MikuMikuWorld
 	{
 		IO::FileDialog fileDialog{};
 		fileDialog.title = "Save Chart";
-		fileDialog.filters = { IO::mmwsFilter };
+		fileDialog.filters = { IO::mmwsFilter, IO::mmwppsFilter };
 		fileDialog.defaultExtension = "ucmmws";
 		fileDialog.parentWindowHandle = Application::windowState.windowHandle;
 		fileDialog.inputFilename =
@@ -525,10 +546,19 @@ namespace MikuMikuWorld
 
 		if (fileDialog.saveFile() == IO::FileDialogResult::OK)
 		{
-			context.workingData.filename = fileDialog.outputFilename;
+			std::string outFilename = fileDialog.outputFilename;
+			if (fileDialog.filterIndex == 1 && IO::File::getFileExtension(outFilename) != "mmwpps")
+			{
+				size_t dot = outFilename.find_last_of('.');
+				if (dot != std::string::npos)
+					outFilename = outFilename.substr(0, dot);
+				outFilename += ".mmwpps";
+			}
+
+			context.workingData.filename = outFilename;
 			bool saved = save(context.workingData.filename);
 			if (saved)
-				updateRecentFilesList(fileDialog.outputFilename);
+				updateRecentFilesList(outFilename);
 
 			return saved;
 		}
@@ -775,6 +805,56 @@ namespace MikuMikuWorld
 				Score prev = context.score;
 				context.score.fever.endTick = context.currentTick;
 				context.pushHistory("Set fever end", prev, context.score);
+			}
+
+			if (ImGui::MenuItem(getString("insert_camera_change")))
+			{
+				Score prev = context.score;
+				id_t id = getNextCameraChangeID();
+				CameraChangeEvent camera{};
+				camera.ID = id;
+				camera.tick = context.currentTick;
+				context.score.cameraChanges[id] = camera;
+				context.pushHistory("Insert camera change", prev, context.score);
+			}
+
+			if (ImGui::MenuItem(getString("insert_stage_mask_change"), nullptr, false,
+			                    context.selectedStage != NO_ID))
+			{
+				Score prev = context.score;
+				id_t id = getNextStageMaskChangeID();
+				StageMaskChangeEvent mask{};
+				mask.ID = id;
+				mask.stageID = context.selectedStage;
+				mask.tick = context.currentTick;
+				context.score.stageMaskChanges[id] = mask;
+				context.pushHistory("Insert stage mask change", prev, context.score);
+			}
+
+			if (ImGui::MenuItem(getString("insert_stage_pivot_change"), nullptr, false,
+			                    context.selectedStage != NO_ID))
+			{
+				Score prev = context.score;
+				id_t id = getNextStagePivotChangeID();
+				StagePivotChangeEvent pivot{};
+				pivot.ID = id;
+				pivot.stageID = context.selectedStage;
+				pivot.tick = context.currentTick;
+				context.score.stagePivotChanges[id] = pivot;
+				context.pushHistory("Insert stage pivot change", prev, context.score);
+			}
+
+			if (ImGui::MenuItem(getString("insert_stage_style_change"), nullptr, false,
+			                    context.selectedStage != NO_ID))
+			{
+				Score prev = context.score;
+				id_t id = getNextStageStyleChangeID();
+				StageStyleChangeEvent style{};
+				style.ID = id;
+				style.stageID = context.selectedStage;
+				style.tick = context.currentTick;
+				context.score.stageStyleChanges[id] = style;
+				context.pushHistory("Insert stage style change", prev, context.score);
 			}
 
 			ImGui::EndMenu();

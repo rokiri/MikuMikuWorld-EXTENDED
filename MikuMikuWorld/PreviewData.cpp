@@ -120,6 +120,51 @@ namespace MikuMikuWorld::Engine
 					return { 'd', clamp01((score / std::max(rankC, 1.0f)) * rankCPos) };
 				};
 
+				const bool isExtended = score.metadata.isExtendedScore;
+
+				struct SkillBoost
+				{
+					float startTime;
+					float endTime;
+					float multiplier;
+				};
+				std::vector<SkillBoost> scoreBoosts;
+				if (isExtended)
+				{
+					for (const auto& [id, skill] : score.skills)
+					{
+						if (skill.effect == SkillEffect::Score)
+						{
+							float boostPercent = 0.0f;
+							switch (skill.level)
+							{
+							case 1:
+								boostPercent = 0.60f;
+								break;
+							case 2:
+								boostPercent = 0.65f;
+								break;
+							case 3:
+								boostPercent = 0.70f;
+								break;
+							case 4:
+								boostPercent = 0.80f;
+								break;
+							default:
+								boostPercent = 0.60f;
+								break;
+							}
+							float t =
+							    accumulateDuration(skill.tick, TICKS_PER_BEAT, score.tempoChanges);
+							SkillBoost b;
+							b.startTime = t;
+							b.endTime = t + 5.0f;
+							b.multiplier = boostPercent;
+							scoreBoosts.push_back(b);
+						}
+					}
+				}
+
 				const std::vector<ComboEvent> comboEvents = calculateComboEvents(score);
 				comboTimes.reserve(comboEvents.size());
 				hudScores.reserve(comboEvents.size());
@@ -146,8 +191,18 @@ namespace MikuMikuWorld::Engine
 					if (combo % 100 == 1 && combo > 1)
 						comboFactor = std::min(comboFactor + 0.01f, 1.1f);
 
+					float scoreMultiplier = 1.0f;
+					for (const SkillBoost& boost : scoreBoosts)
+					{
+						if (timeSec >= boost.startTime && timeSec < boost.endTime)
+						{
+							scoreMultiplier = 1.0f + boost.multiplier;
+							break;
+						}
+					}
+
 					hudScore += (SCORE_TEAM_POWER / weightedCount) * 4.0f * weight * levelFactor *
-					            comboFactor;
+					            comboFactor * scoreMultiplier;
 					const auto [rank, scoreBar] = scoreRankAndBar(hudScore);
 
 					comboTimes.push_back(timeSec);
@@ -158,29 +213,69 @@ namespace MikuMikuWorld::Engine
 						hudJudgeTimes.push_back(timeSec);
 				}
 				{
-					constexpr float LIFE_DEFAULT = 1000.f;
-					constexpr float LIFE_MAX = 2000.f;
+					const float LIFE_DEFAULT =
+					    isExtended ? static_cast<float>(score.metadata.baseLifePoint) : 1000.f;
+					const float LIFE_MAX =
+					    isExtended ? static_cast<float>(score.metadata.baseLifePoint + 1000)
+					               : 2000.f;
 					constexpr float LIFE_PER_SKILL = 250.f;
 
-					std::vector<int> skillTicks;
-					skillTicks.reserve(score.skills.size());
+					std::vector<std::pair<int, const SkillTrigger*>> skillList;
+					skillList.reserve(score.skills.size());
 					for (const auto& [id, skill] : score.skills)
-						skillTicks.push_back(skill.tick);
-					std::sort(skillTicks.begin(), skillTicks.end());
+						skillList.push_back({ skill.tick, &skill });
+					std::sort(skillList.begin(), skillList.end(),
+					          [](const auto& a, const auto& b) { return a.first < b.first; });
 
-					lifeTimes.reserve(skillTicks.size());
-					hudLives.reserve(skillTicks.size());
+					lifeTimes.reserve(skillList.size());
+					hudLives.reserve(skillList.size());
+					hudSkillEffects.reserve(skillList.size());
+					hudSkillLevels.reserve(skillList.size());
 
 					float currentLife = LIFE_DEFAULT;
-					for (int tick : skillTicks)
+					for (const auto& [tick, skill] : skillList)
 					{
-						currentLife = std::min(currentLife + LIFE_PER_SKILL, LIFE_MAX);
+						if (!isExtended)
+						{
+							currentLife = std::min(currentLife + LIFE_PER_SKILL, LIFE_MAX);
+						}
+						else if (skill->effect == SkillEffect::Heal)
+						{
+							float healPercent = 0.0f;
+							switch (skill->level)
+							{
+							case 1:
+								healPercent = 0.40f;
+								break;
+							case 2:
+								healPercent = 0.45f;
+								break;
+							case 3:
+								healPercent = 0.50f;
+								break;
+							case 4:
+								healPercent = 0.60f;
+								break;
+							default:
+								healPercent = 0.40f;
+								break;
+							}
+							float healAmount = LIFE_DEFAULT * healPercent;
+							currentLife = std::min(currentLife + healAmount, LIFE_MAX);
+						}
+						// Score Up dan Perfect Lock tidak nambah life
+
 						const float timeSec =
 						    accumulateDuration(tick, TICKS_PER_BEAT, score.tempoChanges);
 
 						lifeTimes.push_back(timeSec);
 						hudLives.push_back(static_cast<int>(std::lround(currentLife)));
+						hudSkillEffects.push_back(
+						    static_cast<uint8_t>(skill->effect));
+						hudSkillLevels.push_back(skill->level);                          
 					}
+					this->cachedBaseLifePoint = score.metadata.baseLifePoint;
+					this->cachedIsExtended = score.metadata.isExtendedScore;
 				}
 			}
 
@@ -266,6 +361,11 @@ namespace MikuMikuWorld::Engine
 		hudJudgeTimes.clear();
 		lifeTimes.clear();
 		hudLives.clear();
+		hudSkillLevels.clear();
+		hudSkillEffects.clear();
+
+		cachedBaseLifePoint = -1;
+		cachedIsExtended = false;
 
 		maxTicks = 1;
 	}

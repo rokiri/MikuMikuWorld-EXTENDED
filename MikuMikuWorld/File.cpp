@@ -14,6 +14,7 @@
 namespace IO
 {
 	FileDialogFilter mmwsFilter{ "MikuMikuWorld Score", "*.unchmmws;*.ccmmws;*.mmws" };
+	FileDialogFilter mmwppsFilter{ "Extended MikuMikuWorld Score", "*.mmwpps" };
 	FileDialogFilter susFilter{ "Sliding Universal Score", "*.sus" };
 	FileDialogFilter uscFilter{ "Universal Sekai Chart", "*.usc" };
 	FileDialogFilter lvlDatFilter{ "Sonolus Level Data", "*.json.gz;*.json" };

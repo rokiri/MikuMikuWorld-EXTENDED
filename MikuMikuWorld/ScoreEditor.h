@@ -23,6 +23,7 @@ namespace MikuMikuWorld
 		PresetsWindow presetsWindow{};
 		DebugWindow debugWindow{};
 		LayersWindow layersWindow{};
+		StagesWindow stagesWindow{};
 		WaypointsWindow waypointsWindow{};
 		SettingsWindow settingsWindow{};
 		ChartGalleryWindow galleryWindow;

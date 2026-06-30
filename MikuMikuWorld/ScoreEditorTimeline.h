@@ -176,6 +176,13 @@ namespace MikuMikuWorld
 		void drawWaveform(ScoreContext& context);
 		void drawHiSpeedGraph(ScoreContext& context);
 
+		// Dynamic Stage   -rokiri :)
+		void drawStageMaskGraph(ScoreContext& context);
+		void drawCameraShiftGraph(ScoreContext& context);
+		void drawStagePivotGraph(ScoreContext& context);
+		void drawStageStyleLine(ScoreContext& context);
+
+		// Other stuff
 		void drawHoldCurve(const Note& n1, const Note& n2, EaseType ease, bool isGuide,
 		                   bool isDummy, Renderer* renderer, const Color& tint,
 		                   const int offsetTick = 0, const int offsetLane = 0,
@@ -218,6 +225,13 @@ namespace MikuMikuWorld
 		bool waypointControl(const ScoreContext& context, const Waypoint& waypoint);
 		bool waypointControl(const ScoreContext& context, std::string name, int tick);
 
+		bool cameraChangeControl(const ScoreContext& context, const CameraChangeEvent& camera);
+		bool stageMaskChangeControl(const ScoreContext& context, const StageMaskChangeEvent& mask);
+		bool stagePivotChangeControl(const ScoreContext& context,
+		                             const StagePivotChangeEvent& pivot);
+		bool stageStyleChangeControl(const ScoreContext& context,
+		                             const StageStyleChangeEvent& style);
+
 		void drawInputNote(Renderer* renderer);
 		void previewInput(const ScoreContext& context, EditArgs& edit, Renderer* renderer);
 		void previewPaste(ScoreContext& context, Renderer* renderer);
@@ -255,6 +269,15 @@ namespace MikuMikuWorld
 			bool editHiSpeedHideNote = false;
 
 			std::string editName = "";
+
+			SkillEffect editSkillEffect = SkillEffect::Score;
+			int editSkillLevel = 1;
+
+			CameraChangeEvent editCamera{};
+			StageMaskChangeEvent editMask{};
+			StagePivotChangeEvent editPivot{};
+			StageStyleChangeEvent editStyle{};
+
 		} eventEdit{};
 
 		int snapTickFromPos(double posY) const;

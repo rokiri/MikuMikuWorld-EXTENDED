@@ -2,6 +2,7 @@
 #include "Constants.h"
 #include "Note.h"
 #include "Tempo.h"
+#include "DynamicStage.h"
 #include <cstdint>
 #include <map>
 #include <string>
@@ -13,10 +14,20 @@ namespace MikuMikuWorld
 	id_t getNextSkillID();
 	id_t getNextHiSpeedID();
 
+	enum class SkillEffect : uint8_t
+	{
+		Score,
+		Heal,
+		Perfect,
+		EffectCount
+	};
+
 	struct SkillTrigger
 	{
 		id_t ID;
 		int tick;
+		SkillEffect effect = SkillEffect::Score;
+		int level = 1;
 	};
 
 	struct Fever
@@ -63,6 +74,8 @@ namespace MikuMikuWorld
 		float musicOffset;
 
 		int laneExtension = 0;
+		bool isExtendedScore = false;
+		int baseLifePoint = 1000;
 	};
 
 	struct Score
@@ -75,6 +88,14 @@ namespace MikuMikuWorld
 		std::unordered_map<id_t, HiSpeedChange> hiSpeedChanges;
 		std::unordered_map<id_t, SkillTrigger> skills;
 		Fever fever;
+
+		std::unordered_map<id_t, Stage> stages;
+		std::unordered_map<id_t, CameraChangeEvent> cameraChanges;
+		std::unordered_map<id_t, StageMaskChangeEvent> stageMaskChanges;
+		std::unordered_map<id_t, StagePivotChangeEvent> stagePivotChanges;
+		std::unordered_map<id_t, StageStyleChangeEvent> stageStyleChanges;
+
+		std::vector<id_t> stageOrder;
 
 		std::vector<Layer> layers{ { Layer{ "default" } } };
 		std::vector<Waypoint> waypoints;

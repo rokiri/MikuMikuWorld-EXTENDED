@@ -50,11 +50,24 @@ namespace MikuMikuWorld
 		Skill,
 		Fever,
 		Waypoint,
+		CameraChange,
+		StageMaskChange,
+		StagePivotChange,
+		StageStyleChange,
 		EventTypeMax
 	};
 
-	constexpr const char* eventTypes[]{ "none",  "bpm",   "time_signature", "hi_speed",
-		                                "skill", "fever", "waypoint" };
+	constexpr const char* eventTypes[]{ "none",
+		                                "bpm",
+		                                "time_signature",
+		                                "hi_speed",
+		                                "skill",
+		                                "fever",
+		                                "waypoint",
+		                                "camera_change",
+		                                "stage_mask_change",
+		                                "stage_pivot_change",
+		                                "stage_style_change" };
 
 	enum class Direction : uint8_t
 	{

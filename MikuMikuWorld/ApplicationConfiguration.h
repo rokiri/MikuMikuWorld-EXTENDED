@@ -8,6 +8,7 @@ namespace MikuMikuWorld
 {
 	struct InputConfiguration
 	{
+		MultiInputBinding cycleStageEditMode = { "cycle_stage_edit_mode", { ImGuiKey_Tab } };
 		MultiInputBinding togglePlayback = { "toggle_playback",
 			                                 { ImGuiKey_Space, 0 } };
 		MultiInputBinding stop = { "stop", { ImGuiKey_Backspace } };
@@ -156,6 +157,7 @@ namespace MikuMikuWorld
 	extern ApplicationConfiguration config;
 
 	static MultiInputBinding* bindings[] = {
+		&config.input.cycleStageEditMode,
 		&config.input.create,
 		&config.input.open,
 		&config.input.save,

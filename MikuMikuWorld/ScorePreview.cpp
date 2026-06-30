@@ -346,6 +346,7 @@ namespace MikuMikuWorld
 		ResourceManager::loadTexture(scoreDir + "bg.png");
 		ResourceManager::loadTexture(scoreDir + "bar.png");
 		ResourceManager::loadTexture(scoreDir + "fg.png");
+		ResourceManager::loadTexture(scoreDir + "judge\\perfect.png");
 		for (char r : { 'd', 'c', 'b', 'a', 's' })
 		{
 			ResourceManager::loadTexture(scoreDir + "rank\\chr\\" + r + ".png");
@@ -357,6 +358,8 @@ namespace MikuMikuWorld
 			ResourceManager::loadTexture(scoreDir + "digit\\s" + std::to_string(i) + ".png");
 			ResourceManager::loadTexture(lifeDir + "digit\\" + std::to_string(i) + ".png");
 			ResourceManager::loadTexture(lifeDir + "digit\\s" + std::to_string(i) + ".png");
+			ResourceManager::loadTexture(scoreDir + "digit\\n.png");
+			ResourceManager::loadTexture(scoreDir + "digit\\sn.png");
 		}
 		ResourceManager::loadTexture(lifeDir + "bg.png");
 		ResourceManager::loadTexture(lifeDir + "normal.png");
@@ -364,6 +367,8 @@ namespace MikuMikuWorld
 		    Application::getAppDir() + "res\\textures\\skilleffect\\";
 		ResourceManager::loadTexture(skillEffectDir + "lifeup.png");
 		ResourceManager::loadTexture(skillEffectDir + "scoreup.png");
+		ResourceManager::loadTexture(lifeDir + "digit\\percentage.png");
+		ResourceManager::loadTexture(lifeDir + "digit\\n.png");
 	}
 
 	ScorePreviewWindow::~ScorePreviewWindow() {}
@@ -445,1698 +450,2381 @@ namespace MikuMikuWorld
 		return combo;
 	}
 
-		static int s_lastCombo = -1;
-		static float s_comboAnimTimer = 0.f;
+	static int s_lastCombo = -1;
+	static float s_comboAnimTimer = 0.f;
 
-		static void drawComboOverlay(const ScoreContext& context, ImDrawList* drawList,
-		                             ImVec2 position, ImVec2 size)
+	static void drawComboOverlay(const ScoreContext& context, ImDrawList* drawList, ImVec2 position,
+	                             ImVec2 size)
+	{
+		if (!drawList || size.x <= 1.f || size.y <= 1.f)
+			return;
+
+		const int combo = getComboAtTick(context.score, context.currentTick);
+		if (combo <= 0)
+			return;
+
+		ImGuiIO& io = ImGui::GetIO();
+		if (combo != s_lastCombo)
 		{
-			if (!drawList || size.x <= 1.f || size.y <= 1.f)
-				return;
+			s_comboAnimTimer = 0.f;
+			s_lastCombo = combo;
+		}
+		s_comboAnimTimer = std::min(s_comboAnimTimer + io.DeltaTime / 0.15f, 1.f);
+		auto easeOut = [](float t) { return 1.f - (1.f - t) * (1.f - t) * (1.f - t); };
+		const float animScale = 0.75f + 0.25f * easeOut(s_comboAnimTimer);
 
-			const int combo = getComboAtTick(context.score, context.currentTick);
-			if (combo <= 0)
-				return;
+		const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
+		const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
+		const float offsetY = (size.y - 1080.f * uiScale) * 0.5f;
 
-			ImGuiIO& io = ImGui::GetIO();
-			if (combo != s_lastCombo)
+		auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
+		auto py = [&](float y) { return position.y + offsetY + y * uiScale; };
+		auto ps = [&](float v) { return v * uiScale; };
+
+		constexpr float COMBO_DIGIT_STEP = 52.f;
+		constexpr float COMBO_GROUP_CENTER_X = 1634.f;
+		constexpr float COMBO_GROUP_CENTER_Y = 478.f;
+		constexpr float COMBO_GROUP_SCALE = 1.8f;
+		constexpr float COMBO_GROUP_OFFSET_Y = -12.f;
+		constexpr float COMBO_BASE_SCALE = 1.0f;
+		constexpr float comboCenterYOffset = 18.f;
+
+		auto comboGroupX = [&](float x)
+		{ return COMBO_GROUP_CENTER_X + (x - COMBO_GROUP_CENTER_X) * COMBO_GROUP_SCALE; };
+		auto comboGroupY = [&](float y)
+		{
+			return COMBO_GROUP_CENTER_Y + (y - COMBO_GROUP_CENTER_Y) * COMBO_GROUP_SCALE +
+			       COMBO_GROUP_OFFSET_Y;
+		};
+		auto comboGroupS = [&](float v) { return v * COMBO_GROUP_SCALE; };
+
+		const std::string comboDir = Application::getAppDir() + "res\\textures\\combo\\";
+
+		const int labelIdx = ResourceManager::getTextureByFilename(comboDir + "pt.png");
+		if (labelIdx != -1)
+		{
+			const Texture& labelTex = ResourceManager::textures[labelIdx];
+			constexpr float comboTagWidth = 180.f;
+			constexpr float comboTagHeight = 60.f;
+			const float x = px(comboGroupX(COMBO_GROUP_CENTER_X - comboTagWidth * 0.5f));
+			const float y = py(comboGroupY(COMBO_GROUP_CENTER_Y - 52.f - comboTagHeight * 0.5f));
+			const float w = ps(comboGroupS(comboTagWidth));
+			const float h = ps(comboGroupS(comboTagHeight));
+			drawList->AddImage((ImTextureID)(size_t)labelTex.getID(), ImVec2(x, y),
+			                   ImVec2(x + w, y + h), ImVec2(0, 0), ImVec2(1, 1),
+			                   IM_COL32(255, 255, 255, 255));
+		}
+
+		const std::string comboText = std::to_string(combo);
+		const float mid = static_cast<float>(comboText.size()) / 2.f;
+
+		for (size_t i = 0; i < comboText.size(); ++i)
+		{
+			const char ch = comboText[i];
+			const int digitIdx =
+			    ResourceManager::getTextureByFilename(comboDir + "p" + ch + ".png");
+			if (digitIdx == -1)
+				continue;
+			const Texture& digitTex = ResourceManager::textures[digitIdx];
+
+			const float left =
+			    (static_cast<float>(i) - mid + 0.5f) * COMBO_DIGIT_STEP * COMBO_BASE_SCALE;
+			const float centerX = comboGroupX(COMBO_GROUP_CENTER_X + left);
+			const float centerY =
+			    comboGroupY(COMBO_GROUP_CENTER_Y + comboCenterYOffset * COMBO_BASE_SCALE);
+			const float h = ps(comboGroupS(134.f * COMBO_BASE_SCALE * animScale));
+			const float w = h * (static_cast<float>(digitTex.getWidth()) /
+			                     static_cast<float>(digitTex.getHeight()));
+
+			drawList->AddImage((ImTextureID)(size_t)digitTex.getID(),
+			                   ImVec2(px(centerX) - w * 0.5f, py(centerY) - h * 0.5f),
+			                   ImVec2(px(centerX) + w * 0.5f, py(centerY) + h * 0.5f), ImVec2(0, 0),
+			                   ImVec2(1, 1), IM_COL32(255, 255, 255, 255));
+		}
+	}
+
+	static void drawHudImage(ImDrawList* drawList, const Texture& tex, float x, float y, float w,
+	                         float h, float alpha = 1.f)
+	{
+		if (!drawList || tex.getID() == 0 || w <= 0.1f || h <= 0.1f)
+			return;
+		const int a = static_cast<int>(std::max(0.f, std::min(1.f, alpha)) * 255.f);
+		if (a <= 0)
+			return;
+		drawList->AddImage((ImTextureID)(size_t)tex.getID(), ImVec2(x, y), ImVec2(x + w, y + h),
+		                   ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, a));
+	}
+
+	static void drawHudImageClipX(ImDrawList* drawList, const Texture& tex, float x, float y,
+	                              float w, float h, float ratio, float alpha = 1.f)
+	{
+		if (!drawList || tex.getID() == 0 || w <= 0.1f || h <= 0.1f)
+			return;
+		const float r = std::max(0.f, std::min(1.f, ratio));
+		if (r <= 0.001f)
+			return;
+		const int a = static_cast<int>(std::max(0.f, std::min(1.f, alpha)) * 255.f);
+		if (a <= 0)
+			return;
+		drawList->AddImage((ImTextureID)(size_t)tex.getID(), ImVec2(x, y), ImVec2(x + w * r, y + h),
+		                   ImVec2(0, 0), ImVec2(r, 1), IM_COL32(255, 255, 255, a));
+	}
+
+	static const Texture* getHudTexture(const std::string& subfolder, const std::string& filename)
+	{
+		const std::string path =
+		    Application::getAppDir() + "res\\textures\\" + subfolder + "\\" + filename;
+		const int idx = ResourceManager::getTextureByFilename(path);
+		return idx >= 0 ? &ResourceManager::textures[idx] : nullptr;
+	}
+
+	static std::string scoreDigitsText(int score)
+	{
+		std::string text = std::to_string(std::max(0, score));
+		while (text.size() < 8)
+			text.insert(text.begin(), 'n');
+		return text;
+	}
+
+	static void drawHudOverlay(const ScoreContext& context, ImDrawList* drawList, ImVec2 position,
+	                           ImVec2 size)
+	{
+		if (!drawList || size.x <= 1.f || size.y <= 1.f)
+			return;
+
+		const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
+		const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
+
+		auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
+		auto tpy = [&](float y) { return position.y + y * uiScale; };
+		auto ps = [&](float v) { return v * uiScale; };
+
+		auto drawTop =
+		    [&](const Texture* tex, float x, float y, float w, float h, float alpha = 1.f)
+		{
+			if (tex)
+				drawHudImage(drawList, *tex, px(x), tpy(y), ps(w), ps(h), alpha);
+		};
+		auto drawTopClipX = [&](const Texture* tex, float x, float y, float w, float h, float ratio,
+		                        float alpha = 1.f)
+		{
+			if (tex)
+				drawHudImageClipX(drawList, *tex, px(x), tpy(y), ps(w), ps(h), ratio, alpha);
+		};
+
+		constexpr float SCORE_ROOT_SCALE = 1.5f;
+		constexpr float SCORE_BAR_W = 354.f;
+		constexpr float HUD_LIFE_Y = 11.f;
+		constexpr float HUD_LIFE_H = 104.f;
+
+		auto sx = [&](float v) { return 36.f + v * SCORE_ROOT_SCALE; };
+		auto sy = [&](float v) { return -3.f + v * SCORE_ROOT_SCALE; };
+		auto ss = [&](float v) { return v * SCORE_ROOT_SCALE; };
+
+		// Resolve current score/rank from drawData
+		const auto& drawData = context.scorePreviewDrawData;
+		const auto& comboTimes = drawData.comboTimes;
+		const float chartTime = static_cast<float>(context.getTimeAtCurrentTick());
+
+		int latestComboIndex = -1;
+		if (!comboTimes.empty())
+		{
+			const auto it =
+			    std::upper_bound(comboTimes.begin(), comboTimes.end(), chartTime + 0.0001f);
+			latestComboIndex = static_cast<int>(std::distance(comboTimes.begin(), it)) - 1;
+		}
+
+		const int hudScore =
+		    (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudScores.size())
+		        ? drawData.hudScores[latestComboIndex]
+		        : 0;
+		const char hudRank =
+		    (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudRanks.size())
+		        ? drawData.hudRanks[latestComboIndex]
+		        : 'd';
+		const float hudScoreBar =
+		    (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudScoreBars.size())
+		        ? drawData.hudScoreBars[latestComboIndex]
+		        : 0.f;
+
+		if (config.pvDrawScoreHud)
+		{
+			drawTop(getHudTexture("score", "bg.png"), sx(0), sy(0), ss(444), ss(96));
+			drawTopClipX(getHudTexture("score", "bar.png"), sx(79), sy(37), ss(SCORE_BAR_W), ss(16),
+			             hudScoreBar);
+			drawTop(getHudTexture("score", "fg.png"), sx(0), sy(0), ss(444), ss(96));
+			drawTop(getHudTexture("score", std::string("rank\\chr\\") + hudRank + ".png"), sx(10),
+			        sy(13), ss(49), ss(58));
+			drawTop(getHudTexture("score", std::string("rank\\txt\\en\\") + hudRank + ".png"),
+			        sx(6), sy(77), ss(60), ss(8));
+
+			const std::string scoreText = scoreDigitsText(hudScore);
+			for (size_t i = 0; i < scoreText.size(); ++i)
 			{
-				s_comboAnimTimer = 0.f;
-				s_lastCombo = combo;
-			}
-			s_comboAnimTimer = std::min(s_comboAnimTimer + io.DeltaTime / 0.15f, 1.f);
-			auto easeOut = [](float t) { return 1.f - (1.f - t) * (1.f - t) * (1.f - t); };
-			const float animScale = 0.75f + 0.25f * easeOut(s_comboAnimTimer);
-
-			const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
-			const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
-			const float offsetY = (size.y - 1080.f * uiScale) * 0.5f;
-
-			auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
-			auto py = [&](float y) { return position.y + offsetY + y * uiScale; };
-			auto ps = [&](float v) { return v * uiScale; };
-
-			constexpr float COMBO_DIGIT_STEP = 52.f;
-			constexpr float COMBO_GROUP_CENTER_X = 1634.f;
-			constexpr float COMBO_GROUP_CENTER_Y = 478.f;
-			constexpr float COMBO_GROUP_SCALE = 1.8f;
-			constexpr float COMBO_GROUP_OFFSET_Y = -12.f;
-			constexpr float COMBO_BASE_SCALE = 1.0f;
-			constexpr float comboCenterYOffset = 18.f;
-
-			auto comboGroupX = [&](float x)
-			{ return COMBO_GROUP_CENTER_X + (x - COMBO_GROUP_CENTER_X) * COMBO_GROUP_SCALE; };
-			auto comboGroupY = [&](float y)
-			{
-				return COMBO_GROUP_CENTER_Y + (y - COMBO_GROUP_CENTER_Y) * COMBO_GROUP_SCALE +
-				       COMBO_GROUP_OFFSET_Y;
-			};
-			auto comboGroupS = [&](float v) { return v * COMBO_GROUP_SCALE; };
-
-			const std::string comboDir = Application::getAppDir() + "res\\textures\\combo\\";
-
-			const int labelIdx = ResourceManager::getTextureByFilename(comboDir + "pt.png");
-			if (labelIdx != -1)
-			{
-				const Texture& labelTex = ResourceManager::textures[labelIdx];
-				constexpr float comboTagWidth = 180.f;
-				constexpr float comboTagHeight = 60.f;
-				const float x = px(comboGroupX(COMBO_GROUP_CENTER_X - comboTagWidth * 0.5f));
-				const float y =
-				    py(comboGroupY(COMBO_GROUP_CENTER_Y - 52.f - comboTagHeight * 0.5f));
-				const float w = ps(comboGroupS(comboTagWidth));
-				const float h = ps(comboGroupS(comboTagHeight));
-				drawList->AddImage((ImTextureID)(size_t)labelTex.getID(), ImVec2(x, y),
-				                   ImVec2(x + w, y + h), ImVec2(0, 0), ImVec2(1, 1),
-				                   IM_COL32(255, 255, 255, 255));
-			}
-
-			const std::string comboText = std::to_string(combo);
-			const float mid = static_cast<float>(comboText.size()) / 2.f;
-
-			for (size_t i = 0; i < comboText.size(); ++i)
-			{
-				const char ch = comboText[i];
-				const int digitIdx =
-				    ResourceManager::getTextureByFilename(comboDir + "p" + ch + ".png");
-				if (digitIdx == -1)
+				const char ch = scoreText[i];
+				const Texture* shadow =
+				    getHudTexture("score", std::string("digit\\s") + ch + ".png");
+				const Texture* main = getHudTexture("score", std::string("digit\\") + ch + ".png");
+				if (!shadow || !main)
 					continue;
-				const Texture& digitTex = ResourceManager::textures[digitIdx];
 
-				const float left =
-				    (static_cast<float>(i) - mid + 0.5f) * COMBO_DIGIT_STEP * COMBO_BASE_SCALE;
-				const float centerX = comboGroupX(COMBO_GROUP_CENTER_X + left);
-				const float centerY =
-				    comboGroupY(COMBO_GROUP_CENTER_Y + comboCenterYOffset * COMBO_BASE_SCALE);
-				const float h = ps(comboGroupS(134.f * COMBO_BASE_SCALE * animScale));
-				const float w = h * (static_cast<float>(digitTex.getWidth()) /
-				                     static_cast<float>(digitTex.getHeight()));
-
-				drawList->AddImage((ImTextureID)(size_t)digitTex.getID(),
-				                   ImVec2(px(centerX) - w * 0.5f, py(centerY) - h * 0.5f),
-				                   ImVec2(px(centerX) + w * 0.5f, py(centerY) + h * 0.5f),
-				                   ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, 255));
+				const float slotX = sx(82.f + static_cast<float>(i) * 22.f);
+				const float slotY = sy(60.f);
+				const float shadowH = ps(ss(36.f));
+				const float mainH = ps(ss(29.f));
+				const float shadowW =
+				    shadowH * ((float)shadow->getWidth() / (float)shadow->getHeight());
+				const float mainW = mainH * ((float)main->getWidth() / (float)main->getHeight());
+				const float centerX = px(slotX + ss(11.f));
+				drawHudImage(drawList, *shadow, centerX - shadowW * 0.5f, tpy(slotY - ss(4.f)),
+				             shadowW, shadowH);
+				drawHudImage(drawList, *main, centerX - mainW * 0.5f, tpy(slotY), mainW, mainH);
 			}
 		}
 
-		static void drawHudImage(ImDrawList* drawList, const Texture& tex, float x, float y,
-	                             float w, float h, float alpha = 1.f)
-	    {
-		    if (!drawList || tex.getID() == 0 || w <= 0.1f || h <= 0.1f)
-			    return;
-		    const int a = static_cast<int>(std::max(0.f, std::min(1.f, alpha)) * 255.f);
-		    if (a <= 0)
-			    return;
-		    drawList->AddImage((ImTextureID)(size_t)tex.getID(), ImVec2(x, y), ImVec2(x + w, y + h),
-		                       ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, a));
-	    }
-
-	    static void drawHudImageClipX(ImDrawList* drawList, const Texture& tex, float x, float y,
-	                                  float w, float h, float ratio, float alpha = 1.f)
-	    {
-		    if (!drawList || tex.getID() == 0 || w <= 0.1f || h <= 0.1f)
-			    return;
-		    const float r = std::max(0.f, std::min(1.f, ratio));
-		    if (r <= 0.001f)
-			    return;
-		    const int a = static_cast<int>(std::max(0.f, std::min(1.f, alpha)) * 255.f);
-		    if (a <= 0)
-			    return;
-		    drawList->AddImage((ImTextureID)(size_t)tex.getID(), ImVec2(x, y),
-		                       ImVec2(x + w * r, y + h), ImVec2(0, 0), ImVec2(r, 1),
-		                       IM_COL32(255, 255, 255, a));
-	    }
-
-	    static const Texture* getHudTexture(const std::string& subfolder,
-	                                        const std::string& filename)
-	    {
-		    const std::string path =
-		        Application::getAppDir() + "res\\textures\\" + subfolder + "\\" + filename;
-		    const int idx = ResourceManager::getTextureByFilename(path);
-		    return idx >= 0 ? &ResourceManager::textures[idx] : nullptr;
-	    }
-
-	    static std::string scoreDigitsText(int score)
-	    {
-		    std::string text = std::to_string(std::max(0, score));
-		    while (text.size() < 8)
-			    text.insert(text.begin(), 'n');
-		    return text;
-	    }
-
-		static void drawHudOverlay(const ScoreContext& context, ImDrawList* drawList,
-	                               ImVec2 position, ImVec2 size)
-	    {
-		    if (!drawList || size.x <= 1.f || size.y <= 1.f)
-			    return;
-
-		    const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
-		    const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
-
-		    auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
-		    auto tpy = [&](float y) { return position.y + y * uiScale; };
-		    auto ps = [&](float v) { return v * uiScale; };
-
-		    auto drawTop =
-		        [&](const Texture* tex, float x, float y, float w, float h, float alpha = 1.f)
-		    {
-			    if (tex)
-				    drawHudImage(drawList, *tex, px(x), tpy(y), ps(w), ps(h), alpha);
-		    };
-		    auto drawTopClipX = [&](const Texture* tex, float x, float y, float w, float h,
-		                            float ratio, float alpha = 1.f)
-		    {
-			    if (tex)
-				    drawHudImageClipX(drawList, *tex, px(x), tpy(y), ps(w), ps(h), ratio, alpha);
-		    };
-
-		    constexpr float SCORE_ROOT_SCALE = 1.5f;
-		    constexpr float SCORE_BAR_W = 354.f;
-		    constexpr float HUD_LIFE_Y = 11.f;
-		    constexpr float HUD_LIFE_H = 104.f;
-
-		    auto sx = [&](float v) { return 36.f + v * SCORE_ROOT_SCALE; };
-		    auto sy = [&](float v) { return -3.f + v * SCORE_ROOT_SCALE; };
-		    auto ss = [&](float v) { return v * SCORE_ROOT_SCALE; };
-
-		    // Resolve current score/rank from drawData
-		    const auto& drawData = context.scorePreviewDrawData;
-		    const auto& comboTimes = drawData.comboTimes;
-		    const float chartTime = static_cast<float>(context.getTimeAtCurrentTick());
-
-		    int latestComboIndex = -1;
-		    if (!comboTimes.empty())
-		    {
-			    const auto it =
-			        std::upper_bound(comboTimes.begin(), comboTimes.end(), chartTime + 0.0001f);
-			    latestComboIndex = static_cast<int>(std::distance(comboTimes.begin(), it)) - 1;
-		    }
-
-		    const int hudScore =
-		        (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudScores.size())
-		            ? drawData.hudScores[latestComboIndex]
-		            : 0;
-		    const char hudRank =
-		        (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudRanks.size())
-		            ? drawData.hudRanks[latestComboIndex]
-		            : 'd';
-		    const float hudScoreBar =
-		        (latestComboIndex >= 0 && latestComboIndex < (int)drawData.hudScoreBars.size())
-		            ? drawData.hudScoreBars[latestComboIndex]
-		            : 0.f;
-
-		    if (config.pvDrawScoreHud)
-		    {
-			    drawTop(getHudTexture("score", "bg.png"), sx(0), sy(0), ss(444), ss(96));
-			    drawTopClipX(getHudTexture("score", "bar.png"), sx(79), sy(37), ss(SCORE_BAR_W),
-			                 ss(16), hudScoreBar);
-			    drawTop(getHudTexture("score", "fg.png"), sx(0), sy(0), ss(444), ss(96));
-			    drawTop(getHudTexture("score", std::string("rank\\chr\\") + hudRank + ".png"),
-			            sx(10), sy(13), ss(49), ss(58));
-			    drawTop(getHudTexture("score", std::string("rank\\txt\\en\\") + hudRank + ".png"),
-			            sx(6), sy(77), ss(60), ss(8));
-
-			    const std::string scoreText = scoreDigitsText(hudScore);
-			    for (size_t i = 0; i < scoreText.size(); ++i)
-			    {
-				    const char ch = scoreText[i];
-				    const Texture* shadow =
-				        getHudTexture("score", std::string("digit\\s") + ch + ".png");
-				    const Texture* main =
-				        getHudTexture("score", std::string("digit\\") + ch + ".png");
-				    if (!shadow || !main)
-					    continue;
-
-				    const float slotX = sx(82.f + static_cast<float>(i) * 22.f);
-				    const float slotY = sy(60.f);
-				    const float shadowH = ps(ss(36.f));
-				    const float mainH = ps(ss(29.f));
-				    const float shadowW =
-				        shadowH * ((float)shadow->getWidth() / (float)shadow->getHeight());
-				    const float mainW =
-				        mainH * ((float)main->getWidth() / (float)main->getHeight());
-				    const float centerX = px(slotX + ss(11.f));
-				    drawHudImage(drawList, *shadow, centerX - shadowW * 0.5f, tpy(slotY - ss(4.f)),
-				                 shadowW, shadowH);
-				    drawHudImage(drawList, *main, centerX - mainW * 0.5f, tpy(slotY), mainW, mainH);
-			    }
-		    }
-
-			if (config.pvDrawLifeHud)
-		    {
-			    constexpr float LIFE_DEFAULT = 1000.f;
-			    constexpr float LIFE_FULL = 1000.f;
-			    constexpr float LIFE_MAX = 2000.f;
-
-			    const auto& lifeTimes = drawData.lifeTimes;
-			    int latestLifeIndex = -1;
-			    if (!lifeTimes.empty())
-			    {
-				    const auto it =
-				        std::upper_bound(lifeTimes.begin(), lifeTimes.end(), chartTime + 0.0001f);
-				    latestLifeIndex = static_cast<int>(std::distance(lifeTimes.begin(), it)) - 1;
-			    }
-
-			    const int currentLife =
-			        (latestLifeIndex >= 0 && latestLifeIndex < (int)drawData.hudLives.size())
-			            ? drawData.hudLives[latestLifeIndex]
-			            : static_cast<int>(LIFE_DEFAULT);
-
-			    const float lifeRatio =
-			        std::max(0.f, std::min(1.f, static_cast<float>(currentLife) / LIFE_FULL));
-
-			    drawTop(getHudTexture("life", "bg.png"), 1442.f, HUD_LIFE_Y, 444.f, HUD_LIFE_H);
-			    drawTopClipX(getHudTexture("life", "normal.png"), 1442.f, HUD_LIFE_Y, 444.f,
-			                 HUD_LIFE_H, lifeRatio);
-
-			    const std::string lifeText = std::to_string(currentLife);
-			    for (size_t i = 0; i < lifeText.size(); ++i)
-			    {
-				    const char ch = lifeText[lifeText.size() - 1 - i];
-				    const Texture* shadow =
-				        getHudTexture("life", std::string("digit\\s") + ch + ".png");
-				    const Texture* main =
-				        getHudTexture("life", std::string("digit\\") + ch + ".png");
-				    if (!shadow || !main)
-					    continue;
-
-				    const float slotX = 1442.f + 319.f - static_cast<float>(i) * 22.f;
-				    const float shadowH = ps(37.f);
-				    const float mainH = ps(34.f);
-				    const float shadowW =
-				        shadowH * ((float)shadow->getWidth() / (float)shadow->getHeight());
-				    const float mainW =
-				        mainH * ((float)main->getWidth() / (float)main->getHeight());
-				    const float centerX = px(slotX + 13.f);
-				    drawHudImage(drawList, *shadow, centerX - shadowW * 0.5f, tpy(19.f), shadowW,
-				                 shadowH);
-				    drawHudImage(drawList, *main, centerX - mainW * 0.5f, tpy(21.f), mainW, mainH);
-			    }
-		    }
-	    }
-
-		static void drawSkillLifePopup(const ScoreContext& context, ImDrawList* drawList,
-	                                   ImVec2 position, ImVec2 size)
-	    {
-		    if (!drawList || size.x <= 1.f || size.y <= 1.f)
-			    return;
-
-		    const auto& drawData = context.scorePreviewDrawData;
-		    const auto& lifeTimes = drawData.lifeTimes;
-		    if (lifeTimes.empty())
-			    return;
-
-		    constexpr float POPUP_SLIDE_IN = 0.18f;
-		    constexpr float POPUP_SLIDE_OUT = 0.22f;
-		    constexpr float POPUP_TOTAL = 2.0f;
-		    constexpr float LIFE_DEFAULT = 1000.f;
-
-		    const float chartTime = static_cast<float>(context.getTimeAtCurrentTick());
-
-		    const auto it =
-		        std::upper_bound(lifeTimes.begin(), lifeTimes.end(), chartTime + 0.0001f);
-		    const int idx = static_cast<int>(std::distance(lifeTimes.begin(), it)) - 1;
-		    if (idx < 0 || idx >= (int)drawData.hudLives.size())
-			    return;
-
-		    const float t = chartTime - lifeTimes[idx];
-		    if (t < 0.f || t > POPUP_TOTAL)
-			    return;
-
-		    const int prevLife =
-		        (idx > 0) ? drawData.hudLives[idx - 1] : static_cast<int>(LIFE_DEFAULT);
-		    const int gained = std::max(0, drawData.hudLives[idx] - prevLife);
-		    if (gained <= 0)
-			    return;
-
-		    auto easeOut = [](float x) { return 1.f - (1.f - x) * (1.f - x) * (1.f - x); };
-
-		    float alpha = 1.f;
-		    float slideOffset = 0.f;
-		    if (t < POPUP_SLIDE_IN)
-		    {
-			    const float p = easeOut(t / POPUP_SLIDE_IN);
-			    alpha = p;
-			    slideOffset = (1.f - p) * 40.f;
-		    }
-		    else if (t > POPUP_TOTAL - POPUP_SLIDE_OUT)
-		    {
-			    const float p = (t - (POPUP_TOTAL - POPUP_SLIDE_OUT)) / POPUP_SLIDE_OUT;
-			    alpha = 1.f - easeOut(p);
-		    }
-
-		    const Texture* banner = getHudTexture("skilleffect", "lifeup.png");
-		    if (!banner)
-			    return;
-
-		    const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
-		    const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
-		    auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
-		    auto tpy = [&](float y) { return position.y + y * uiScale; };
-		    auto ps = [&](float v) { return v * uiScale; };
-
-		    constexpr float SKILL_POPUP_X = 36.f;
-		    constexpr float SKILL_POPUP_Y = 225.f;
-		    constexpr float SKILL_POPUP_H = 140.f;
-		    const float bannerW =
-		        SKILL_POPUP_H * ((float)banner->getWidth() / (float)banner->getHeight());
-
-		    const float bannerX = SKILL_POPUP_X - slideOffset;
-		    const float bannerY = SKILL_POPUP_Y;
-
-		    drawHudImage(drawList, *banner, px(bannerX), tpy(bannerY), ps(bannerW),
-		                 ps(SKILL_POPUP_H), alpha);
-
-		    const std::string gainText = std::to_string(gained);
-		    const ImU32 tintColor = IM_COL32(255, 255, 255, static_cast<int>(alpha * 255.f));
-
-		    constexpr float DIGIT_OFFSET_X = 0.73f; 
-		    constexpr float DIGIT_OFFSET_Y = 0.68f; 
-		    constexpr float DIGIT_H = 0.26f;
-
-		    const float digitH = ps(SKILL_POPUP_H * DIGIT_H);
-		    float digitX = px(bannerX + bannerW * DIGIT_OFFSET_X);
-		    const float digitY = tpy(bannerY + SKILL_POPUP_H * DIGIT_OFFSET_Y);
-
-		    for (char ch : gainText)
-		    {
-			    const Texture* digit = getHudTexture("life", std::string("digit\\") + ch + ".png");
-			    if (!digit)
-				    continue;
-			    const float digitW =
-			        digitH * ((float)digit->getWidth() / (float)digit->getHeight());
-			    drawList->AddImage((ImTextureID)(size_t)digit->getID(), ImVec2(digitX, digitY),
-			                       ImVec2(digitX + digitW, digitY + digitH), ImVec2(0, 0),
-			                       ImVec2(1, 1), tintColor);
-			    digitX += digitW;
-		    }
-	    }
-
-		void ScorePreviewWindow::update(ScoreContext & context, Renderer * renderer)
+		if (config.pvDrawLifeHud)
 		{
+			const bool isExtended = context.score.metadata.isExtendedScore;
+			const float LIFE_DEFAULT =
+			    isExtended ? static_cast<float>(context.score.metadata.baseLifePoint) : 1000.f;
+			const float LIFE_FULL = LIFE_DEFAULT;
+			const float LIFE_MAX =
+			    isExtended ? static_cast<float>(context.score.metadata.baseLifePoint + 1000)
+			               : 2000.f;
 
-			bool isWindowActive =
-			    !ImGui::IsWindowDocked() ||
-			    ImGui::GetCurrentWindow()->TabId == ImGui::GetWindowDockNode()->SelectedTabId;
-			if (!isWindowActive)
-				return;
-
-			bool needsRecalc = false;
-
-			if (context.scorePreviewDrawData.noteSpeed != config.pvNoteSpeed)
-				needsRecalc = true;
-
-			if (!needsRecalc && !context.score.notes.empty() &&
-			    context.scorePreviewDrawData.drawingNotes.empty())
-				needsRecalc = true;
-
-			if (!needsRecalc && !context.scorePreviewDrawData.drawingNotes.empty())
+			const auto& lifeTimes = drawData.lifeTimes;
+			int latestLifeIndex = -1;
+			if (!lifeTimes.empty())
 			{
-				int checkCount = 0;
-				for (const auto& note : context.scorePreviewDrawData.drawingNotes)
+				const auto it =
+				    std::upper_bound(lifeTimes.begin(), lifeTimes.end(), chartTime + 0.0001f);
+				latestLifeIndex = static_cast<int>(std::distance(lifeTimes.begin(), it)) - 1;
+			}
+
+			const int currentLife =
+			    (latestLifeIndex >= 0 && latestLifeIndex < (int)drawData.hudLives.size())
+			        ? drawData.hudLives[latestLifeIndex]
+			        : static_cast<int>(LIFE_DEFAULT);
+
+			const float lifeRatio =
+			    std::max(0.f, std::min(1.f, static_cast<float>(currentLife) / LIFE_FULL));
+
+			drawTop(getHudTexture("life", "bg.png"), 1442.f, HUD_LIFE_Y, 444.f, HUD_LIFE_H);
+			drawTopClipX(getHudTexture("life", "normal.png"), 1442.f, HUD_LIFE_Y, 444.f, HUD_LIFE_H,
+			             lifeRatio);
+
+			const std::string lifeText = std::to_string(currentLife);
+			for (size_t i = 0; i < lifeText.size(); ++i)
+			{
+				const char ch = lifeText[lifeText.size() - 1 - i];
+				const Texture* shadow =
+				    getHudTexture("life", std::string("digit\\s") + ch + ".png");
+				const Texture* main = getHudTexture("life", std::string("digit\\") + ch + ".png");
+				if (!shadow || !main)
+					continue;
+
+				const float slotX = 1442.f + 319.f - static_cast<float>(i) * 22.f;
+				const float shadowH = ps(37.f);
+				const float mainH = ps(34.f);
+				const float shadowW =
+				    shadowH * ((float)shadow->getWidth() / (float)shadow->getHeight());
+				const float mainW = mainH * ((float)main->getWidth() / (float)main->getHeight());
+				const float centerX = px(slotX + 13.f);
+				drawHudImage(drawList, *shadow, centerX - shadowW * 0.5f, tpy(19.f), shadowW,
+				             shadowH);
+				drawHudImage(drawList, *main, centerX - mainW * 0.5f, tpy(21.f), mainW, mainH);
+			}
+		}
+	}
+
+	static void drawSkillLifePopup(const ScoreContext& context, ImDrawList* drawList,
+	                               ImVec2 position, ImVec2 size)
+	{
+		if (!drawList || size.x <= 1.f || size.y <= 1.f)
+			return;
+
+		const auto& drawData = context.scorePreviewDrawData;
+		const auto& lifeTimes = drawData.lifeTimes;
+		if (lifeTimes.empty())
+			return;
+
+		constexpr float POPUP_SLIDE_IN = 0.18f;
+		constexpr float POPUP_SLIDE_OUT = 0.22f;
+		constexpr float POPUP_TOTAL = 2.0f;
+		const float LIFE_DEFAULT = context.score.metadata.isExtendedScore
+		                               ? static_cast<float>(context.score.metadata.baseLifePoint)
+		                               : 1000.f;
+
+		const float chartTime = static_cast<float>(context.getTimeAtCurrentTick());
+
+		const auto it = std::upper_bound(lifeTimes.begin(), lifeTimes.end(), chartTime + 0.0001f);
+		const int idx = static_cast<int>(std::distance(lifeTimes.begin(), it)) - 1;
+		if (idx < 0 || idx >= (int)drawData.hudLives.size())
+			return;
+
+		const float t = chartTime - lifeTimes[idx];
+		if (t < 0.f || t > POPUP_TOTAL)
+			return;
+
+		const int prevLife =
+		    (idx > 0) ? drawData.hudLives[idx - 1] : static_cast<int>(LIFE_DEFAULT);
+		const int gained = std::max(0, drawData.hudLives[idx] - prevLife);
+		if (gained <= 0)
+			return;
+
+		auto easeOut = [](float x) { return 1.f - (1.f - x) * (1.f - x) * (1.f - x); };
+
+		float alpha = 1.f;
+		float slideOffset = 0.f;
+		if (t < POPUP_SLIDE_IN)
+		{
+			const float p = easeOut(t / POPUP_SLIDE_IN);
+			alpha = p;
+			slideOffset = (1.f - p) * 40.f;
+		}
+		else if (t > POPUP_TOTAL - POPUP_SLIDE_OUT)
+		{
+			const float p = (t - (POPUP_TOTAL - POPUP_SLIDE_OUT)) / POPUP_SLIDE_OUT;
+			alpha = 1.f - easeOut(p);
+		}
+
+		const Texture* banner = getHudTexture("skilleffect", "lifeup.png");
+		if (!banner)
+			return;
+
+		const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
+		const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
+		auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
+		auto tpy = [&](float y) { return position.y + y * uiScale; };
+		auto ps = [&](float v) { return v * uiScale; };
+
+		constexpr float SKILL_POPUP_X = 36.f;
+		constexpr float SKILL_POPUP_Y = 225.f;
+		constexpr float SKILL_POPUP_H = 140.f;
+		const float bannerW =
+		    SKILL_POPUP_H * ((float)banner->getWidth() / (float)banner->getHeight());
+
+		const float bannerX = SKILL_POPUP_X - slideOffset;
+		const float bannerY = SKILL_POPUP_Y;
+
+		drawHudImage(drawList, *banner, px(bannerX), tpy(bannerY), ps(bannerW), ps(SKILL_POPUP_H),
+		             alpha);
+
+		const std::string gainText = std::to_string(gained);
+		const ImU32 tintColor = IM_COL32(255, 255, 255, static_cast<int>(alpha * 255.f));
+
+		constexpr float DIGIT_OFFSET_X = 0.73f;
+		constexpr float DIGIT_OFFSET_Y = 0.68f;
+		constexpr float DIGIT_H = 0.26f;
+
+		const float digitH = ps(SKILL_POPUP_H * DIGIT_H);
+		float digitX = px(bannerX + bannerW * DIGIT_OFFSET_X);
+		const float digitY = tpy(bannerY + SKILL_POPUP_H * DIGIT_OFFSET_Y);
+
+		for (char ch : gainText)
+		{
+			const Texture* digit = getHudTexture("life", std::string("digit\\") + ch + ".png");
+			if (!digit)
+				continue;
+			const float digitW = digitH * ((float)digit->getWidth() / (float)digit->getHeight());
+			drawList->AddImage((ImTextureID)(size_t)digit->getID(), ImVec2(digitX, digitY),
+			                   ImVec2(digitX + digitW, digitY + digitH), ImVec2(0, 0), ImVec2(1, 1),
+			                   tintColor);
+			digitX += digitW;
+		}
+	}
+
+	static void drawSkillScorePopup(const ScoreContext& context, ImDrawList* drawList,
+	                                ImVec2 position, ImVec2 size)
+	{
+		if (!drawList || size.x <= 1.f || size.y <= 1.f)
+			return;
+		if (!context.score.metadata.isExtendedScore)
+			return;
+
+		const auto& drawData = context.scorePreviewDrawData;
+		const auto& lifeTimes = drawData.lifeTimes;
+		if (lifeTimes.empty())
+			return;
+
+		constexpr float POPUP_SLIDE_IN = 0.18f;
+		constexpr float POPUP_SLIDE_OUT = 0.22f;
+		constexpr float POPUP_TOTAL = 2.0f;
+
+		const float chartTime = static_cast<float>(context.getTimeAtCurrentTick());
+
+		const auto it = std::upper_bound(lifeTimes.begin(), lifeTimes.end(), chartTime + 0.0001f);
+		const int idx = static_cast<int>(std::distance(lifeTimes.begin(), it)) - 1;
+		if (idx < 0 || idx >= (int)drawData.hudSkillEffects.size())
+			return;
+
+		if (drawData.hudSkillEffects[idx] != static_cast<uint8_t>(SkillEffect::Score))
+			return;
+
+		const float t = chartTime - lifeTimes[idx];
+		if (t < 0.f || t > POPUP_TOTAL)
+			return;
+
+		auto easeOut = [](float x) { return 1.f - (1.f - x) * (1.f - x) * (1.f - x); };
+
+		float alpha = 1.f;
+		float slideOffset = 0.f;
+		if (t < POPUP_SLIDE_IN)
+		{
+			const float p = easeOut(t / POPUP_SLIDE_IN);
+			alpha = p;
+			slideOffset = (1.f - p) * 40.f;
+		}
+		else if (t > POPUP_TOTAL - POPUP_SLIDE_OUT)
+		{
+			const float p = (t - (POPUP_TOTAL - POPUP_SLIDE_OUT)) / POPUP_SLIDE_OUT;
+			alpha = 1.f - easeOut(p);
+		}
+
+		const Texture* banner = getHudTexture("skilleffect", "scoreup.png");
+		if (!banner)
+			return;
+
+		const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
+		const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
+		auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
+		auto tpy = [&](float y) { return position.y + y * uiScale; };
+		auto ps = [&](float v) { return v * uiScale; };
+
+		constexpr float SKILL_POPUP_X = 36.f;
+		constexpr float SKILL_POPUP_Y = 225.f;
+		constexpr float SKILL_POPUP_H = 140.f;
+		const float bannerW =
+		    SKILL_POPUP_H * ((float)banner->getWidth() / (float)banner->getHeight());
+
+		const float bannerX = SKILL_POPUP_X - slideOffset;
+		const float bannerY = SKILL_POPUP_Y;
+
+		drawHudImage(drawList, *banner, px(bannerX), tpy(bannerY), ps(bannerW), ps(SKILL_POPUP_H),
+		             alpha);
+
+		const uint8_t level =
+		    (idx < (int)drawData.hudSkillLevels.size()) ? drawData.hudSkillLevels[idx] : 1;
+
+		int boostPct = 60;
+		switch (level)
+		{
+		case 1:
+			boostPct = 60;
+			break;
+		case 2:
+			boostPct = 65;
+			break;
+		case 3:
+			boostPct = 70;
+			break;
+		case 4:
+			boostPct = 80;
+			break;
+		}
+
+		const std::string pctText = std::to_string(boostPct);
+		const ImU32 tintColor = IM_COL32(255, 255, 255, static_cast<int>(alpha * 255.f));
+
+		constexpr float DIGIT_OFFSET_X = 0.73f;
+		constexpr float DIGIT_OFFSET_Y = 0.68f;
+		constexpr float DIGIT_H = 0.26f;
+
+		const float digitH = ps(SKILL_POPUP_H * DIGIT_H);
+		float digitX = px(bannerX + bannerW * DIGIT_OFFSET_X);
+		const float digitY = tpy(bannerY + SKILL_POPUP_H * DIGIT_OFFSET_Y);
+
+		for (char ch : pctText)
+		{
+			const Texture* digit = getHudTexture("life", std::string("digit\\") + ch + ".png");
+			if (!digit)
+				continue;
+			const float digitW = digitH * ((float)digit->getWidth() / (float)digit->getHeight());
+			drawList->AddImage((ImTextureID)(size_t)digit->getID(), ImVec2(digitX, digitY),
+			                   ImVec2(digitX + digitW, digitY + digitH), ImVec2(0, 0), ImVec2(1, 1),
+			                   tintColor);
+			digitX += digitW;
+		}
+
+		const Texture* pct = getHudTexture("life", "digit\\percentage.png");
+		if (pct)
+		{
+			const float pctW = digitH * ((float)pct->getWidth() / (float)pct->getHeight());
+			drawList->AddImage((ImTextureID)(size_t)pct->getID(), ImVec2(digitX, digitY),
+			                   ImVec2(digitX + pctW, digitY + digitH), ImVec2(0, 0), ImVec2(1, 1),
+			                   tintColor);
+		}
+	}
+
+	static void drawJudgePopup(const ScoreContext& context, ImDrawList* drawList, ImVec2 position,
+	                           ImVec2 size)
+	{
+		if (!drawList || size.x <= 1.f || size.y <= 1.f)
+			return;
+
+		const auto& drawData = context.scorePreviewDrawData;
+		const auto& judgeTimes = drawData.hudJudgeTimes;
+		if (judgeTimes.empty())
+			return;
+
+		constexpr float POPUP_POP = 0.12f;
+		constexpr float POPUP_HOLD = 0.10f;
+		constexpr float POPUP_FADE = 0.18f;
+		constexpr float POPUP_TOTAL = POPUP_POP + POPUP_HOLD + POPUP_FADE;
+
+		const float chartTime = static_cast<float>(context.getTimeAtCurrentTick());
+
+		const auto it = std::upper_bound(judgeTimes.begin(), judgeTimes.end(), chartTime + 0.0001f);
+		const int idx = static_cast<int>(std::distance(judgeTimes.begin(), it)) - 1;
+		if (idx < 0)
+			return;
+
+		const float t = chartTime - judgeTimes[idx];
+		if (t < 0.f || t > POPUP_TOTAL)
+			return;
+
+		auto easeOut = [](float x) { return 1.f - (1.f - x) * (1.f - x) * (1.f - x); };
+
+		float alpha = 1.f;
+		float scale = 1.f;
+		if (t < POPUP_POP)
+		{
+			const float p = easeOut(t / POPUP_POP);
+			scale = 1.3f - p * 0.3f;
+			alpha = p;
+		}
+		else if (t > POPUP_POP + POPUP_HOLD)
+		{
+			const float p = (t - POPUP_POP - POPUP_HOLD) / POPUP_FADE;
+			alpha = 1.f - easeOut(p);
+		}
+
+		const Texture* judgeTex = getHudTexture("score", "judge\\perfect.png");
+		if (!judgeTex)
+			return;
+
+		const float uiScale = std::min(size.x / 1920.f, size.y / 1080.f);
+		const float offsetX = (size.x - 1920.f * uiScale) * 0.5f;
+		auto px = [&](float x) { return position.x + offsetX + x * uiScale; };
+		auto tpy = [&](float y) { return position.y + y * uiScale; };
+		auto ps = [&](float v) { return v * uiScale; };
+
+		constexpr float JUDGE_CENTER_X = 960.f;
+		constexpr float JUDGE_CENTER_Y = 720.f;
+		constexpr float JUDGE_BASE_H = 70.f;
+
+		const float h = JUDGE_BASE_H * scale;
+		const float w = h * ((float)judgeTex->getWidth() / (float)judgeTex->getHeight());
+
+		drawHudImage(drawList, *judgeTex, px(JUDGE_CENTER_X - w * 0.5f),
+		             tpy(JUDGE_CENTER_Y - h * 0.5f), ps(w), ps(h), alpha);
+	}
+
+	void ScorePreviewWindow::update(ScoreContext& context, Renderer* renderer)
+	{
+		bool needsRecalc = false;
+
+		if (context.scorePreviewDrawData.noteSpeed != config.pvNoteSpeed)
+			needsRecalc = true;
+
+		if (context.scorePreviewDrawData.cachedBaseLifePoint !=
+		        context.score.metadata.baseLifePoint ||
+		    context.scorePreviewDrawData.cachedIsExtended != context.score.metadata.isExtendedScore)
+			needsRecalc = true;
+
+		if (!needsRecalc && !context.score.notes.empty() &&
+		    context.scorePreviewDrawData.drawingNotes.empty())
+			needsRecalc = true;
+
+		if (!needsRecalc && !context.scorePreviewDrawData.drawingNotes.empty())
+		{
+			int checkCount = 0;
+			for (const auto& note : context.scorePreviewDrawData.drawingNotes)
+			{
+				if (context.score.notes.find(note.refID) == context.score.notes.end())
 				{
-					if (context.score.notes.find(note.refID) == context.score.notes.end())
-					{
-						needsRecalc = true;
-						break;
-					}
-					if (++checkCount > 5)
-						break;
+					needsRecalc = true;
+					break;
 				}
+				if (++checkCount > 5)
+					break;
 			}
+		}
 
-			if (needsRecalc)
-			{
-				context.scorePreviewDrawData.calculateDrawData(context.score);
-			}
+		if (needsRecalc)
+			context.scorePreviewDrawData.calculateDrawData(context.score);
 
-			ImVec2 size = ImGui::GetContentRegionAvail() - ImVec2{ this->getScrollbarWidth(), 0 };
-			ImVec2 position = ImGui::GetCursorScreenPos();
-			ImRect boundaries = ImRect(position, position + size);
+		bool isWindowActive =
+		    !ImGui::IsWindowDocked() ||
+		    ImGui::GetCurrentWindow()->TabId == ImGui::GetWindowDockNode()->SelectedTabId;
+		if (!isWindowActive)
+			return;
 
-			ImDrawList* drawList = ImGui::GetWindowDrawList();
-			drawList->AddRectFilled(boundaries.Min, boundaries.Max, 0xff202020);
+		ImVec2 size = ImGui::GetContentRegionAvail() - ImVec2{ this->getScrollbarWidth(), 0 };
+		ImVec2 position = ImGui::GetCursorScreenPos();
+		ImRect boundaries = ImRect(position, position + size);
 
-			if (config.drawBackground && background.shouldUpdate(context.workingData.jacket))
-				background.update(renderer, context.workingData.jacket);
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		drawList->AddRectFilled(boundaries.Min, boundaries.Max, 0xff202020);
 
-			if (!context.scorePreviewDrawData.effectView.isInitialized())
-				context.scorePreviewDrawData.effectView.init();
+		if (config.drawBackground && background.shouldUpdate(context.workingData.jacket))
+			background.update(renderer, context.workingData.jacket);
 
-			if (playbackState.isPlaying)
-				context.scorePreviewDrawData.effectView.update(context);
-			else if (playbackState.wasLastFramePlaying)
-				context.scorePreviewDrawData.effectView.reset();
+		if (!context.scorePreviewDrawData.effectView.isInitialized())
+			context.scorePreviewDrawData.effectView.init();
 
-			static int shaderId = ResourceManager::getShader("basic2d");
-			static int pteShaderId = ResourceManager::getShader("particles");
-			if (shaderId == -1 || pteShaderId == -1)
-				return;
+		if (playbackState.isPlaying)
+			context.scorePreviewDrawData.effectView.update(context);
+		else if (playbackState.wasLastFramePlaying)
+			context.scorePreviewDrawData.effectView.reset();
 
-			Shader* shader = ResourceManager::shaders[shaderId];
-			Shader* pteShader = ResourceManager::shaders[pteShaderId];
-			shader->use();
+		static int shaderId = ResourceManager::getShader("basic2d");
+		static int pteShaderId = ResourceManager::getShader("particles");
+		if (shaderId == -1 || pteShaderId == -1)
+			return;
 
-			float width = size.x, height = size.y;
-			float scaledWidth = Engine::STAGE_TARGET_WIDTH * Engine::STAGE_WIDTH_RATIO;
-			float scaledHeight = Engine::STAGE_TARGET_HEIGHT * Engine::STAGE_HEIGHT_RATIO;
-			float scrTop = Engine::STAGE_TARGET_HEIGHT * Engine::STAGE_TOP_RATIO;
-			Utils::fillRect(Engine::STAGE_TARGET_WIDTH, Engine::STAGE_TARGET_HEIGHT,
-			                size.x / size.y, width, height);
+		Shader* shader = ResourceManager::shaders[shaderId];
+		Shader* pteShader = ResourceManager::shaders[pteShaderId];
+		shader->use();
 
-			float aspectRatio = width / height;
-			scaledAspectRatio = scaledWidth / scaledHeight;
+		float width = size.x, height = size.y;
+		float scaledWidth = Engine::STAGE_TARGET_WIDTH * Engine::STAGE_WIDTH_RATIO;
+		float scaledHeight = Engine::STAGE_TARGET_HEIGHT * Engine::STAGE_HEIGHT_RATIO;
+		float scrTop = Engine::STAGE_TARGET_HEIGHT * Engine::STAGE_TOP_RATIO;
+		Utils::fillRect(Engine::STAGE_TARGET_WIDTH, Engine::STAGE_TARGET_HEIGHT, size.x / size.y,
+		                width, height);
 
-			auto view = DirectX::XMMatrixScaling(scaledWidth, scaledHeight, 1.f) *
-			            DirectX::XMMatrixTranslation(0.f, -scrTop, 0.f);
-			auto projection = Camera().getOffCenterOrthographicProjection(-width / 2, width / 2,
-			                                                              height / 2, -height / 2);
-			auto viewProjection = DirectX::XMMatrixMultiply(view, projection);
-			const auto pView = noteEffectsCamera.getViewMatrix();
-			auto pProjection = noteEffectsCamera.getProjectionMatrix(aspectRatio, 0.3f, 1000.f);
-			float projectionScale = std::min(aspectRatio / EFFECTS_TARGET_ASPECT, 1.f);
-			pProjection =
-			    DirectX::XMMatrixScaling(projectionScale, -projectionScale, 1.f) * pProjection;
+		float aspectRatio = width / height;
+		scaledAspectRatio = scaledWidth / scaledHeight;
 
-			shader->setMatrix4("projection", viewProjection);
-			float currentTime = context.getTimeAtCurrentTick();
+		auto view = DirectX::XMMatrixScaling(scaledWidth, scaledHeight, 1.f) *
+		            DirectX::XMMatrixTranslation(0.f, -scrTop, 0.f);
+		auto projection = Camera().getOffCenterOrthographicProjection(-width / 2, width / 2,
+		                                                              height / 2, -height / 2);
+		auto viewProjection = DirectX::XMMatrixMultiply(view, projection);
+		const auto pView = noteEffectsCamera.getViewMatrix();
+		auto pProjection = noteEffectsCamera.getProjectionMatrix(aspectRatio, 0.3f, 1000.f);
+		float projectionScale = std::min(aspectRatio / EFFECTS_TARGET_ASPECT, 1.f);
+		pProjection =
+		    DirectX::XMMatrixScaling(projectionScale, -projectionScale, 1.f) * pProjection;
 
-			if (previewBuffer.getWidth() != (unsigned int)size.x ||
-			    previewBuffer.getHeight() != (unsigned int)size.y)
-				previewBuffer.resize((unsigned int)size.x, (unsigned int)size.y);
-			previewBuffer.bind();
-			previewBuffer.clear();
+		shader->setMatrix4("projection", viewProjection);
+		float currentTime = context.getTimeAtCurrentTick();
 
-			renderer->beginBatch();
-			if (config.drawBackground)
-			{
-				background.setBrightness(config.pvBackgroundBrightness);
-				background.draw(renderer, width, height);
-			}
+		if (previewBuffer.getWidth() != (unsigned int)size.x ||
+		    previewBuffer.getHeight() != (unsigned int)size.y)
+			previewBuffer.resize((unsigned int)size.x, (unsigned int)size.y);
+		previewBuffer.bind();
+		previewBuffer.clear();
+
+		renderer->beginBatch();
+		if (config.drawBackground)
+		{
+			background.setBrightness(config.pvBackgroundBrightness);
+			background.draw(renderer, width, height);
+		}
+		if (context.score.stages.empty())
 			drawStage(renderer);
+		else
+			drawDynamicStage(renderer, context);
+		renderer->endBatch();
+
+		context.scorePreviewDrawData.effectView.updateEffects(context, noteEffectsCamera,
+		                                                      currentTime);
+
+		shader->use();
+		shader->setMatrix4("projection", viewProjection);
+		renderer->beginBatch();
+		drawLines(context, renderer);
+		drawHoldCurves(context, renderer);
+		if (config.pvStageCover != 0)
+		{
+			drawStageCoverMask(renderer);
+			renderer->endBatchWithDepthTest(GL_LEQUAL);
+		}
+		else
 			renderer->endBatch();
 
-			context.scorePreviewDrawData.effectView.updateEffects(context, noteEffectsCamera,
-			                                                      currentTime);
+		pteShader->use();
+		pteShader->setMatrix4("projection", pProjection);
+		pteShader->setMatrix4("view", pView);
+		renderer->beginBatch();
+		context.scorePreviewDrawData.effectView.drawUnderNoteEffects(renderer, currentTime);
+		renderer->endBatchWithBlending(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
+		                               GL_ONE_MINUS_SRC_ALPHA);
 
-			shader->use();
-			shader->setMatrix4("projection", viewProjection);
-			renderer->beginBatch();
-			drawLines(context, renderer);
-			drawHoldCurves(context, renderer);
-			if (config.pvStageCover != 0)
-			{
-				drawStageCoverMask(renderer);
-				renderer->endBatchWithDepthTest(GL_LEQUAL);
-			}
-			else
-				renderer->endBatch();
+		shader->use();
+		shader->setMatrix4("projection", viewProjection);
+		renderer->beginBatch();
 
-			pteShader->use();
-			pteShader->setMatrix4("projection", pProjection);
-			pteShader->setMatrix4("view", pView);
-			renderer->beginBatch();
-			context.scorePreviewDrawData.effectView.drawUnderNoteEffects(renderer, currentTime);
-			renderer->endBatchWithBlending(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
-			                               GL_ONE_MINUS_SRC_ALPHA);
-
-			shader->use();
-			shader->setMatrix4("projection", viewProjection);
-			renderer->beginBatch();
-
-			drawHoldTicks(context, renderer);
-			drawNotes(context, renderer);
-			if (config.pvStageCover != 0)
-			{
-				drawStageCoverMask(renderer);
-				drawStageCover(renderer);
-				drawStageCoverDecoration(renderer);
-				renderer->endBatchWithDepthTest(GL_LEQUAL);
-			}
-			else
-				renderer->endBatch();
-
-			pteShader->use();
-			pteShader->setMatrix4("projection", pProjection);
-			pteShader->setMatrix4("view", pView);
-			renderer->beginBatch();
-			context.scorePreviewDrawData.effectView.drawEffects(renderer, currentTime);
-			renderer->endBatchWithBlending(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
-			                               GL_ONE_MINUS_SRC_ALPHA);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-			drawList->AddImage((ImTextureID)(size_t)previewBuffer.getTexture(), position,
-			                   position + size, { 0, 0 }, { 1, 1 });
-		    drawComboOverlay(context, drawList, position, size);
-		    drawHudOverlay(context, drawList, position, size);
-		    drawSkillLifePopup(context, drawList, position, size);
-		}
-
-		void ScorePreviewWindow::updateUI(ScoreEditorTimeline & timeline, ScoreContext & context)
+		drawHoldTicks(context, renderer);
+		drawNotes(context, renderer);
+		if (config.pvStageCover != 0)
 		{
-			updateToolbar(timeline, context);
-			ImGuiIO io = ImGui::GetIO();
-			float mouseWheel = io.MouseWheel * 1;
-			if (!timeline.isPlaying() && ImGui::IsWindowHovered() && mouseWheel != 0)
-				context.currentTick +=
-				    std::max(mouseWheel * TICKS_PER_BEAT / 2, (float)-context.currentTick);
-			updateScrollbar(timeline, context);
+			drawStageCoverMask(renderer);
+			drawStageCover(renderer);
+			drawStageCoverDecoration(renderer);
+			renderer->endBatchWithDepthTest(GL_LEQUAL);
+		}
+		else
+			renderer->endBatch();
 
-			playbackState.wasLastFramePlaying = playbackState.isPlaying;
-			playbackState.isPlaying = timeline.isPlaying();
+		pteShader->use();
+		pteShader->setMatrix4("projection", pProjection);
+		pteShader->setMatrix4("view", pView);
+		renderer->beginBatch();
+		context.scorePreviewDrawData.effectView.drawEffects(renderer, currentTime);
+		renderer->endBatchWithBlending(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
+		                               GL_ONE_MINUS_SRC_ALPHA);
 
-			if (isFullWindow())
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		drawList->AddImage((ImTextureID)(size_t)previewBuffer.getTexture(), position,
+		                   position + size, { 0, 0 }, { 1, 1 });
+		drawComboOverlay(context, drawList, position, size);
+		drawHudOverlay(context, drawList, position, size);
+		drawSkillLifePopup(context, drawList, position, size);
+		drawSkillScorePopup(context, drawList, position, size);
+		drawJudgePopup(context, drawList, position, size);
+	}
+
+	void ScorePreviewWindow::updateUI(ScoreEditorTimeline& timeline, ScoreContext& context)
+	{
+		updateToolbar(timeline, context);
+		ImGuiIO io = ImGui::GetIO();
+		float mouseWheel = io.MouseWheel * 1;
+		if (!timeline.isPlaying() && ImGui::IsWindowHovered() && mouseWheel != 0)
+			context.currentTick +=
+			    std::max(mouseWheel * TICKS_PER_BEAT / 2, (float)-context.currentTick);
+		updateScrollbar(timeline, context);
+
+		playbackState.wasLastFramePlaying = playbackState.isPlaying;
+		playbackState.isPlaying = timeline.isPlaying();
+
+		if (isFullWindow())
+		{
+			if (ImGui::BeginPopupContextWindow("preview_context_menu", 1))
 			{
-				if (ImGui::BeginPopupContextWindow("preview_context_menu", 1))
-				{
-					bool _fullWindow = fullWindow;
-					if (ImGui::MenuItem(getString("fullscreen_preview"), NULL, &_fullWindow))
-						setFullWindow(_fullWindow);
+				bool _fullWindow = fullWindow;
+				if (ImGui::MenuItem(getString("fullscreen_preview"), NULL, &_fullWindow))
+					setFullWindow(_fullWindow);
 
-					ImGui::MenuItem(getString("preview_draw_toolbar"), NULL, &config.pvDrawToolbar);
-				    ImGui::MenuItem(getString("preview_draw_score_hud"), NULL,
-				                    &config.pvDrawScoreHud);
-				    ImGui::MenuItem(getString("preview_draw_life_hud"), NULL,
-				                    &config.pvDrawLifeHud);
-					ImGui::MenuItem(getString("return_to_last_tick"), NULL,
-					                &config.returnToLastSelectedTickOnPause);
-					ImGui::EndPopup();
-				}
+				ImGui::MenuItem(getString("preview_draw_toolbar"), NULL, &config.pvDrawToolbar);
+				ImGui::MenuItem(getString("preview_draw_score_hud"), NULL, &config.pvDrawScoreHud);
+				ImGui::MenuItem(getString("preview_draw_life_hud"), NULL, &config.pvDrawLifeHud);
+				ImGui::MenuItem(getString("return_to_last_tick"), NULL,
+				                &config.returnToLastSelectedTickOnPause);
+				ImGui::EndPopup();
 			}
 		}
+	}
 
-		void ScorePreviewWindow::setFullWindow(bool _fullWindow) { fullWindow = _fullWindow; }
+	void ScorePreviewWindow::setFullWindow(bool _fullWindow) { fullWindow = _fullWindow; }
 
-		void ScorePreviewWindow::loadNoteEffects(Effect::EffectView & effectView)
+	void ScorePreviewWindow::loadNoteEffects(Effect::EffectView& effectView)
+	{
+		int oldProfile = config.pvEffectsProfile == 1 ? 0 : 1;
+		const std::string oldEffectsDir =
+		    Application::getAppDir() + "res\\effect\\" + std::to_string(oldProfile) + "\\";
+		const std::string effectsDir = Application::getAppDir() + "res\\effect\\" +
+		                               std::to_string(config.pvEffectsProfile) + "\\";
+		size_t effectCount = arrayLength(Effect::effectNames);
+
+		ResourceManager::removeAllParticleEffects();
+		int texIndex =
+		    ResourceManager::getTextureByFilename(oldEffectsDir + "tex_note_common_all_v2.png");
+		if (texIndex > -1)
+			ResourceManager::disposeTexture(ResourceManager::textures[texIndex].getID());
+
+		ResourceManager::loadTexture(effectsDir + "tex_note_common_all_v2.png");
+
+		std::vector<std::string> failedParticleFiles;
+		for (size_t i = 0; i < effectCount; i++)
 		{
-			int oldProfile = config.pvEffectsProfile == 1 ? 0 : 1;
-			const std::string oldEffectsDir =
-			    Application::getAppDir() + "res\\effect\\" + std::to_string(oldProfile) + "\\";
-			const std::string effectsDir = Application::getAppDir() + "res\\effect\\" +
-			                               std::to_string(config.pvEffectsProfile) + "\\";
-			size_t effectCount = arrayLength(Effect::effectNames);
+			const std::string filename{ effectsDir + Effect::effectNames[i] + ".json" };
+			int particleId = ResourceManager::loadParticleEffect(filename);
+			if (particleId == -1)
+				failedParticleFiles.push_back(filename);
+		}
 
-			ResourceManager::removeAllParticleEffects();
-			int texIndex =
-			    ResourceManager::getTextureByFilename(oldEffectsDir + "tex_note_common_all_v2.png");
-			if (texIndex > -1)
-				ResourceManager::disposeTexture(ResourceManager::textures[texIndex].getID());
+		if (!failedParticleFiles.empty())
+		{
+			std::string fullErrorMessage = "Failed to load the following note effects: \n\n";
+			for (const auto& error : failedParticleFiles)
+				fullErrorMessage.append(error).append("\n");
 
-			ResourceManager::loadTexture(effectsDir + "tex_note_common_all_v2.png");
+			IO::messageBox(APP_NAME, fullErrorMessage, IO::MessageBoxButtons::Ok,
+			               IO::MessageBoxIcon::Warning, Application::windowState.windowHandle);
+		}
 
-			std::vector<std::string> failedParticleFiles;
-			for (size_t i = 0; i < effectCount; i++)
+		effectView.reset();
+		effectView.init();
+	}
+
+	const Texture& ScorePreviewWindow::getNoteTexture()
+	{
+		return ResourceManager::textures[noteTextures.notes];
+	}
+
+	struct StageRenderProps
+	{
+		float left = 0;
+		float size = 12;
+		float pivotLane = 0;
+		int divisionSize = 2;
+		bool divisionParityOdd = false;
+		GuideColor judgeColorA = GuideColor::Purple;
+		GuideColor judgeColorB = GuideColor::Purple;
+		float styleBlend = 0.f;
+		StageBorderStyle leftBorder = StageBorderStyle::Default;
+		StageBorderStyle rightBorder = StageBorderStyle::Default;
+		float alpha = 1;
+		float laneAlpha = 0;
+		float judgeLineAlpha = 1;
+		float yOffset = 0;
+	};
+
+	template <typename T>
+	static const T* findActiveAndNext(const std::unordered_map<id_t, T>& changes, id_t stageID,
+	                                  int tick, const T*& next)
+	{
+		const T* active = nullptr;
+		next = nullptr;
+		for (const auto& [_, change] : changes)
+		{
+			if (change.stageID != stageID)
+				continue;
+			if (change.tick <= tick)
 			{
-				const std::string filename{ effectsDir + Effect::effectNames[i] + ".json" };
-				int particleId = ResourceManager::loadParticleEffect(filename);
-				if (particleId == -1)
-					failedParticleFiles.push_back(filename);
+				if (!active || change.tick >= active->tick)
+					active = &change;
 			}
-
-			if (!failedParticleFiles.empty())
+			else if (!next || change.tick < next->tick)
 			{
-				std::string fullErrorMessage = "Failed to load the following note effects: \n\n";
-				for (const auto& error : failedParticleFiles)
-					fullErrorMessage.append(error).append("\n");
-
-				IO::messageBox(APP_NAME, fullErrorMessage, IO::MessageBoxButtons::Ok,
-				               IO::MessageBoxIcon::Warning, Application::windowState.windowHandle);
-			}
-
-			effectView.reset();
-			effectView.init();
-		}
-
-		const Texture& ScorePreviewWindow::getNoteTexture()
-		{
-			return ResourceManager::textures[noteTextures.notes];
-		}
-
-		void ScorePreviewWindow::drawStage(Renderer * renderer)
-		{
-			int index = ResourceManager::getTexture("stage");
-			if (index == -1)
-				return;
-			const Texture& stage = ResourceManager::textures[index];
-			if (!isArrayIndexInBounds(SPR_SEKAI_STAGE, stage.sprites))
-				return;
-			const Sprite& stageSprite = stage.sprites[SPR_SEKAI_STAGE];
-			constexpr float stageWidth =
-			    (Engine::STAGE_TEX_WIDTH / Engine::STAGE_LANE_WIDTH) * Engine::STAGE_NUM_LANES;
-			constexpr float stageLeft = -stageWidth / 2;
-			constexpr float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
-			constexpr float stageHeight = Engine::STAGE_TEX_HEIGHT / Engine::STAGE_LANE_HEIGHT;
-
-			renderer->drawRectangle(Vector2(stageLeft, stageTop), Vector2(stageWidth, stageHeight),
-			                        stage, stageSprite.getX(),
-			                        stageSprite.getX() + stageSprite.getWidth(), stageSprite.getY(),
-			                        stageSprite.getY() + stageSprite.getHeight(),
-			                        Color(defaultTint.r, defaultTint.g, defaultTint.b,
-			                              defaultTint.a * config.pvStageOpacity),
-			                        -1);
-		}
-
-		void ScorePreviewWindow::drawStageCoverMask(Renderer * renderer)
-		{
-			int index = ResourceManager::getTexture("stage");
-			if (index == -1)
-				return;
-			const Texture& stage = ResourceManager::textures[index];
-			constexpr float stageWidth =
-			    (Engine::STAGE_TEX_WIDTH / Engine::STAGE_LANE_WIDTH) * Engine::STAGE_NUM_LANES;
-			constexpr float stageLeft = -stageWidth / 2, stageRight = stageWidth / 2;
-
-			constexpr float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
-			const float stageHeight = config.pvStageCover * (1 - stageTop);
-
-			static auto model = DirectX::XMMatrixTranslation(0, 0, 1);
-			auto vPos = Engine::quadvPos(stageLeft, stageRight, stageTop + stageHeight, 0);
-			auto uv = Utils::getUV(0.f, 1.f, 0.f, 1.f);
-			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, 0.f), (int)stage.getID(), 0);
-		}
-
-		void ScorePreviewWindow::drawStageCover(Renderer * renderer)
-		{
-			int index = ResourceManager::getTexture("stage");
-			if (index == -1)
-				return;
-			const Texture& stage = ResourceManager::textures[index];
-			if (!isArrayIndexInBounds(SPR_SEKAI_STAGE, stage.sprites))
-				return;
-			const Sprite& stageSprite = stage.sprites[SPR_SEKAI_STAGE];
-			constexpr float stageWidth =
-			    (Engine::STAGE_TEX_WIDTH / Engine::STAGE_LANE_WIDTH) * Engine::STAGE_NUM_LANES;
-			const float stageLeft = -stageWidth / 2, stageRight = stageWidth / 2;
-
-			constexpr float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
-			const float stageHeight = config.pvStageCover * (1 - stageTop);
-			const float spriteHeight =
-			    config.pvStageCover * (Engine::STAGE_LANE_HEIGHT - Engine::STAGE_LANE_TOP);
-
-			static auto model = DirectX::XMMatrixTranslation(0, 0, 1);
-
-			float texW = (float)stage.getWidth();
-			float texH = (float)stage.getHeight();
-			auto vPos = Engine::quadvPos(stageLeft, stageRight, stageTop + stageHeight, stageTop);
-			auto uv = Utils::getUV(
-			    stageSprite.getX() / texW, (stageSprite.getX() + stageSprite.getWidth()) / texW,
-			    stageSprite.getY() / texH, (stageSprite.getY() + spriteHeight) / texH);
-
-			renderer->pushQuad(vPos, uv, model, DirectX::XMFLOAT4(0, 0, 0, config.pvStageOpacity),
-			                   (int)stage.getID(), 0);
-		}
-
-		void ScorePreviewWindow::drawStageCoverDecoration(Renderer * renderer)
-		{
-			if (noteTextures.notes == -1)
-				return;
-
-			constexpr float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
-			const Texture& noteTex = getNoteTexture();
-			size_t sprIndex = SPR_SIMULTANEOUS_CONNECTION;
-			size_t transIndex = static_cast<size_t>(SpriteType::SimultaneousLine);
-			if (!isArrayIndexInBounds(sprIndex, noteTex.sprites))
-				return;
-			if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
-				return;
-
-			const SpriteTransform& lineTransform = ResourceManager::spriteTransforms[transIndex];
-			const Sprite& sprite = noteTex.sprites[sprIndex];
-			float x = 0.12f * (1.f - config.pvStageCover);
-			auto vPos = lineTransform.apply(Engine::perspectiveQuadvPos(
-			    -6.f - x, 6.f + x, 1.f + Engine::getNoteHeight(), 1.f - Engine::getNoteHeight()));
-			float y = stageTop + config.pvStageCover * (1.f - stageTop);
-			auto uv = Engine::quadUV(sprite, noteTex);
-			auto model = DirectX::XMMatrixScaling(y, y, 1.f);
-			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, config.pvStageOpacity),
-			                   (int)noteTex.getID(), -1);
-		}
-
-		void ScorePreviewWindow::drawNotes(const ScoreContext& context, Renderer* renderer)
-		{
-			double current_tm =
-			    accumulateDuration(context.currentTick, TICKS_PER_BEAT, context.score.tempoChanges);
-			const auto layer_stm = getCurrentLayerScaledTimes(context);
-
-			const auto& drawData = context.scorePreviewDrawData;
-
-			for (auto& note : drawData.drawingNotes)
-			{
-				// 修正：at() を find() に変えて、データが存在するかチェックする
-				auto it = context.score.notes.find(note.refID);
-				if (it == context.score.notes.end())
-					continue; // 見つからない場合は描画をスキップ
-
-				const Note& noteData = it->second;
-
-				if (context.currentTick > noteData.tick)
-					continue;
-
-				int layer = std::clamp(noteData.layer, 0, (int)context.score.layers.size() - 1);
-				double scaled_tm = layer_stm[layer];
-
-				if (scaled_tm < note.visualTime.min)
-					continue;
-
-				double y = Engine::approach(note.visualTime.min, note.visualTime.max, scaled_tm);
-
-				float l = Engine::laneToLeft(noteData.lane),
-				      r = Engine::laneToLeft(noteData.lane) + noteData.width;
-				drawNoteBase(renderer, noteData, l, r, (float)y);
-				if (noteData.friction)
-					drawTraceDiamond(renderer, noteData, l, r, (float)y);
-				if (noteData.isFlick())
-					drawFlickArrow(renderer, noteData, (float)y, current_tm);
+				next = &change;
 			}
 		}
+		return active;
+	}
 
-		void ScorePreviewWindow::drawLines(const ScoreContext& context, Renderer* renderer)
+	static StageRenderProps getStagePropsAt(const Score& score, id_t stageID, int tick)
+	{
+		StageRenderProps props;
+
+		const StageMaskChangeEvent* nextMask = nullptr;
+		const StageMaskChangeEvent* mask =
+		    findActiveAndNext(score.stageMaskChanges, stageID, tick, nextMask);
+		if (mask)
 		{
-			if (!config.pvSimultaneousLine || noteTextures.notes == -1)
-				return;
-
-			const auto& drawData = context.scorePreviewDrawData.drawingLines;
-
-			const Texture& texture = getNoteTexture();
-			size_t sprIndex = SPR_SIMULTANEOUS_CONNECTION;
-			if (!isArrayIndexInBounds(sprIndex, texture.sprites))
-				return;
-			const Sprite& sprite = texture.sprites[sprIndex];
-
-			// ★ 純正通り SimultaneousLine を使用
-			size_t transIndex = static_cast<size_t>(SpriteType::SimultaneousLine);
-			if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
-				return;
-			const SpriteTransform& lineTransform = ResourceManager::spriteTransforms[transIndex];
-
-			float texW = (float)texture.getWidth();
-			float texH = (float)texture.getHeight();
-			float noteDuration = Engine::getNoteDuration(config.pvNoteSpeed);
-
-			// ★ 純正と完全に同じ計算式 (1 + h と 1 - h) に戻して裏返りを修正
-			const float noteTop = 1.0f + Engine::getNoteHeight();
-			const float noteBottom = 1.0f - Engine::getNoteHeight();
-
-			for (auto& line : drawData)
-			{
-				if (context.currentTick > std::max(line.leftTick, line.rightTick))
-					continue;
-
-				double left_stm = getCachedLayerScaledTime(context, line.leftTick, line.leftLayer);
-				double right_stm =
-				    getCachedLayerScaledTime(context, line.rightTick, line.rightLayer);
-
-				double current_left_stm =
-				    getCachedLayerScaledTime(context, context.currentTick, line.leftLayer);
-				double current_right_stm =
-				    getCachedLayerScaledTime(context, context.currentTick, line.rightLayer);
-
-				double left_progress = 1.0 - (left_stm - current_left_stm) / noteDuration;
-				double right_progress = 1.0 - (right_stm - current_right_stm) / noteDuration;
-
-				if (left_progress < 0.0 && right_progress < 0.0)
-					continue;
-				if ((left_progress < 1.0 && 1.0 < right_progress) ||
-				    (left_progress > 1.0 && 1.0 > right_progress))
-					continue;
-
-				double adj_left_progress = std::max(left_progress, 0.0);
-				double adj_right_progress = std::max(right_progress, 0.0);
-
-				float adj_left_lane = line.leftLane;
-				float adj_right_lane = line.rightLane;
-
-				if (std::abs(left_progress - right_progress) > 1e-6)
-				{
-					double adj_left_frac =
-					    unlerpD(left_progress, right_progress, adj_left_progress);
-					double adj_right_frac =
-					    unlerpD(left_progress, right_progress, adj_right_progress);
-					adj_left_lane = lerpD(line.leftLane, line.rightLane, adj_left_frac);
-					adj_right_lane = lerpD(line.leftLane, line.rightLane, adj_right_frac);
-				}
-
-				float adj_left_travel = Engine::approachProgress(adj_left_progress);
-				float adj_right_travel = Engine::approachProgress(adj_right_progress);
-
-				if (std::abs(adj_left_lane - adj_right_lane) < 1e-6 &&
-				    std::abs(adj_left_travel - adj_right_travel) < 1e-6)
-					continue;
-
-				if (adj_left_lane > adj_right_lane)
-				{
-					std::swap(adj_left_lane, adj_right_lane);
-					std::swap(adj_left_travel, adj_right_travel);
-				}
-
-				// laneToLeft の二重変換を排し、構築済みの物理座標をそのまま使用
-				float noteLeft = adj_left_lane;
-				float noteRight = adj_right_lane;
-
-				if (config.pvMirrorScore)
-				{
-					noteLeft *= -1.f;
-					noteRight *= -1.f;
-					std::swap(noteLeft, noteRight);
-					std::swap(adj_left_travel, adj_right_travel);
-				}
-
-				// ★ 純正の `auto vPos = lineTransform.apply(Engine::perspectiveQuadvPos(...));`
-				// を完全再現
-				auto rawPos = Engine::perspectiveQuadvPos(noteLeft, noteRight, noteTop, noteBottom);
-				auto vPos = lineTransform.apply(rawPos);
-
-				// ★ 純正の `DirectX::XMMatrixScaling(y, y, 1.f)` を、左右独立して適用
-				vPos[0].x *= adj_right_travel;
-				vPos[0].y *= adj_right_travel;
-				vPos[1].x *= adj_right_travel;
-				vPos[1].y *= adj_right_travel;
-
-				vPos[2].x *= adj_left_travel;
-				vPos[2].y *= adj_left_travel;
-				vPos[3].x *= adj_left_travel;
-				vPos[3].y *= adj_left_travel;
-
-				auto uv =
-				    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
-				                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
-
-				// ★ 純正の Z-Index と Tint を完全再現
-				float center_y = (adj_left_travel + adj_right_travel) / 2.0f;
-				int zIndex = Engine::getZIndex(SpriteLayer::UNDER_NOTE_EFFECT, 0, center_y);
-
-				renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint),
-				                   (int)texture.getID(), zIndex);
-			}
+			float t = nextMask ? getEaseFunction(mask->ease)(
+			                         0.f, 1.f,
+			                         std::clamp((float)(tick - mask->tick) /
+			                                        std::max(1, nextMask->tick - mask->tick),
+			                                    0.f, 1.f))
+			                   : 0.f;
+			props.left = nextMask ? lerp(mask->left, nextMask->left, t) : mask->left;
+			props.size = nextMask ? lerp(mask->size, nextMask->size, t) : mask->size;
 		}
 
-		void ScorePreviewWindow::drawHoldTicks(const ScoreContext& context, Renderer* renderer)
+		const StagePivotChangeEvent* nextPivot = nullptr;
+		const StagePivotChangeEvent* pivot =
+		    findActiveAndNext(score.stagePivotChanges, stageID, tick, nextPivot);
+		if (pivot)
 		{
-			if (noteTextures.notes == -1)
-				return;
-			const auto layer_stm = getCurrentLayerScaledTimes(context);
-
-			const float notesHeight = Engine::getNoteHeight() * 1.3f;
-			const float w = notesHeight / scaledAspectRatio;
-			const float noteTop = 1. + notesHeight, noteBottom = 1. - notesHeight;
-			const Texture& texture = getNoteTexture();
-			float texW = (float)texture.getWidth();
-			float texH = (float)texture.getHeight();
-
-			size_t transIndex = static_cast<size_t>(SpriteType::HoldTick);
-			if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
-				return;
-			const SpriteTransform& transform = ResourceManager::spriteTransforms[transIndex];
-
-			for (auto& tick : context.scorePreviewDrawData.drawingHoldTicks)
-			{
-				// 存在チェックを行い、データが既に消えていたら描画を安全にスキップする
-				auto it = context.score.notes.find(tick.refID);
-				if (it == context.score.notes.end())
-					continue;
-				const Note& noteData = it->second;
-
-				if (context.currentTick > noteData.tick)
-					continue;
-
-				int layer = std::clamp(noteData.layer, 0, (int)context.score.layers.size() - 1);
-				double scaled_tm = layer_stm[layer];
-
-				if (scaled_tm < tick.visualTime.min)
-					continue;
-
-				float y =
-				    (float)Engine::approach(tick.visualTime.min, tick.visualTime.max, scaled_tm);
-
-				//  Y座標クリッピング
-				if (y < -0.1 || y > 1.2)
-					continue;
-
-				int sprIndex = getNoteSpriteIndex(noteData);
-				if (!isArrayIndexInBounds(sprIndex, texture.sprites))
-					continue;
-				const Sprite& sprite = texture.sprites[sprIndex];
-				const float tickCenter = tick.center * (config.pvMirrorScore ? -1 : 1);
-
-				auto vPos = transform.apply(
-				    Engine::quadvPos(tickCenter - w, tickCenter + w, noteTop, noteBottom));
-				auto uv =
-				    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
-				                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
-
-				renderer->pushQuad(vPos, uv, DirectX::XMMatrixScaling(y, y, 1.f),
-				                   toFloat4(defaultTint), (int)texture.getID(),
-				                   Engine::getZIndex(SpriteLayer::DIAMOND, tickCenter, y));
-			}
+			float t = nextPivot ? getEaseFunction(pivot->ease)(
+			                          0.f, 1.f,
+			                          std::clamp((float)(tick - pivot->tick) /
+			                                         std::max(1, nextPivot->tick - pivot->tick),
+			                                     0.f, 1.f))
+			                    : 0.f;
+			props.pivotLane = nextPivot ? lerp(pivot->lane, nextPivot->lane, t) : pivot->lane;
+			props.divisionSize = pivot->divisionSize;
+			props.divisionParityOdd = pivot->divisionParityOdd;
+			props.yOffset =
+			    nextPivot ? lerp(pivot->yOffset, nextPivot->yOffset, t) : pivot->yOffset;
 		}
 
-		void ScorePreviewWindow::drawHoldCurves(const ScoreContext& context, Renderer* renderer)
+		const StageStyleChangeEvent* nextStyle = nullptr;
+		const StageStyleChangeEvent* style =
+		    findActiveAndNext(score.stageStyleChanges, stageID, tick, nextStyle);
+		if (style)
 		{
-			const float total_tm = accumulateDuration(context.scorePreviewDrawData.maxTicks,
-			                                          TICKS_PER_BEAT, context.score.tempoChanges);
-			const double current_tm =
-			    accumulateDuration(context.currentTick, TICKS_PER_BEAT, context.score.tempoChanges);
-			const float noteDuration = Engine::getNoteDuration(config.pvNoteSpeed);
-			const float mirror = config.pvMirrorScore ? -1 : 1;
-			const auto& drawData = context.scorePreviewDrawData;
-			const auto layer_stm = getCurrentLayerScaledTimes(context);
+			float t = nextStyle ? getEaseFunction(style->ease)(
+			                          0.f, 1.f,
+			                          std::clamp((float)(tick - style->tick) /
+			                                         std::max(1, nextStyle->tick - style->tick),
+			                                     0.f, 1.f))
+			                    : 0.f;
+			props.judgeColorA = style->judgeLineColor;
+			props.judgeColorB = nextStyle ? nextStyle->judgeLineColor : style->judgeLineColor;
+			props.styleBlend = nextStyle ? t : 0.f;
+			props.leftBorder = style->leftBorderStyle;
+			props.rightBorder = style->rightBorderStyle;
+			props.alpha = nextStyle ? lerp(style->alpha, nextStyle->alpha, t) : style->alpha;
+			props.laneAlpha =
+			    nextStyle ? lerp(style->laneAlpha, nextStyle->laneAlpha, t) : style->laneAlpha;
+			props.judgeLineAlpha = nextStyle
+			                           ? lerp(style->judgeLineAlpha, nextStyle->judgeLineAlpha, t)
+			                           : style->judgeLineAlpha;
+		}
 
-			for (auto& segment : drawData.drawingHoldSegments)
+		return props;
+	}
+
+	static const CameraChangeEvent* findActiveAndNextCamera(const Score& score, int tick,
+	                                                        const CameraChangeEvent*& next)
+	{
+		const CameraChangeEvent* active = nullptr;
+		next = nullptr;
+		for (const auto& [_, change] : score.cameraChanges)
+		{
+			if (change.tick <= tick)
 			{
-				// 存在チェックを行い、データが既に消えていたら描画を安全にスキップする
-				auto endIt = context.score.notes.find(segment.endID);
-				if (endIt == context.score.notes.end())
-					continue;
-				const Note& holdEnd = endIt->second;
+				if (!active || change.tick >= active->tick)
+					active = &change;
+			}
+			else if (!next || change.tick < next->tick)
+			{
+				next = &change;
+			}
+		}
+		return active;
+	}
 
-				auto startIt = context.score.notes.find(holdEnd.parentID);
-				if (startIt == context.score.notes.end())
-					continue;
-				const Note& holdStart = startIt->second;
+	static float cameraTiltedWidth(float travel, float stageTilt)
+	{
+		stageTilt = std::clamp(stageTilt, 0.f, 1.f);
+		const float mid = (powf(1.06f, -45.f) + 1.f) * 0.5f;
+		return stageTilt * travel + (1.f - stageTilt) * mid;
+	}
 
-				int layer = std::clamp(holdStart.layer, 0, (int)context.score.layers.size() - 1);
-				double current_stm = layer_stm[layer];
+	static float cameraTargetTravel(float progress, float stageTilt)
+	{
+		stageTilt = std::clamp(stageTilt, 0.f, 1.f);
+		float base = (float)Engine::approachProgress((double)progress);
+		if (stageTilt >= 1.f)
+			return base;
+		const float linearMin = powf(1.06f, -45.f);
+		float linear = lerp(linearMin, 1.f, progress);
+		return lerp(linear, base, stageTilt);
+	}
 
-				if (current_tm >= segment.endTime)
-					continue;
+	static CameraRenderProps getCameraPropsAt(const Score& score, int tick)
+	{
+		CameraRenderProps props;
 
-				if (std::abs(segment.headTime - segment.tailTime) < 1e-6)
-					continue;
+		const CameraChangeEvent* nextCam = nullptr;
+		const CameraChangeEvent* cam = findActiveAndNextCamera(score, tick, nextCam);
+		if (!cam)
+			return props;
 
-				// =======================================================================================
-				// ★
-				// 完全修正版：STM補間（曲線の維持）と、正確なアンカー固定（途切れ防止）のハイブリッド
-				// =======================================================================================
+		float t =
+		    nextCam
+		        ? getEaseFunction(cam->ease)(
+		              0.f, 1.f,
+		              std::clamp((float)(tick - cam->tick) / std::max(1, nextCam->tick - cam->tick),
+		                         0.f, 1.f))
+		        : 0.f;
 
-				double start_stm = segment.headTime;
-				double start_time = segment.startTime;
+		float position = nextCam ? lerp(cam->left, nextCam->left, t) : cam->left;
+		float size = std::max(0.0001f, nextCam ? lerp(cam->size, nextCam->size, t) : cam->size);
+		float zoomTargetLane =
+		    nextCam ? lerp(cam->zoomTargetLane, nextCam->zoomTargetLane, t) : cam->zoomTargetLane;
+		float zoomTargetY =
+		    nextCam ? lerp(cam->zoomTargetY, nextCam->zoomTargetY, t) : cam->zoomTargetY;
+		float stageTilt = std::clamp(
+		    nextCam ? lerp(cam->stageTilt, nextCam->stageTilt, t) : cam->stageTilt, 0.f, 1.f);
+		float zoom = std::max(0.01f, nextCam ? lerp(cam->zoom, nextCam->zoom, t) : cam->zoom);
+		float rotateDeg = nextCam ? lerp(cam->rotate, nextCam->rotate, t) : cam->rotate;
+		StageZoomVerticalAlign align =
+		    (nextCam && t >= 0.5f) ? nextCam->zoomVerticalAlign : cam->zoomVerticalAlign;
 
-				// ノーツが判定ラインを越えた（ホールド中）場合、始点を「現在のSTM」と「現在の時間」に強制固定する
-				// これにより、推測計算によるズレが消滅し、絶対に判定ライン（Y=1.0）から帯が途切れません。
-				if (current_tm > segment.startTime)
+		float halfSize = size * 0.5f;
+		float lane = (position - 6.0f) + halfSize;
+		float scale = 6.0f / std::max(0.0001f, halfSize);
+
+		float targetTravel = cameraTargetTravel(1.f - zoomTargetY, stageTilt);
+		float targetWidth = cameraTiltedWidth(targetTravel, stageTilt);
+		float targetX = ((lane + zoomTargetLane) * targetWidth - lane) * scale;
+
+		const float stageTopY = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
+		const float stageBottomY = stageTopY + Engine::STAGE_TEX_HEIGHT / Engine::STAGE_LANE_HEIGHT;
+
+		props.lane = lane;
+		props.scale = scale;
+		props.zoom = zoom;
+		props.zoomTargetX = targetX;
+		props.zoomTargetTravel = targetTravel;
+		props.zoomAnchorY =
+		    align == StageZoomVerticalAlign::Center ? (stageTopY + stageBottomY) * 0.5f : 1.f;
+		props.rotate = rotateDeg * (3.14159265f / 180.f);
+		props.stageTilt = stageTilt;
+		return props;
+	}
+
+	constexpr float CAMERA_ASPECT_CORRECTION =
+	    (Engine::STAGE_TARGET_WIDTH * Engine::STAGE_WIDTH_RATIO) /
+	    (Engine::STAGE_TARGET_HEIGHT * Engine::STAGE_HEIGHT_RATIO);
+
+	static void applyCameraPoint(float& x, float& y, const CameraRenderProps& camera)
+	{
+		float baseX = (x - camera.lane) * camera.scale;
+		float tx = camera.zoom * (baseX - camera.zoomTargetX);
+		float ty = camera.zoom * (y - camera.zoomTargetTravel) + camera.zoomAnchorY;
+
+		if (std::abs(camera.rotate) > 0.000001f)
+		{
+			const float stageTopY = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
+			const float stageBottomY =
+			    stageTopY + Engine::STAGE_TEX_HEIGHT / Engine::STAGE_LANE_HEIGHT;
+			const float pivotY = (stageTopY + stageBottomY) * 0.5f;
+
+			float c = cosf(camera.rotate), s = sinf(camera.rotate);
+			float px = tx * CAMERA_ASPECT_CORRECTION;
+			float py = ty - pivotY;
+			tx = (px * c - py * s) / CAMERA_ASPECT_CORRECTION;
+			ty = (px * s + py * c) + pivotY;
+		}
+
+		x = tx;
+		y = ty;
+	}
+
+	static void applyCameraTilt(float& x, float& y, const CameraRenderProps& camera)
+	{
+		float untiltedWidth = std::abs(y) > 0.000001f ? y : 1.f;
+		float lane = x / untiltedWidth;
+		float tiltedX = lane * cameraTiltedWidth(y, camera.stageTilt);
+		x = tiltedX;
+		applyCameraPoint(x, y, camera);
+	}
+
+	constexpr int SPR_DS_LANE_BACKGROUND = 0;
+	constexpr int SPR_DS_LANE_DIVIDER = 1;
+	constexpr int SPR_DS_STAGE_BORDER = 2;
+	constexpr int SPR_DS_JUDGE_BACKGROUND = 3;
+	constexpr int SPR_DS_JUDGE_CENTER_BLACK = 4;
+	constexpr int SPR_DS_JUDGE_CENTER_BLUE = 5;
+	constexpr int SPR_DS_JUDGE_CENTER_CYAN = 6;
+	constexpr int SPR_DS_JUDGE_CENTER_GREEN = 7;
+	constexpr int SPR_DS_JUDGE_CENTER_NEUTRAL = 8;
+	constexpr int SPR_DS_JUDGE_CENTER_PURPLE = 9;
+	constexpr int SPR_DS_JUDGE_CENTER_RED = 10;
+	constexpr int SPR_DS_JUDGE_CENTER_YELLOW = 11;
+	constexpr int SPR_DS_JUDGE_EDGE_BLACK = 12;
+	constexpr int SPR_DS_JUDGE_EDGE_BLUE = 13;
+	constexpr int SPR_DS_JUDGE_EDGE_CYAN = 14;
+	constexpr int SPR_DS_JUDGE_EDGE_GREEN = 15;
+	constexpr int SPR_DS_JUDGE_EDGE_NEUTRAL = 16;
+	constexpr int SPR_DS_JUDGE_EDGE_PURPLE = 17;
+	constexpr int SPR_DS_JUDGE_EDGE_RED = 18;
+	constexpr int SPR_DS_JUDGE_EDGE_YELLOW = 19;
+	constexpr int SPR_DS_JUDGE_GRADIENT_BLACK = 20;
+	constexpr int SPR_DS_JUDGE_GRADIENT_BLUE = 21;
+	constexpr int SPR_DS_JUDGE_GRADIENT_CYAN = 22;
+	constexpr int SPR_DS_JUDGE_GRADIENT_GREEN = 23;
+	constexpr int SPR_DS_JUDGE_GRADIENT_NEUTRAL = 24;
+	constexpr int SPR_DS_JUDGE_GRADIENT_PURPLE = 25;
+	constexpr int SPR_DS_JUDGE_GRADIENT_RED = 26;
+	constexpr int SPR_DS_JUDGE_GRADIENT_YELLOW = 27;
+	constexpr float DS_DIVIDER_WIDTH = 0.045f;
+	constexpr float DS_BORDER_WIDTH = 0.09f;
+	constexpr int guideColorToDsIndex[8] = { 4, 6, 3, 1, 7, 5, 2, 0 };
+
+	static std::array<DirectX::XMFLOAT4, 4> dsPerspectiveUV(const Sprite& spr, const Texture& tex)
+	{
+		float texelX = 0.5f / tex.getWidth();
+		float texelY = 0.5f / tex.getHeight();
+		float u0 = spr.getX() / tex.getWidth() + texelX;
+		float u1 = (spr.getX() + spr.getWidth()) / tex.getWidth() - texelX;
+		float v0 = spr.getY() / tex.getHeight() + texelY;
+		float v1 = (spr.getY() + spr.getHeight()) / tex.getHeight() - texelY;
+		return { { { u1, v0, 0.f, 1.f },
+			       { u1, v1, 0.f, 1.f },
+			       { u0, v1, 0.f, 1.f },
+			       { u0, v0, 0.f, 1.f } } };
+	}
+
+	static void dsPushSprite(Renderer* renderer, const Texture& tex, int sprIndex, float left,
+	                         float right, float top, float bottom, float alpha, int z,
+	                         const Score& score, int tick)
+	{
+		if (alpha <= 0.001f || !isArrayIndexInBounds(sprIndex, tex.sprites))
+			return;
+		const Sprite& spr = tex.sprites[sprIndex];
+		auto vPos = Engine::perspectiveQuadvPos(left, right, top, bottom);
+		if (!score.cameraChanges.empty())
+		{
+			CameraRenderProps camera = getCameraPropsAt(score, tick);
+			for (auto& v : vPos)
+				applyCameraTilt(v.x, v.y, camera);
+		}
+		auto uv = dsPerspectiveUV(spr, tex);
+		renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint, alpha),
+		                   (int)tex.getID(), z);
+	}
+
+	void ScorePreviewWindow::drawDynamicStage(Renderer* renderer, ScoreContext& context)
+	{
+		int index = ResourceManager::getTexture("dynamic_stage");
+		if (index == -1)
+			return;
+		const Texture& tex = ResourceManager::textures[index];
+
+		const float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
+		const float stageBottom = stageTop + Engine::STAGE_TEX_HEIGHT / Engine::STAGE_LANE_HEIGHT;
+		const float judgeHalf = 75.f / 850.f / 2.f;
+		const float judgeTop = 1.f - judgeHalf;
+		const float judgeBottom = 1.f + judgeHalf;
+
+		float bgMaxAlpha = 0.f;
+		float bgLeft = FLT_MAX, bgRight = -FLT_MAX;
+
+		for (const auto& [stageID, stage] : context.score.stages)
+		{
+			StageRenderProps props = getStagePropsAt(context.score, stageID, context.currentTick);
+			if (props.alpha <= 0.001f)
+				continue;
+
+			float travel = (float)Engine::approachProgress(1.f - props.yOffset);
+			float curJudgeTop = judgeTop * travel;
+			float curJudgeBottom = judgeBottom * travel;
+
+			float laneLeft = props.left - 6.0f;
+			float laneRight = laneLeft + props.size;
+			float laneAlpha = props.alpha * props.laneAlpha * config.pvStageOpacity;
+			float judgeAlpha = props.alpha * props.judgeLineAlpha;
+
+			bgMaxAlpha = std::max(bgMaxAlpha, laneAlpha);
+			bgLeft = std::min(bgLeft, laneLeft);
+			bgRight = std::max(bgRight, laneRight);
+
+			if (laneAlpha > 0.001f && props.divisionSize > 0)
+			{
+				float offset =
+				    props.pivotLane + (props.divisionParityOdd ? props.divisionSize * 0.5f : 0.f);
+				int kStart = (int)std::floor((laneLeft - offset) / props.divisionSize) + 1;
+				int kEnd = (int)std::ceil((laneRight - offset) / props.divisionSize) - 1;
+				for (int k = kStart; k <= kEnd; ++k)
 				{
-					start_stm = current_stm;
-					start_time = current_tm;
+					float lane = offset + k * props.divisionSize;
+					if (lane > laneLeft + 0.01f && lane < laneRight - 0.01f)
+						dsPushSprite(renderer, tex, SPR_DS_LANE_DIVIDER,
+						             lane - DS_DIVIDER_WIDTH * 0.5f, lane + DS_DIVIDER_WIDTH * 0.5f,
+						             stageTop, stageBottom, laneAlpha, -1, context.score,
+						             context.currentTick);
 				}
+			}
 
-				double stm_top = current_stm + 1.0 * noteDuration;
-				double stm_bottom = current_stm - 0.2 * noteDuration;
+			auto pushBorder = [&](StageBorderStyle style, float edge, float inward)
+			{
+				if (style == StageBorderStyle::Disabled)
+					return;
+				float width = style == StageBorderStyle::Default  ? DS_BORDER_WIDTH
+				              : style == StageBorderStyle::Medium ? DS_BORDER_WIDTH * 0.55f
+				                                                  : DS_BORDER_WIDTH * 0.35f;
+				float alphaScale = style == StageBorderStyle::Default  ? 1.f
+				                   : style == StageBorderStyle::Medium ? 0.85f
+				                                                       : 0.6f;
+				dsPushSprite(renderer, tex, SPR_DS_STAGE_BORDER, edge, edge + width * inward,
+				             stageTop, stageBottom, laneAlpha * alphaScale, -1, context.score,
+				             context.currentTick);
+			};
+			pushBorder(props.leftBorder, laneLeft, 1.f);
+			pushBorder(props.rightBorder, laneRight, -1.f);
 
-				// 画面に映る範囲のみを計算するカリング処理（元のコードの考え方と同じ）
-				double p_view_a = unlerpD(start_stm, segment.tailTime, stm_bottom);
-				double p_view_b = unlerpD(start_stm, segment.tailTime, stm_top);
-				double p_min = std::clamp(std::min(p_view_a, p_view_b), 0.0, 1.0);
-				double p_max = std::clamp(std::max(p_view_a, p_view_b), 0.0, 1.0);
+			int colorIdxA = guideColorToDsIndex[(int)props.judgeColorA];
+			int colorIdxB = guideColorToDsIndex[(int)props.judgeColorB];
+			constexpr float DS_JUDGE_EDGE_WIDTH = 0.12f;
 
-				if (p_min >= p_max)
-					continue;
+			auto drawJudgeColor = [&](int colorIdx, float blend)
+			{
+				if (blend <= 0.001f)
+					return;
+				float a = judgeAlpha * blend;
+				const float middleTopG = curJudgeTop + (curJudgeBottom - curJudgeTop) / 8.f;
+				const float middleBottomG = curJudgeBottom - (curJudgeBottom - curJudgeTop) / 8.f;
+				const float centerLane = (laneLeft + laneRight) * 0.5f;
 
-				// =======================================================================================
+				dsPushSprite(renderer, tex, SPR_DS_JUDGE_GRADIENT_BLACK + colorIdx, laneLeft,
+				             centerLane, middleBottomG, curJudgeBottom, a, 0, context.score,
+				             context.currentTick);
+				dsPushSprite(renderer, tex, SPR_DS_JUDGE_GRADIENT_BLACK + colorIdx, laneRight,
+				             centerLane, middleBottomG, curJudgeBottom, a, 0, context.score,
+				             context.currentTick);
+				dsPushSprite(renderer, tex, SPR_DS_JUDGE_GRADIENT_BLACK + colorIdx, laneLeft,
+				             centerLane, curJudgeTop, middleTopG, a, 0, context.score,
+				             context.currentTick);
+				dsPushSprite(renderer, tex, SPR_DS_JUDGE_GRADIENT_BLACK + colorIdx, laneRight,
+				             centerLane, curJudgeTop, middleTopG, a, 0, context.score,
+				             context.currentTick);
 
-				float holdStartCenter = Engine::getNoteCenter(holdStart) * mirror;
-				bool isHoldActivated = current_tm >= segment.activeTime;
-				bool isSegmentActivated = current_tm >= segment.startTime;
+				dsPushSprite(renderer, tex, SPR_DS_JUDGE_EDGE_BLACK + colorIdx, laneLeft,
+				             laneLeft + DS_JUDGE_EDGE_WIDTH, curJudgeTop, curJudgeBottom, a, 1,
+				             context.score, context.currentTick);
+				dsPushSprite(renderer, tex, SPR_DS_JUDGE_EDGE_BLACK + colorIdx,
+				             laneRight - DS_JUDGE_EDGE_WIDTH, laneRight, curJudgeTop,
+				             curJudgeBottom, a,
+				             1, context.score, context.currentTick);
 
-				int textureID;
-				int sprIndex;
-				if (segment.isGuide)
+				if (props.divisionSize > 0)
 				{
-					textureID = noteTextures.guideColors;
-					auto holdIt = context.score.holdNotes.find(holdStart.ID);
-					if (holdIt == context.score.holdNotes.end())
-						continue;
-					sprIndex = (int)holdIt->second.guideColor;
-				}
-				else
-				{
-					textureID = noteTextures.holdPath;
-					sprIndex = (!holdStart.critical ? 1 : 3);
-				}
+					float halfOffset = props.divisionParityOdd ? 0.5f : 0.f;
+					float shifted = props.pivotLane + halfOffset;
+					int kStart = (int)std::floor(laneLeft - shifted + 0.001f) + 1;
+					int kEnd = (int)std::ceil(laneRight - shifted - 0.001f) - 1;
+					float middleTop = curJudgeTop + (curJudgeBottom - curJudgeTop) / 5.f;
+					float middleBottom = curJudgeBottom - (curJudgeBottom - curJudgeTop) / 5.f;
+					constexpr float divW = 0.028f;
 
-				if (textureID == -1)
-					continue;
-				const Texture& texture = ResourceManager::textures[textureID];
-				if (!isArrayIndexInBounds(sprIndex, texture.sprites))
-					continue;
-				const Sprite& segmentSprite = texture.sprites[sprIndex];
-
-				const auto ease = getEaseFunction(segment.ease);
-				float startLeft = segment.headLeft, startRight = segment.headRight,
-				      endLeft = segment.tailLeft, endRight = segment.tailRight;
-
-				// 分割数の計算 (元のSTMを用いたロジックを維持)
-				double start_y = Engine::approach(start_stm - noteDuration, start_stm, current_stm);
-				double end_y = Engine::approach(segment.tailTime - noteDuration, segment.tailTime,
-				                                current_stm);
-
-				int steps = 10;
-				if (segment.ease == EaseType::Linear)
-				{
-					double mid_travel = (start_y + end_y) / 2.0;
-					double perspective_factor = std::pow(std::max(0.1, mid_travel), 0.8);
-					double x_diff_max =
-					    std::max(std::abs(startLeft - endLeft), std::abs(startRight - endRight));
-
-					// Xの移動量計算には時間割合(time_frac)を使う
-					double t_frac_start = unlerpD(segment.startTime, segment.endTime, start_time);
-					double t_frac_end = 1.0;
-					double x_diff = (x_diff_max * 2.5 / perspective_factor) *
-					                std::abs(t_frac_end - t_frac_start);
-					double curve_change_scale = std::pow(x_diff, 0.8);
-					steps = std::max(1, static_cast<int>(std::ceil(curve_change_scale * 10.0)));
-				}
-				else
-				{
-					double pos_offset = 0.0;
-					double ref_start_lane =
-					    std::abs(startLeft - endLeft) > std::abs(startRight - endRight)
-					        ? startLeft
-					        : startRight;
-					double ref_end_lane =
-					    std::abs(startLeft - endLeft) > std::abs(startRight - endRight) ? endLeft
-					                                                                    : endRight;
-
-					double t_frac_start = unlerpD(segment.startTime, segment.endTime, start_time);
-					double t_frac_end = 1.0;
-
-					double pos_offset_this_side = 0.0;
-					for (double r : { 0.25, 0.75 })
+					for (int k = kStart; k <= kEnd; ++k)
 					{
-						double time_frac = lerpD(t_frac_start, t_frac_end, r);
-						double interp_frac = ease(0.0f, 1.0f, (float)time_frac);
-						double y = lerpD(start_y, end_y, r);
-						double lane = lerpD(ref_start_lane, ref_end_lane, interp_frac);
-						double ref_pos = lerpD(ref_start_lane, ref_end_lane, r);
-						double screen_offset = std::abs(lane - ref_pos);
-						double compensation_factor = std::pow(std::max(0.1, y), 0.8);
-						pos_offset_this_side += screen_offset / compensation_factor;
-					}
-					pos_offset =
-					    pos_offset_this_side * std::pow(std::abs(t_frac_end - t_frac_start), 0.7);
-					double curve_change_scale = std::pow(pos_offset, 0.4) * 2.0;
-					steps = std::max(1, static_cast<int>(std::ceil(curve_change_scale * 10.0)));
-				}
-				steps = std::clamp(steps, 1, 200);
-
-				// ==============================================================================
-
-				auto holdMapIt = context.score.holdNotes.find(holdStart.ID);
-				if (isSegmentActivated && holdMapIt != context.score.holdNotes.end() &&
-				    holdMapIt->second.startType == HoldNoteType::Normal)
-				{
-					double base_frac = unlerpD(segment.startTime, segment.endTime, start_time);
-					float l = ease(startLeft, endLeft, (float)base_frac),
-					      r = ease(startRight, endRight, (float)base_frac);
-					drawNoteBase(renderer, holdStart, l, r, 1.f, segment.activeTime / total_tm);
-					if (holdStart.friction)
-						drawTraceDiamond(renderer, holdStart, l, r, 1.f);
-				}
-
-				if (config.pvMirrorScore)
-				{
-					std::swap(startLeft *= -1, startRight *= -1);
-					std::swap(endLeft *= -1, endRight *= -1);
-				}
-
-				double holdStartProgress, holdEndProgress;
-				if (segment.isGuide)
-				{
-					auto holdMapIt2 = context.score.holdNotes.find(holdStart.ID);
-					if (holdMapIt2 == context.score.holdNotes.end())
-						continue;
-					const HoldNote& hold = holdMapIt2->second;
-					double totalJoints = 1 + hold.steps.size();
-					double headProgress = segment.tailStepIndex / totalJoints;
-					double tailProgress = (segment.tailStepIndex + 1) / totalJoints;
-
-					double base_frac = unlerpD(segment.startTime, segment.endTime, start_time);
-					holdStartProgress = lerpD(headProgress, tailProgress, base_frac);
-					holdEndProgress = lerpD(headProgress, tailProgress, 1.0);
-				}
-
-				double from_percentage = 0;
-
-				// ループ初期値の設定
-				double stepStart_stm = lerpD(start_stm, segment.tailTime, p_min);
-				double stepTop =
-				    Engine::approach(stepStart_stm - noteDuration, stepStart_stm, current_stm);
-
-				double stepStart_time = lerpD(start_time, segment.endTime, p_min);
-				double stepStart_timeFrac =
-				    unlerpD(segment.startTime, segment.endTime, stepStart_time);
-
-				auto model = DirectX::XMMatrixIdentity();
-				float baseAlpha = segment.isGuide ? config.pvGuideAlpha : config.pvHoldAlpha;
-				int zIndex = Engine::getZIndex(segment.isGuide ? SpriteLayer::GUIDE_PATH
-				                                               : SpriteLayer::HOLD_PATH,
-				                               holdStartCenter, segment.activeTime / total_tm);
-
-				for (int i = 0; i < steps; i++)
-				{
-					double to_p = lerpD(p_min, p_max, (double)(i + 1) / steps);
-
-					// Y座標用には「STM」を補間して使う（純正コードの美しい曲線を維持）
-					double stepEnd_stm = lerpD(start_stm, segment.tailTime, to_p);
-					double stepBottom =
-					    Engine::approach(stepEnd_stm - noteDuration, stepEnd_stm, current_stm);
-
-					// X座標用には「時間割合」を補間して使う（レーンの移動が時間ベースで正確になる）
-					double stepEnd_time = lerpD(start_time, segment.endTime, to_p);
-					double stepEnd_timeFrac =
-					    unlerpD(segment.startTime, segment.endTime, stepEnd_time);
-
-					float stepStartLeft = ease(startLeft, endLeft, (float)stepStart_timeFrac);
-					float stepEndLeft = ease(startLeft, endLeft, (float)stepEnd_timeFrac);
-					float stepStartRight = ease(startRight, endRight, (float)stepStart_timeFrac);
-					float stepEndRight = ease(startRight, endRight, (float)stepEnd_timeFrac);
-
-					// =======================================================================================
-					// マイナスHS対策：Y座標が逆転した場合、手前と奥の座標を丸ごとスワップしてねじれを防ぐ
-					// =======================================================================================
-					float q_leftStart = stepStartLeft;
-					float q_leftStop = stepEndLeft;
-					float q_rightStart = stepStartRight;
-					float q_rightStop = stepEndRight;
-					float q_top = (float)stepTop;
-					float q_bottom = (float)stepBottom;
-
-					if (q_top < q_bottom)
-					{
-						std::swap(q_top, q_bottom);
-						std::swap(q_leftStart, q_leftStop);
-						std::swap(q_rightStart, q_rightStop);
-					}
-
-					auto vPos = Engine::perspectiveQuadvPos(q_leftStart, q_leftStop, q_rightStart,
-					                                        q_rightStop, q_top, q_bottom);
-					// =======================================================================================
-
-					float spr_x1, spr_x2, spr_y1, spr_y2;
-					std::array<DirectX::XMFLOAT4, 4> vertexColors;
-
-					if (segment.isGuide)
-					{
-						auto holdMapIt3 = context.score.holdNotes.find(holdStart.ID);
-						if (holdMapIt3 == context.score.holdNotes.end())
-							continue;
-						const HoldNote& hold = holdMapIt3->second;
-						double startProg =
-						    lerpD(holdStartProgress, holdEndProgress, from_percentage);
-						double to_percentage = double(i + 1) / steps;
-						double endProg = lerpD(holdStartProgress, holdEndProgress, to_percentage);
-						float startAlpha = baseAlpha;
-						float endAlpha = baseAlpha;
-						if (hold.fadeType == FadeType::Out)
+						float lane = shifted + k;
+						if (lane > laneLeft + 0.001f && lane < laneRight - 0.001f)
 						{
-							startAlpha *= (1.0f - (float)startProg);
-							endAlpha *= (1.0f - (float)endProg);
+							dsPushSprite(renderer, tex, SPR_DS_JUDGE_CENTER_BLACK + colorIdx,
+							             lane - divW * 0.5f, lane + divW * 0.5f, middleTop,
+							             middleBottom, a, 1, context.score, context.currentTick);
+							dsPushSprite(renderer, tex, SPR_DS_JUDGE_EDGE_BLACK + colorIdx,
+							             lane - divW * 0.5f, lane + divW * 0.5f, middleTop,
+							             middleBottom, a * 0.5f, 1, context.score,
+							             context.currentTick);
 						}
-						else if (hold.fadeType == FadeType::In)
-						{
-							startAlpha *= (float)startProg;
-							endAlpha *= (float)endProg;
-						}
-						vertexColors = {
-							{ toFloat4(defaultTint, startAlpha), toFloat4(defaultTint, endAlpha),
-							  toFloat4(defaultTint, endAlpha), toFloat4(defaultTint, startAlpha) }
-						};
-						spr_x1 = segmentSprite.getX();
-						spr_x2 = segmentSprite.getX() + segmentSprite.getWidth();
-						spr_y1 = segmentSprite.getY() + segmentSprite.getHeight();
-						spr_y2 = segmentSprite.getY();
-						from_percentage = to_percentage;
 					}
-					else
-					{
-						spr_x1 = segmentSprite.getX() + HOLD_XCUTOFF;
-						spr_x2 = segmentSprite.getX() + segmentSprite.getWidth() - HOLD_XCUTOFF;
-						spr_y1 = segmentSprite.getY();
-						spr_y2 = segmentSprite.getY() + segmentSprite.getHeight();
-					}
-
-					float texW = (float)texture.getWidth();
-					float texH = (float)texture.getHeight();
-					auto uv =
-					    Utils::getUV(spr_x1 / texW, spr_x2 / texW, spr_y1 / texH, spr_y2 / texH);
-
-					if (config.pvHoldAnimation && isHoldActivated && !segment.isGuide &&
-					    isArrayIndexInBounds(sprIndex - 1, texture.sprites))
-					{
-						const Sprite& activeSprite = texture.sprites[sprIndex - 1];
-						const int norm2ActiveOffset =
-						    (int)(activeSprite.getY() - segmentSprite.getY());
-						double delta_tm = current_tm - segment.activeTime;
-						float normalAplha = (std::cos((float)delta_tm * MATH_PI * 2.f) + 2.f) / 3.f;
-						renderer->pushQuad(vPos, uv, model,
-						                   toFloat4(defaultTint, baseAlpha * normalAplha),
-						                   (int)texture.getID(), zIndex);
-						auto uvActive = Utils::getUV(spr_x1 / texW, spr_x2 / texW,
-						                             (spr_y1 + norm2ActiveOffset) / texH,
-						                             (spr_y2 + norm2ActiveOffset) / texH);
-						renderer->pushQuad(vPos, uvActive, model,
-						                   toFloat4(defaultTint, baseAlpha * (1.f - normalAplha)),
-						                   (int)texture.getID(), zIndex);
-					}
-					else if (segment.isGuide)
-					{
-						renderer->pushQuad(vPos, uv, model, vertexColors, (int)texture.getID(),
-						                   zIndex);
-					}
-					else
-					{
-						renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, baseAlpha),
-						                   (int)texture.getID(), zIndex);
-					}
-
-					// ループ終端の更新処理
-					stepTop = stepBottom;
-					stepStart_timeFrac = stepEnd_timeFrac;
 				}
-			}
+			};
+
+			dsPushSprite(renderer, tex, SPR_DS_JUDGE_BACKGROUND, laneLeft, laneRight, curJudgeTop,
+			             curJudgeBottom, judgeAlpha * 0.5f, -1, context.score, context.currentTick);
+			drawJudgeColor(colorIdxA, 1.f - props.styleBlend);
+			drawJudgeColor(colorIdxB, props.styleBlend);
 		}
 
-		void ScorePreviewWindow::drawNoteBase(Renderer * renderer, const Note& note, float noteLeft,
-		                                      float noteRight, float y, float zScalar)
+		if (bgMaxAlpha > 0.001f && bgLeft < bgRight)
+			dsPushSprite(renderer, tex, SPR_DS_LANE_BACKGROUND, bgLeft, bgRight, stageTop,
+			             stageBottom, bgMaxAlpha, -1, context.score, context.currentTick);
+	}
+
+	void ScorePreviewWindow::drawStage(Renderer* renderer)
+	{
+		int index = ResourceManager::getTexture("stage");
+		if (index == -1)
+			return;
+		const Texture& stage = ResourceManager::textures[index];
+		if (!isArrayIndexInBounds(SPR_SEKAI_STAGE, stage.sprites))
+			return;
+		const Sprite& stageSprite = stage.sprites[SPR_SEKAI_STAGE];
+		constexpr float stageWidth =
+		    (Engine::STAGE_TEX_WIDTH / Engine::STAGE_LANE_WIDTH) * Engine::STAGE_NUM_LANES;
+		constexpr float stageLeft = -stageWidth / 2;
+		constexpr float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
+		constexpr float stageHeight = Engine::STAGE_TEX_HEIGHT / Engine::STAGE_LANE_HEIGHT;
+
+		renderer->drawRectangle(Vector2(stageLeft, stageTop), Vector2(stageWidth, stageHeight),
+		                        stage, stageSprite.getX(),
+		                        stageSprite.getX() + stageSprite.getWidth(), stageSprite.getY(),
+		                        stageSprite.getY() + stageSprite.getHeight(),
+		                        Color(defaultTint.r, defaultTint.g, defaultTint.b,
+		                              defaultTint.a * config.pvStageOpacity),
+		                        -1);
+	}
+
+	void ScorePreviewWindow::drawStageCoverMask(Renderer* renderer)
+	{
+		int index = ResourceManager::getTexture("stage");
+		if (index == -1)
+			return;
+		const Texture& stage = ResourceManager::textures[index];
+		constexpr float stageWidth =
+		    (Engine::STAGE_TEX_WIDTH / Engine::STAGE_LANE_WIDTH) * Engine::STAGE_NUM_LANES;
+		constexpr float stageLeft = -stageWidth / 2, stageRight = stageWidth / 2;
+
+		constexpr float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
+		const float stageHeight = config.pvStageCover * (1 - stageTop);
+
+		static auto model = DirectX::XMMatrixTranslation(0, 0, 1);
+		auto vPos = Engine::quadvPos(stageLeft, stageRight, stageTop + stageHeight, 0);
+		auto uv = Utils::getUV(0.f, 1.f, 0.f, 1.f);
+		renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, 0.f), (int)stage.getID(), 0);
+	}
+
+	void ScorePreviewWindow::drawStageCover(Renderer* renderer)
+	{
+		int index = ResourceManager::getTexture("stage");
+		if (index == -1)
+			return;
+		const Texture& stage = ResourceManager::textures[index];
+		if (!isArrayIndexInBounds(SPR_SEKAI_STAGE, stage.sprites))
+			return;
+		const Sprite& stageSprite = stage.sprites[SPR_SEKAI_STAGE];
+		constexpr float stageWidth =
+		    (Engine::STAGE_TEX_WIDTH / Engine::STAGE_LANE_WIDTH) * Engine::STAGE_NUM_LANES;
+		const float stageLeft = -stageWidth / 2, stageRight = stageWidth / 2;
+
+		constexpr float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
+		const float stageHeight = config.pvStageCover * (1 - stageTop);
+		const float spriteHeight =
+		    config.pvStageCover * (Engine::STAGE_LANE_HEIGHT - Engine::STAGE_LANE_TOP);
+
+		static auto model = DirectX::XMMatrixTranslation(0, 0, 1);
+
+		float texW = (float)stage.getWidth();
+		float texH = (float)stage.getHeight();
+		auto vPos = Engine::quadvPos(stageLeft, stageRight, stageTop + stageHeight, stageTop);
+		auto uv = Utils::getUV(
+		    stageSprite.getX() / texW, (stageSprite.getX() + stageSprite.getWidth()) / texW,
+		    stageSprite.getY() / texH, (stageSprite.getY() + spriteHeight) / texH);
+
+		renderer->pushQuad(vPos, uv, model, DirectX::XMFLOAT4(0, 0, 0, config.pvStageOpacity),
+		                   (int)stage.getID(), 0);
+	}
+
+	void ScorePreviewWindow::drawStageCoverDecoration(Renderer* renderer)
+	{
+		if (noteTextures.notes == -1)
+			return;
+
+		constexpr float stageTop = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
+		const Texture& noteTex = getNoteTexture();
+		size_t sprIndex = SPR_SIMULTANEOUS_CONNECTION;
+		size_t transIndex = static_cast<size_t>(SpriteType::SimultaneousLine);
+		if (!isArrayIndexInBounds(sprIndex, noteTex.sprites))
+			return;
+		if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
+			return;
+
+		const SpriteTransform& lineTransform = ResourceManager::spriteTransforms[transIndex];
+		const Sprite& sprite = noteTex.sprites[sprIndex];
+		float x = 0.12f * (1.f - config.pvStageCover);
+		auto vPos = lineTransform.apply(Engine::perspectiveQuadvPos(
+		    -6.f - x, 6.f + x, 1.f + Engine::getNoteHeight(), 1.f - Engine::getNoteHeight()));
+		float y = stageTop + config.pvStageCover * (1.f - stageTop);
+		auto uv = Engine::quadUV(sprite, noteTex);
+		auto model = DirectX::XMMatrixScaling(y, y, 1.f);
+		renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, config.pvStageOpacity),
+		                   (int)noteTex.getID(), -1);
+	}
+
+	void ScorePreviewWindow::drawNotes(const ScoreContext& context, Renderer* renderer)
+	{
+		double current_tm =
+		    accumulateDuration(context.currentTick, TICKS_PER_BEAT, context.score.tempoChanges);
+		const auto layer_stm = getCurrentLayerScaledTimes(context);
+
+		const auto& drawData = context.scorePreviewDrawData;
+		CameraRenderProps camera = getCameraPropsAt(context.score, context.currentTick);
+
+		for (auto& note : drawData.drawingNotes)
 		{
-			int textureID =
-			    note.getType() == NoteType::Damage ? noteTextures.ccNotes : noteTextures.notes;
-			if (textureID == -1)
-				return;
-			const Texture& texture = ResourceManager::textures[textureID];
+			// 修正：at() を find() に変えて、データが存在するかチェックする
+			auto it = context.score.notes.find(note.refID);
+			if (it == context.score.notes.end())
+				continue; // 見つからない場合は描画をスキップ
 
-			const int sprIndex = note.getType() == NoteType::Damage ? getCcNoteSpriteIndex(note)
-			                                                        : getNoteSpriteIndex(note);
-			if (!isArrayIndexInBounds(sprIndex, texture.sprites))
-				return;
-			const Sprite& sprite = texture.sprites[sprIndex];
+			const Note& noteData = it->second;
 
-			size_t transIndexM = static_cast<size_t>(SpriteType::NoteMiddle);
-			size_t transIndexL = static_cast<size_t>(SpriteType::NoteLeft);
-			size_t transIndexR = static_cast<size_t>(SpriteType::NoteRight);
-			if (!isArrayIndexInBounds(transIndexM, ResourceManager::spriteTransforms) ||
-			    !isArrayIndexInBounds(transIndexL, ResourceManager::spriteTransforms) ||
-			    !isArrayIndexInBounds(transIndexR, ResourceManager::spriteTransforms))
-				return;
+			if (context.currentTick > noteData.tick)
+				continue;
 
-			const SpriteTransform& mTransform = ResourceManager::spriteTransforms[transIndexM];
-			const SpriteTransform& lTransform = ResourceManager::spriteTransforms[transIndexL];
-			const SpriteTransform& rTransform = ResourceManager::spriteTransforms[transIndexR];
+			int layer = std::clamp(noteData.layer, 0, (int)context.score.layers.size() - 1);
+			double scaled_tm = layer_stm[layer];
 
-			const float noteHeight = Engine::getNoteHeight();
-			const float noteTop = 1.f - noteHeight, noteBottom = 1.f + noteHeight;
+			if (scaled_tm < note.visualTime.min)
+				continue;
+
+			double yPerspective =
+			    Engine::approach(note.visualTime.min, note.visualTime.max, scaled_tm);
+			double yLinear =
+			    (scaled_tm - note.visualTime.min) / (note.visualTime.max - note.visualTime.min);
+			double y = lerp(yLinear, yPerspective, (double)camera.stageTilt);
+			float l = Engine::laneToLeft(noteData.lane),
+			      r = Engine::laneToLeft(noteData.lane) + noteData.width;
+
+			drawNoteBase(renderer, noteData, l, r, (float)y, 1.f, camera);
+			if (noteData.friction)
+				drawTraceDiamond(renderer, noteData, l, r, (float)y, camera);
+			if (noteData.isFlick())
+				drawFlickArrow(renderer, noteData, (float)y, current_tm, camera);
+		}
+	}
+
+	void ScorePreviewWindow::drawLines(const ScoreContext& context, Renderer* renderer)
+	{
+		if (!config.pvSimultaneousLine || noteTextures.notes == -1)
+			return;
+
+		const auto& drawData = context.scorePreviewDrawData.drawingLines;
+
+		const Texture& texture = getNoteTexture();
+		size_t sprIndex = SPR_SIMULTANEOUS_CONNECTION;
+		if (!isArrayIndexInBounds(sprIndex, texture.sprites))
+			return;
+		const Sprite& sprite = texture.sprites[sprIndex];
+
+		// ★ 純正通り SimultaneousLine を使用
+		size_t transIndex = static_cast<size_t>(SpriteType::SimultaneousLine);
+		if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
+			return;
+		const SpriteTransform& lineTransform = ResourceManager::spriteTransforms[transIndex];
+
+		float texW = (float)texture.getWidth();
+		float texH = (float)texture.getHeight();
+		float noteDuration = Engine::getNoteDuration(config.pvNoteSpeed);
+
+		// ★ 純正と完全に同じ計算式 (1 + h と 1 - h) に戻して裏返りを修正
+		const float noteTop = 1.0f + Engine::getNoteHeight();
+		const float noteBottom = 1.0f - Engine::getNoteHeight();
+
+		for (auto& line : drawData)
+		{
+			if (context.currentTick > std::max(line.leftTick, line.rightTick))
+				continue;
+
+			double left_stm = getCachedLayerScaledTime(context, line.leftTick, line.leftLayer);
+			double right_stm = getCachedLayerScaledTime(context, line.rightTick, line.rightLayer);
+
+			double current_left_stm =
+			    getCachedLayerScaledTime(context, context.currentTick, line.leftLayer);
+			double current_right_stm =
+			    getCachedLayerScaledTime(context, context.currentTick, line.rightLayer);
+
+			double left_progress = 1.0 - (left_stm - current_left_stm) / noteDuration;
+			double right_progress = 1.0 - (right_stm - current_right_stm) / noteDuration;
+
+			if (left_progress < 0.0 && right_progress < 0.0)
+				continue;
+			if ((left_progress < 1.0 && 1.0 < right_progress) ||
+			    (left_progress > 1.0 && 1.0 > right_progress))
+				continue;
+
+			double adj_left_progress = std::max(left_progress, 0.0);
+			double adj_right_progress = std::max(right_progress, 0.0);
+
+			float adj_left_lane = line.leftLane;
+			float adj_right_lane = line.rightLane;
+
+			if (std::abs(left_progress - right_progress) > 1e-6)
+			{
+				double adj_left_frac = unlerpD(left_progress, right_progress, adj_left_progress);
+				double adj_right_frac = unlerpD(left_progress, right_progress, adj_right_progress);
+				adj_left_lane = lerpD(line.leftLane, line.rightLane, adj_left_frac);
+				adj_right_lane = lerpD(line.leftLane, line.rightLane, adj_right_frac);
+			}
+
+			float adj_left_travel = Engine::approachProgress(adj_left_progress);
+			float adj_right_travel = Engine::approachProgress(adj_right_progress);
+
+			if (std::abs(adj_left_lane - adj_right_lane) < 1e-6 &&
+			    std::abs(adj_left_travel - adj_right_travel) < 1e-6)
+				continue;
+
+			if (adj_left_lane > adj_right_lane)
+			{
+				std::swap(adj_left_lane, adj_right_lane);
+				std::swap(adj_left_travel, adj_right_travel);
+			}
+
+			// laneToLeft の二重変換を排し、構築済みの物理座標をそのまま使用
+			float noteLeft = adj_left_lane;
+			float noteRight = adj_right_lane;
+
 			if (config.pvMirrorScore)
-				std::swap(noteLeft *= -1.f, noteRight *= -1.f);
-			int zIndex =
-			    Engine::getZIndex(!note.friction ? SpriteLayer::BASE_NOTE : SpriteLayer::TICK_NOTE,
-			                      noteLeft + (noteRight - noteLeft) / 2.f, y * zScalar);
-
-			auto model = DirectX::XMMatrixScaling(y, y, 1.f);
-			float texW = (float)texture.getWidth();
-			float texH = (float)texture.getHeight();
-
-			std::array<DirectX::XMFLOAT4, 4> vPos, uv;
-
-			// ---------------------------------------------------------
-			// 中央パーツのぼやけ（エイリアシング）回避ロジック
-			// ---------------------------------------------------------
-			float middleLeft = noteLeft + 0.25f;
-			float middleRight = noteRight - 0.3f;
-			float geomWidth = middleRight - middleLeft;
-
-			float midUvLeft = sprite.getX() + NOTE_SIDE_WIDTH;
-			float midUvRight = sprite.getX() + sprite.getWidth() - NOTE_SIDE_WIDTH;
-
-			// 描画幅が狭い場合、テクスチャが圧縮されてぼやけるのを防ぐため、
-			// UV領域もジオメトリ幅に合わせて中央部分のみをクロップ（切り出し）する
-			if (geomWidth > 0.0f)
 			{
-				float maxUvWidth = geomWidth * 100.0f; // 1ユニットあたりの適正テクスチャピクセル数
-				float currentUvWidth = midUvRight - midUvLeft;
+				noteLeft *= -1.f;
+				noteRight *= -1.f;
+				std::swap(noteLeft, noteRight);
+				std::swap(adj_left_travel, adj_right_travel);
+			}
 
-				if (currentUvWidth > maxUvWidth)
+			// ★ 純正の `auto vPos = lineTransform.apply(Engine::perspectiveQuadvPos(...));`
+			// を完全再現
+			auto rawPos = Engine::perspectiveQuadvPos(noteLeft, noteRight, noteTop, noteBottom);
+			auto vPos = lineTransform.apply(rawPos);
+
+			// ★ 純正の `DirectX::XMMatrixScaling(y, y, 1.f)` を、左右独立して適用
+			vPos[0].x *= adj_right_travel;
+			vPos[0].y *= adj_right_travel;
+			vPos[1].x *= adj_right_travel;
+			vPos[1].y *= adj_right_travel;
+
+			vPos[2].x *= adj_left_travel;
+			vPos[2].y *= adj_left_travel;
+			vPos[3].x *= adj_left_travel;
+			vPos[3].y *= adj_left_travel;
+
+			auto uv =
+			    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
+			                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
+
+			// ★ 純正の Z-Index と Tint を完全再現
+			float center_y = (adj_left_travel + adj_right_travel) / 2.0f;
+			int zIndex = Engine::getZIndex(SpriteLayer::UNDER_NOTE_EFFECT, 0, center_y);
+
+			renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint),
+			                   (int)texture.getID(), zIndex);
+		}
+	}
+
+	void ScorePreviewWindow::drawHoldTicks(const ScoreContext& context, Renderer* renderer)
+	{
+		if (noteTextures.notes == -1)
+			return;
+		const auto layer_stm = getCurrentLayerScaledTimes(context);
+
+		const float notesHeight = Engine::getNoteHeight() * 1.3f;
+		const float w = notesHeight / scaledAspectRatio;
+		const float noteTop = 1. + notesHeight, noteBottom = 1. - notesHeight;
+		const Texture& texture = getNoteTexture();
+		float texW = (float)texture.getWidth();
+		float texH = (float)texture.getHeight();
+
+		size_t transIndex = static_cast<size_t>(SpriteType::HoldTick);
+		if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
+			return;
+		const SpriteTransform& transform = ResourceManager::spriteTransforms[transIndex];
+
+		for (auto& tick : context.scorePreviewDrawData.drawingHoldTicks)
+		{
+			// 存在チェックを行い、データが既に消えていたら描画を安全にスキップする
+			auto it = context.score.notes.find(tick.refID);
+			if (it == context.score.notes.end())
+				continue;
+			const Note& noteData = it->second;
+
+			if (context.currentTick > noteData.tick)
+				continue;
+
+			int layer = std::clamp(noteData.layer, 0, (int)context.score.layers.size() - 1);
+			double scaled_tm = layer_stm[layer];
+
+			if (scaled_tm < tick.visualTime.min)
+				continue;
+
+			float y = (float)Engine::approach(tick.visualTime.min, tick.visualTime.max, scaled_tm);
+
+			//  Y座標クリッピング
+			if (y < -0.1 || y > 1.2)
+				continue;
+
+			int sprIndex = getNoteSpriteIndex(noteData);
+			if (!isArrayIndexInBounds(sprIndex, texture.sprites))
+				continue;
+			const Sprite& sprite = texture.sprites[sprIndex];
+			const float tickCenter = tick.center * (config.pvMirrorScore ? -1 : 1);
+
+			auto vPos = transform.apply(
+			    Engine::quadvPos(tickCenter - w, tickCenter + w, noteTop, noteBottom));
+			auto uv =
+			    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
+			                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
+
+			renderer->pushQuad(vPos, uv, DirectX::XMMatrixScaling(y, y, 1.f), toFloat4(defaultTint),
+			                   (int)texture.getID(),
+			                   Engine::getZIndex(SpriteLayer::DIAMOND, tickCenter, y));
+		}
+	}
+
+	void ScorePreviewWindow::drawHoldCurves(const ScoreContext& context, Renderer* renderer)
+	{
+		const float total_tm = accumulateDuration(context.scorePreviewDrawData.maxTicks,
+		                                          TICKS_PER_BEAT, context.score.tempoChanges);
+		const double current_tm =
+		    accumulateDuration(context.currentTick, TICKS_PER_BEAT, context.score.tempoChanges);
+		const float noteDuration = Engine::getNoteDuration(config.pvNoteSpeed);
+		const float mirror = config.pvMirrorScore ? -1 : 1;
+		const auto& drawData = context.scorePreviewDrawData;
+		const auto layer_stm = getCurrentLayerScaledTimes(context);
+
+		for (auto& segment : drawData.drawingHoldSegments)
+		{
+			// 存在チェックを行い、データが既に消えていたら描画を安全にスキップする
+			auto endIt = context.score.notes.find(segment.endID);
+			if (endIt == context.score.notes.end())
+				continue;
+			const Note& holdEnd = endIt->second;
+
+			auto startIt = context.score.notes.find(holdEnd.parentID);
+			if (startIt == context.score.notes.end())
+				continue;
+			const Note& holdStart = startIt->second;
+
+			int layer = std::clamp(holdStart.layer, 0, (int)context.score.layers.size() - 1);
+			double current_stm = layer_stm[layer];
+
+			if (current_tm >= segment.endTime)
+				continue;
+
+			if (std::abs(segment.headTime - segment.tailTime) < 1e-6)
+				continue;
+
+			// =======================================================================================
+			// ★
+			// 完全修正版：STM補間（曲線の維持）と、正確なアンカー固定（途切れ防止）のハイブリッド
+			// =======================================================================================
+
+			double start_stm = segment.headTime;
+			double start_time = segment.startTime;
+
+			// ノーツが判定ラインを越えた（ホールド中）場合、始点を「現在のSTM」と「現在の時間」に強制固定する
+			// これにより、推測計算によるズレが消滅し、絶対に判定ライン（Y=1.0）から帯が途切れません。
+			if (current_tm > segment.startTime)
+			{
+				start_stm = current_stm;
+				start_time = current_tm;
+			}
+
+			double stm_top = current_stm + 1.0 * noteDuration;
+			double stm_bottom = current_stm - 0.2 * noteDuration;
+
+			// 画面に映る範囲のみを計算するカリング処理（元のコードの考え方と同じ）
+			double p_view_a = unlerpD(start_stm, segment.tailTime, stm_bottom);
+			double p_view_b = unlerpD(start_stm, segment.tailTime, stm_top);
+			double p_min = std::clamp(std::min(p_view_a, p_view_b), 0.0, 1.0);
+			double p_max = std::clamp(std::max(p_view_a, p_view_b), 0.0, 1.0);
+
+			if (p_min >= p_max)
+				continue;
+
+			// =======================================================================================
+
+			float holdStartCenter = Engine::getNoteCenter(holdStart) * mirror;
+			bool isHoldActivated = current_tm >= segment.activeTime;
+			bool isSegmentActivated = current_tm >= segment.startTime;
+
+			int textureID;
+			int sprIndex;
+			if (segment.isGuide)
+			{
+				textureID = noteTextures.guideColors;
+				auto holdIt = context.score.holdNotes.find(holdStart.ID);
+				if (holdIt == context.score.holdNotes.end())
+					continue;
+				sprIndex = (int)holdIt->second.guideColor;
+			}
+			else
+			{
+				textureID = noteTextures.holdPath;
+				sprIndex = (!holdStart.critical ? 1 : 3);
+			}
+
+			if (textureID == -1)
+				continue;
+			const Texture& texture = ResourceManager::textures[textureID];
+			if (!isArrayIndexInBounds(sprIndex, texture.sprites))
+				continue;
+			const Sprite& segmentSprite = texture.sprites[sprIndex];
+
+			const auto ease = getEaseFunction(segment.ease);
+			float startLeft = segment.headLeft, startRight = segment.headRight,
+			      endLeft = segment.tailLeft, endRight = segment.tailRight;
+
+			// 分割数の計算 (元のSTMを用いたロジックを維持)
+			double start_y = Engine::approach(start_stm - noteDuration, start_stm, current_stm);
+			double end_y =
+			    Engine::approach(segment.tailTime - noteDuration, segment.tailTime, current_stm);
+
+			int steps = 10;
+			if (segment.ease == EaseType::Linear)
+			{
+				double mid_travel = (start_y + end_y) / 2.0;
+				double perspective_factor = std::pow(std::max(0.1, mid_travel), 0.8);
+				double x_diff_max =
+				    std::max(std::abs(startLeft - endLeft), std::abs(startRight - endRight));
+
+				// Xの移動量計算には時間割合(time_frac)を使う
+				double t_frac_start = unlerpD(segment.startTime, segment.endTime, start_time);
+				double t_frac_end = 1.0;
+				double x_diff =
+				    (x_diff_max * 2.5 / perspective_factor) * std::abs(t_frac_end - t_frac_start);
+				double curve_change_scale = std::pow(x_diff, 0.8);
+				steps = std::max(1, static_cast<int>(std::ceil(curve_change_scale * 10.0)));
+			}
+			else
+			{
+				double pos_offset = 0.0;
+				double ref_start_lane =
+				    std::abs(startLeft - endLeft) > std::abs(startRight - endRight) ? startLeft
+				                                                                    : startRight;
+				double ref_end_lane =
+				    std::abs(startLeft - endLeft) > std::abs(startRight - endRight) ? endLeft
+				                                                                    : endRight;
+
+				double t_frac_start = unlerpD(segment.startTime, segment.endTime, start_time);
+				double t_frac_end = 1.0;
+
+				double pos_offset_this_side = 0.0;
+				for (double r : { 0.25, 0.75 })
 				{
-					float centerUv = (midUvLeft + midUvRight) / 2.0f;
-					midUvLeft = centerUv - (maxUvWidth / 2.0f);
-					midUvRight = centerUv + (maxUvWidth / 2.0f);
+					double time_frac = lerpD(t_frac_start, t_frac_end, r);
+					double interp_frac = ease(0.0f, 1.0f, (float)time_frac);
+					double y = lerpD(start_y, end_y, r);
+					double lane = lerpD(ref_start_lane, ref_end_lane, interp_frac);
+					double ref_pos = lerpD(ref_start_lane, ref_end_lane, r);
+					double screen_offset = std::abs(lane - ref_pos);
+					double compensation_factor = std::pow(std::max(0.1, y), 0.8);
+					pos_offset_this_side += screen_offset / compensation_factor;
 				}
+				pos_offset =
+				    pos_offset_this_side * std::pow(std::abs(t_frac_end - t_frac_start), 0.7);
+				double curve_change_scale = std::pow(pos_offset, 0.4) * 2.0;
+				steps = std::max(1, static_cast<int>(std::ceil(curve_change_scale * 10.0)));
 			}
+			steps = std::clamp(steps, 1, 200);
 
-			if (geomWidth > 0.0f)
+			// ==============================================================================
+
+			auto holdMapIt = context.score.holdNotes.find(holdStart.ID);
+			if (isSegmentActivated && holdMapIt != context.score.holdNotes.end() &&
+			    holdMapIt->second.startType == HoldNoteType::Normal)
 			{
-				vPos = mTransform.apply(
-				    Engine::perspectiveQuadvPos(middleLeft, middleRight, noteTop, noteBottom));
-				uv = Utils::getUV(midUvLeft / texW, midUvRight / texW, sprite.getY() / texH,
-				                  (sprite.getY() + sprite.getHeight()) / texH);
-				renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(),
-				                   zIndex);
+				double base_frac = unlerpD(segment.startTime, segment.endTime, start_time);
+				float l = ease(startLeft, endLeft, (float)base_frac),
+				      r = ease(startRight, endRight, (float)base_frac);
+				CameraRenderProps holdCamera = getCameraPropsAt(context.score, context.currentTick);
+				drawNoteBase(renderer, holdStart, l, r, 1.f, segment.activeTime / total_tm,
+				             holdCamera);
+				if (holdStart.friction)
+					drawTraceDiamond(renderer, holdStart, l, r, 1.f);
 			}
 
-			// Left slice (純正完全維持)
-			vPos = lTransform.apply(
-			    Engine::perspectiveQuadvPos(noteLeft, noteLeft + 0.25f, noteTop, noteBottom));
-			uv = Utils::getUV((sprite.getX() + NOTE_SIDE_PAD) / texW,
-			                  (sprite.getX() + NOTE_SIDE_WIDTH) / texW, sprite.getY() / texH,
+			if (config.pvMirrorScore)
+			{
+				std::swap(startLeft *= -1, startRight *= -1);
+				std::swap(endLeft *= -1, endRight *= -1);
+			}
+
+			double holdStartProgress, holdEndProgress;
+			if (segment.isGuide)
+			{
+				auto holdMapIt2 = context.score.holdNotes.find(holdStart.ID);
+				if (holdMapIt2 == context.score.holdNotes.end())
+					continue;
+				const HoldNote& hold = holdMapIt2->second;
+				double totalJoints = 1 + hold.steps.size();
+				double headProgress = segment.tailStepIndex / totalJoints;
+				double tailProgress = (segment.tailStepIndex + 1) / totalJoints;
+
+				double base_frac = unlerpD(segment.startTime, segment.endTime, start_time);
+				holdStartProgress = lerpD(headProgress, tailProgress, base_frac);
+				holdEndProgress = lerpD(headProgress, tailProgress, 1.0);
+			}
+
+			double from_percentage = 0;
+
+			// ループ初期値の設定
+			double stepStart_stm = lerpD(start_stm, segment.tailTime, p_min);
+			double stepTop =
+			    Engine::approach(stepStart_stm - noteDuration, stepStart_stm, current_stm);
+
+			double stepStart_time = lerpD(start_time, segment.endTime, p_min);
+			double stepStart_timeFrac = unlerpD(segment.startTime, segment.endTime, stepStart_time);
+
+			auto model = DirectX::XMMatrixIdentity();
+			float baseAlpha = segment.isGuide ? config.pvGuideAlpha : config.pvHoldAlpha;
+			int zIndex = Engine::getZIndex(segment.isGuide ? SpriteLayer::GUIDE_PATH
+			                                               : SpriteLayer::HOLD_PATH,
+			                               holdStartCenter, segment.activeTime / total_tm);
+
+			for (int i = 0; i < steps; i++)
+			{
+				double to_p = lerpD(p_min, p_max, (double)(i + 1) / steps);
+
+				// Y座標用には「STM」を補間して使う（純正コードの美しい曲線を維持）
+				double stepEnd_stm = lerpD(start_stm, segment.tailTime, to_p);
+				double stepBottom =
+				    Engine::approach(stepEnd_stm - noteDuration, stepEnd_stm, current_stm);
+
+				// X座標用には「時間割合」を補間して使う（レーンの移動が時間ベースで正確になる）
+				double stepEnd_time = lerpD(start_time, segment.endTime, to_p);
+				double stepEnd_timeFrac = unlerpD(segment.startTime, segment.endTime, stepEnd_time);
+
+				float stepStartLeft = ease(startLeft, endLeft, (float)stepStart_timeFrac);
+				float stepEndLeft = ease(startLeft, endLeft, (float)stepEnd_timeFrac);
+				float stepStartRight = ease(startRight, endRight, (float)stepStart_timeFrac);
+				float stepEndRight = ease(startRight, endRight, (float)stepEnd_timeFrac);
+
+				// =======================================================================================
+				// マイナスHS対策：Y座標が逆転した場合、手前と奥の座標を丸ごとスワップしてねじれを防ぐ
+				// =======================================================================================
+				float q_leftStart = stepStartLeft;
+				float q_leftStop = stepEndLeft;
+				float q_rightStart = stepStartRight;
+				float q_rightStop = stepEndRight;
+				float q_top = (float)stepTop;
+				float q_bottom = (float)stepBottom;
+
+				if (q_top < q_bottom)
+				{
+					std::swap(q_top, q_bottom);
+					std::swap(q_leftStart, q_leftStop);
+					std::swap(q_rightStart, q_rightStop);
+				}
+
+				auto vPos = Engine::perspectiveQuadvPos(q_leftStart, q_leftStop, q_rightStart,
+				                                        q_rightStop, q_top, q_bottom);
+				// =======================================================================================
+
+				float spr_x1, spr_x2, spr_y1, spr_y2;
+				std::array<DirectX::XMFLOAT4, 4> vertexColors;
+
+				if (segment.isGuide)
+				{
+					auto holdMapIt3 = context.score.holdNotes.find(holdStart.ID);
+					if (holdMapIt3 == context.score.holdNotes.end())
+						continue;
+					const HoldNote& hold = holdMapIt3->second;
+					double startProg = lerpD(holdStartProgress, holdEndProgress, from_percentage);
+					double to_percentage = double(i + 1) / steps;
+					double endProg = lerpD(holdStartProgress, holdEndProgress, to_percentage);
+					float startAlpha = baseAlpha;
+					float endAlpha = baseAlpha;
+					if (hold.fadeType == FadeType::Out)
+					{
+						startAlpha *= (1.0f - (float)startProg);
+						endAlpha *= (1.0f - (float)endProg);
+					}
+					else if (hold.fadeType == FadeType::In)
+					{
+						startAlpha *= (float)startProg;
+						endAlpha *= (float)endProg;
+					}
+					vertexColors = {
+						{ toFloat4(defaultTint, startAlpha), toFloat4(defaultTint, endAlpha),
+						  toFloat4(defaultTint, endAlpha), toFloat4(defaultTint, startAlpha) }
+					};
+					spr_x1 = segmentSprite.getX();
+					spr_x2 = segmentSprite.getX() + segmentSprite.getWidth();
+					spr_y1 = segmentSprite.getY() + segmentSprite.getHeight();
+					spr_y2 = segmentSprite.getY();
+					from_percentage = to_percentage;
+				}
+				else
+				{
+					spr_x1 = segmentSprite.getX() + HOLD_XCUTOFF;
+					spr_x2 = segmentSprite.getX() + segmentSprite.getWidth() - HOLD_XCUTOFF;
+					spr_y1 = segmentSprite.getY();
+					spr_y2 = segmentSprite.getY() + segmentSprite.getHeight();
+				}
+
+				float texW = (float)texture.getWidth();
+				float texH = (float)texture.getHeight();
+				auto uv = Utils::getUV(spr_x1 / texW, spr_x2 / texW, spr_y1 / texH, spr_y2 / texH);
+
+				if (config.pvHoldAnimation && isHoldActivated && !segment.isGuide &&
+				    isArrayIndexInBounds(sprIndex - 1, texture.sprites))
+				{
+					const Sprite& activeSprite = texture.sprites[sprIndex - 1];
+					const int norm2ActiveOffset = (int)(activeSprite.getY() - segmentSprite.getY());
+					double delta_tm = current_tm - segment.activeTime;
+					float normalAplha = (std::cos((float)delta_tm * MATH_PI * 2.f) + 2.f) / 3.f;
+					renderer->pushQuad(vPos, uv, model,
+					                   toFloat4(defaultTint, baseAlpha * normalAplha),
+					                   (int)texture.getID(), zIndex);
+					auto uvActive = Utils::getUV(spr_x1 / texW, spr_x2 / texW,
+					                             (spr_y1 + norm2ActiveOffset) / texH,
+					                             (spr_y2 + norm2ActiveOffset) / texH);
+					renderer->pushQuad(vPos, uvActive, model,
+					                   toFloat4(defaultTint, baseAlpha * (1.f - normalAplha)),
+					                   (int)texture.getID(), zIndex);
+				}
+				else if (segment.isGuide)
+				{
+					renderer->pushQuad(vPos, uv, model, vertexColors, (int)texture.getID(), zIndex);
+				}
+				else
+				{
+					renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, baseAlpha),
+					                   (int)texture.getID(), zIndex);
+				}
+
+				// ループ終端の更新処理
+				stepTop = stepBottom;
+				stepStart_timeFrac = stepEnd_timeFrac;
+			}
+		}
+	}
+
+	void ScorePreviewWindow::drawNoteBase(Renderer* renderer, const Note& note, float noteLeft,
+	                                      float noteRight, float y, float zScalar,
+	                                      const CameraRenderProps& camera)
+	{
+		int textureID =
+		    note.getType() == NoteType::Damage ? noteTextures.ccNotes : noteTextures.notes;
+		if (textureID == -1)
+			return;
+		const Texture& texture = ResourceManager::textures[textureID];
+
+		const int sprIndex = note.getType() == NoteType::Damage ? getCcNoteSpriteIndex(note)
+		                                                        : getNoteSpriteIndex(note);
+		if (!isArrayIndexInBounds(sprIndex, texture.sprites))
+			return;
+		const Sprite& sprite = texture.sprites[sprIndex];
+
+		size_t transIndexM = static_cast<size_t>(SpriteType::NoteMiddle);
+		size_t transIndexL = static_cast<size_t>(SpriteType::NoteLeft);
+		size_t transIndexR = static_cast<size_t>(SpriteType::NoteRight);
+		if (!isArrayIndexInBounds(transIndexM, ResourceManager::spriteTransforms) ||
+		    !isArrayIndexInBounds(transIndexL, ResourceManager::spriteTransforms) ||
+		    !isArrayIndexInBounds(transIndexR, ResourceManager::spriteTransforms))
+			return;
+
+		const SpriteTransform& mTransform = ResourceManager::spriteTransforms[transIndexM];
+		const SpriteTransform& lTransform = ResourceManager::spriteTransforms[transIndexL];
+		const SpriteTransform& rTransform = ResourceManager::spriteTransforms[transIndexR];
+
+		const float noteHeight = Engine::getNoteHeight();
+		const float noteTop = 1.f - noteHeight;
+		const float noteBottom = 1.f + noteHeight;
+		if (config.pvMirrorScore)
+			std::swap(noteLeft *= -1.f, noteRight *= -1.f);
+		int zIndex =
+		    Engine::getZIndex(!note.friction ? SpriteLayer::BASE_NOTE : SpriteLayer::TICK_NOTE,
+		                      noteLeft + (noteRight - noteLeft) / 2.f, y * zScalar);
+
+		float scaleY = lerp(1.f, (float)y, camera.stageTilt);
+		float flatTranslateY = lerp(-(1.f - (float)y) * 1.5f, 0.f, camera.stageTilt);
+		auto model =
+		    DirectX::XMMatrixMultiply(DirectX::XMMatrixTranslation(0.f, flatTranslateY, 0.f),
+		                              DirectX::XMMatrixScaling(scaleY, scaleY, 1.f));
+
+		auto applyCamera = [&](std::array<DirectX::XMFLOAT4, 4>& vp)
+		{
+			if (camera.stageTilt >= 0.0001f)
+				for (auto& v : vp)
+					applyCameraPoint(v.x, v.y, camera);
+		};
+
+		float texW = (float)texture.getWidth();
+		float texH = (float)texture.getHeight();
+
+		std::array<DirectX::XMFLOAT4, 4> vPos, uv;
+
+		// ---------------------------------------------------------
+		// 中央パーツのぼやけ（エイリアシング）回避ロジック
+		// ---------------------------------------------------------
+		float middleLeft = noteLeft + 0.25f;
+		float middleRight = noteRight - 0.3f;
+		float geomWidth = middleRight - middleLeft;
+
+		float midUvLeft = sprite.getX() + NOTE_SIDE_WIDTH;
+		float midUvRight = sprite.getX() + sprite.getWidth() - NOTE_SIDE_WIDTH;
+
+		// 描画幅が狭い場合、テクスチャが圧縮されてぼやけるのを防ぐため、
+		// UV領域もジオメトリ幅に合わせて中央部分のみをクロップ（切り出し）する
+		if (geomWidth > 0.0f)
+		{
+			float maxUvWidth = geomWidth * 100.0f; // 1ユニットあたりの適正テクスチャピクセル数
+			float currentUvWidth = midUvRight - midUvLeft;
+
+			if (currentUvWidth > maxUvWidth)
+			{
+				float centerUv = (midUvLeft + midUvRight) / 2.0f;
+				midUvLeft = centerUv - (maxUvWidth / 2.0f);
+				midUvRight = centerUv + (maxUvWidth / 2.0f);
+			}
+		}
+
+		auto makeQuad = [&](float l, float r) -> std::array<DirectX::XMFLOAT4, 4>
+		{
+			if (camera.stageTilt < 0.0001f)
+			{
+				float cl = l, cy = 1.0f;
+				float cr = r, cy2 = 1.0f;
+				applyCameraPoint(cl, cy, camera);
+				applyCameraPoint(cr, cy2, camera);
+				return Engine::quadvPos(cl, cr, noteTop, noteBottom);
+			}
+			return Engine::perspectiveQuadvPos(l, r, noteTop, noteBottom);
+		};
+
+		if (geomWidth > 0.0f)
+		{
+			vPos = mTransform.apply(makeQuad(middleLeft, middleRight));
+			applyCamera(vPos);
+			uv = Utils::getUV(midUvLeft / texW, midUvRight / texW, sprite.getY() / texH,
 			                  (sprite.getY() + sprite.getHeight()) / texH);
 			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(),
 			                   zIndex);
+		}
 
-			// Right slice (純正完全維持)
-			vPos = rTransform.apply(
-			    Engine::perspectiveQuadvPos(noteRight - 0.3f, noteRight, noteTop, noteBottom));
-			uv = Utils::getUV((sprite.getX() + sprite.getWidth() - NOTE_SIDE_WIDTH) / texW,
-			                  (sprite.getX() + sprite.getWidth() - NOTE_SIDE_PAD) / texW,
-			                  sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
+		// Left slice (純正完全維持)
+		vPos = lTransform.apply(makeQuad(noteLeft, noteLeft + 0.25f));
+		applyCamera(vPos);
+		uv = Utils::getUV((sprite.getX() + NOTE_SIDE_PAD) / texW,
+		                  (sprite.getX() + NOTE_SIDE_WIDTH) / texW, sprite.getY() / texH,
+		                  (sprite.getY() + sprite.getHeight()) / texH);
+		renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(), zIndex);
+
+		// Right slice (純正完全維持)
+		vPos = rTransform.apply(makeQuad(noteRight - 0.3f, noteRight));
+		applyCamera(vPos);
+		uv = Utils::getUV((sprite.getX() + sprite.getWidth() - NOTE_SIDE_WIDTH) / texW,
+		                  (sprite.getX() + sprite.getWidth() - NOTE_SIDE_PAD) / texW,
+		                  sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
+		renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(), zIndex);
+	}
+
+	void ScorePreviewWindow::drawTraceDiamond(Renderer* renderer, const Note& note, float noteLeft,
+	                                          float noteRight, float y,
+	                                          const CameraRenderProps& camera)
+	{
+
+		if (noteTextures.notes == -1)
+			return;
+		const Texture& texture = getNoteTexture();
+		int frictionSprIndex = getFrictionSpriteIndex(note);
+		if (!isArrayIndexInBounds(frictionSprIndex, texture.sprites))
+			return;
+		const Sprite& frictionSpr = texture.sprites[frictionSprIndex];
+
+		size_t transIndex = static_cast<size_t>(SpriteType::TraceDiamond);
+		if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
+			return;
+		const SpriteTransform& transform = ResourceManager::spriteTransforms[transIndex];
+
+		const float w = Engine::getNoteHeight() / scaledAspectRatio;
+		const float noteTop = 1.f + Engine::getNoteHeight(),
+		            noteBottom = 1.f - Engine::getNoteHeight();
+		if (config.pvMirrorScore)
+			std::swap(noteLeft *= -1.f, noteRight *= -1.f);
+		const float noteCenter = noteLeft + (noteRight - noteLeft) / 2.f;
+		int zIndex = Engine::getZIndex(SpriteLayer::DIAMOND, noteCenter, y);
+
+		auto applyCamera = [&](std::array<DirectX::XMFLOAT4, 4>& vp)
+		{
+			for (auto& v : vp)
+			{
+				if (camera.stageTilt < 0.0001f)
+				{
+					float origY = v.y;
+					v.y = 1.0f;
+					applyCameraPoint(v.x, v.y, camera);
+					v.y = origY;
+				}
+				else
+				{
+					applyCameraPoint(v.x, v.y, camera);
+				}
+			}
+		};
+
+		auto vPos =
+		    transform.apply(Engine::quadvPos(noteCenter - w, noteCenter + w, noteTop, noteBottom));
+		applyCamera(vPos);
+
+		float texW = (float)texture.getWidth();
+		float texH = (float)texture.getHeight();
+		auto uv = Utils::getUV(
+		    frictionSpr.getX() / texW, (frictionSpr.getX() + frictionSpr.getWidth()) / texW,
+		    frictionSpr.getY() / texH, (frictionSpr.getY() + frictionSpr.getHeight()) / texH);
+
+		auto model = DirectX::XMMatrixScaling((float)y, (float)y, 1.f);
+		renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(), zIndex);
+	}
+
+	void ScorePreviewWindow::drawFlickArrow(Renderer* renderer, const Note& note, float y,
+	                                        double time, const CameraRenderProps& camera)
+	{
+		if (noteTextures.notes == -1)
+			return;
+		const Texture& texture = getNoteTexture();
+		const int sprIndex = getFlickArrowSpriteIndex(note);
+		if (!isArrayIndexInBounds(sprIndex, texture.sprites))
+			return;
+		const Sprite& arrowSprite = texture.sprites[sprIndex];
+
+		//  DownLeft, DownRight も左右フリックとして扱うように判定を追加
+		bool isLeftOrRight =
+		    (note.flick == FlickType::Left || note.flick == FlickType::Right ||
+		     note.flick == FlickType::DownLeft || note.flick == FlickType::DownRight);
+		bool isRightward = (note.flick == FlickType::Right || note.flick == FlickType::DownRight);
+
+		size_t flickTransformIdx =
+		    std::clamp((int)note.width, 1, MAX_FLICK_SPRITES) - 1 +
+		    static_cast<int>(isLeftOrRight ? SpriteType::FlickArrowLeft : SpriteType::FlickArrowUp);
+		if (!isArrayIndexInBounds(flickTransformIdx, ResourceManager::spriteTransforms))
+			return;
+		const SpriteTransform& transform = ResourceManager::spriteTransforms[flickTransformIdx];
+
+		const int mirror = config.pvMirrorScore ? -1 : 1;
+		const int flickDirection = mirror * (isLeftOrRight ? (isRightward ? 1 : -1) : 0);
+		const float center = Engine::getNoteCenter(note) * mirror;
+		const float w = std::clamp((int)note.width, 1, MAX_FLICK_SPRITES) *
+		                (isRightward ? -1.f : 1.f) * mirror / 4.f;
+
+		float scaleY = lerp(1.f, y, camera.stageTilt);
+		auto applyCamera = [&](std::array<DirectX::XMFLOAT4, 4>& vp)
+		{
+			for (auto& v : vp)
+			{
+				if (camera.stageTilt < 0.0001f)
+				{
+					float origY = v.y;
+					v.y = 1.0f;
+					applyCameraPoint(v.x, v.y, camera);
+					v.y = origY;
+				}
+				else
+				{
+					applyCameraPoint(v.x, v.y, camera);
+				}
+			}
+		};
+
+		auto vPos = transform.apply(Engine::quadvPos(center - w, center + w, 1.f,
+		                                             1.f - 2.f * std::abs(w) * scaledAspectRatio));
+		applyCamera(vPos);
+
+		float texW = (float)texture.getWidth();
+		float texH = (float)texture.getHeight();
+		auto uv = Utils::getUV(
+		    arrowSprite.getX() / texW, (arrowSprite.getX() + arrowSprite.getWidth()) / texW,
+		    arrowSprite.getY() / texH, (arrowSprite.getY() + arrowSprite.getHeight()) / texH);
+
+		//  下フリックの場合、UV座標のY軸を入れ替えて画像を上下反転させる
+		bool isDown = (note.flick >= FlickType::Down && note.flick <= FlickType::DownRight);
+		if (isDown)
+		{
+			// Utils::getUV は {右上, 右下, 左下, 左上}
+			// の順なので、0と1(右側)、3と2(左側)のY座標を入れ替える
+			std::swap(uv[0].y, uv[1].y);
+			std::swap(uv[3].y, uv[2].y);
+		}
+
+		int zIndex = Engine::getZIndex(SpriteLayer::FLICK_ARROW, center, y);
+
+		if (config.pvFlickAnimation)
+		{
+			double t = std::fmod(time, 0.5) / 0.5;
+			auto cubicEaseIn = [](double val) { return (float)(val * val * val); };
+			auto animationVector = DirectX::XMVectorScale(
+			    DirectX::XMVectorSet((float)flickDirection, -2.f * scaledAspectRatio, 0.f, 0.f),
+			    (float)t);
+			auto model =
+			    DirectX::XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(animationVector),
+			                              DirectX::XMMatrixScaling(scaleY, scaleY, 1.f));
+			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, 1.f - cubicEaseIn(t)),
+			                   (int)texture.getID(), zIndex);
+		}
+		else
+		{
+			auto model = DirectX::XMMatrixScaling((float)y, (float)y, 1.f);
 			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(),
 			                   zIndex);
-		}
-
-		void ScorePreviewWindow::drawTraceDiamond(Renderer * renderer, const Note& note,
-		                                          float noteLeft, float noteRight, float y)
-		{
-			if (noteTextures.notes == -1)
-				return;
-			const Texture& texture = getNoteTexture();
-			int frictionSprIndex = getFrictionSpriteIndex(note);
-			if (!isArrayIndexInBounds(frictionSprIndex, texture.sprites))
-				return;
-			const Sprite& frictionSpr = texture.sprites[frictionSprIndex];
-
-			size_t transIndex = static_cast<size_t>(SpriteType::TraceDiamond);
-			if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
-				return;
-			const SpriteTransform& transform = ResourceManager::spriteTransforms[transIndex];
-
-			const float w = Engine::getNoteHeight() / scaledAspectRatio;
-			const float noteTop = 1.f + Engine::getNoteHeight(),
-			            noteBottom = 1.f - Engine::getNoteHeight();
-			if (config.pvMirrorScore)
-				std::swap(noteLeft *= -1.f, noteRight *= -1.f);
-			const float noteCenter = noteLeft + (noteRight - noteLeft) / 2.f;
-			int zIndex = Engine::getZIndex(SpriteLayer::DIAMOND, noteCenter, y);
-
-			auto vPos = transform.apply(
-			    Engine::quadvPos(noteCenter - w, noteCenter + w, noteTop, noteBottom));
-
-			float texW = (float)texture.getWidth();
-			float texH = (float)texture.getHeight();
-			auto uv = Utils::getUV(
-			    frictionSpr.getX() / texW, (frictionSpr.getX() + frictionSpr.getWidth()) / texW,
-			    frictionSpr.getY() / texH, (frictionSpr.getY() + frictionSpr.getHeight()) / texH);
-
-			auto model = DirectX::XMMatrixScaling(y, y, 1.f);
-			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(),
-			                   zIndex);
-		}
-
-		void ScorePreviewWindow::drawFlickArrow(Renderer * renderer, const Note& note, float y,
-		                                        double time)
-		{
-			if (noteTextures.notes == -1)
-				return;
-			const Texture& texture = getNoteTexture();
-			const int sprIndex = getFlickArrowSpriteIndex(note);
-			if (!isArrayIndexInBounds(sprIndex, texture.sprites))
-				return;
-			const Sprite& arrowSprite = texture.sprites[sprIndex];
-
-			//  DownLeft, DownRight も左右フリックとして扱うように判定を追加
-			bool isLeftOrRight =
-			    (note.flick == FlickType::Left || note.flick == FlickType::Right ||
-			     note.flick == FlickType::DownLeft || note.flick == FlickType::DownRight);
-			bool isRightward =
-			    (note.flick == FlickType::Right || note.flick == FlickType::DownRight);
-
-			size_t flickTransformIdx = std::clamp((int)note.width, 1, MAX_FLICK_SPRITES) - 1 +
-			                           static_cast<int>(isLeftOrRight ? SpriteType::FlickArrowLeft
-			                                                          : SpriteType::FlickArrowUp);
-			if (!isArrayIndexInBounds(flickTransformIdx, ResourceManager::spriteTransforms))
-				return;
-			const SpriteTransform& transform = ResourceManager::spriteTransforms[flickTransformIdx];
-
-			const int mirror = config.pvMirrorScore ? -1 : 1;
-			const int flickDirection = mirror * (isLeftOrRight ? (isRightward ? 1 : -1) : 0);
-			const float center = Engine::getNoteCenter(note) * mirror;
-			const float w = std::clamp((int)note.width, 1, MAX_FLICK_SPRITES) *
-			                (isRightward ? -1.f : 1.f) * mirror / 4.f;
-
-			auto vPos = transform.apply(Engine::quadvPos(
-			    center - w, center + w, 1.f, 1.f - 2.f * std::abs(w) * scaledAspectRatio));
-
-			float texW = (float)texture.getWidth();
-			float texH = (float)texture.getHeight();
-			auto uv = Utils::getUV(
-			    arrowSprite.getX() / texW, (arrowSprite.getX() + arrowSprite.getWidth()) / texW,
-			    arrowSprite.getY() / texH, (arrowSprite.getY() + arrowSprite.getHeight()) / texH);
-
-			//  下フリックの場合、UV座標のY軸を入れ替えて画像を上下反転させる
-			bool isDown = (note.flick >= FlickType::Down && note.flick <= FlickType::DownRight);
-			if (isDown)
-			{
-				// Utils::getUV は {右上, 右下, 左下, 左上}
-				// の順なので、0と1(右側)、3と2(左側)のY座標を入れ替える
-				std::swap(uv[0].y, uv[1].y);
-				std::swap(uv[3].y, uv[2].y);
-			}
-
-			int zIndex = Engine::getZIndex(SpriteLayer::FLICK_ARROW, center, y);
-
-			if (config.pvFlickAnimation)
-			{
-				double t = std::fmod(time, 0.5) / 0.5;
-				auto cubicEaseIn = [](double val) { return (float)(val * val * val); };
-				auto animationVector = DirectX::XMVectorScale(
-				    DirectX::XMVectorSet((float)flickDirection, -2.f * scaledAspectRatio, 0.f, 0.f),
-				    (float)t);
-				auto model = DirectX::XMMatrixMultiply(
-				    DirectX::XMMatrixTranslationFromVector(animationVector),
-				    DirectX::XMMatrixScaling(y, y, 1.f));
-				renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, 1.f - cubicEaseIn(t)),
-				                   (int)texture.getID(), zIndex);
-			}
-			else
-			{
-				auto model = DirectX::XMMatrixScaling(y, y, 1.f);
-				renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(),
-				                   zIndex);
-			}
-		}
-
-		void ScorePreviewWindow::updateToolbar(ScoreEditorTimeline & timeline,
-		                                       ScoreContext & context) const
-		{
-			static float lastHoveredTime = -1;
-			constexpr float MAX_NO_HOVER_TIME = 1.5f;
-			static float toolBarWidth = UI::btnNormal.x * 2;
-			if (!config.pvDrawToolbar)
-				return;
-			ImGuiIO io = ImGui::GetIO();
-			ImGui::SetNextWindowPos(ImGui::GetWindowPos() +
-			                        ImVec2{ ImGui::GetContentRegionAvail().x -
-			                                    ImGui::GetStyle().WindowPadding.x * 4 -
-			                                    toolBarWidth,
-			                                ImGui::GetStyle().WindowPadding.y * 5 });
-			ImGui::SetNextWindowSizeConstraints({ 48, 0 }, { 120, FLT_MAX }, NULL);
-			auto easeInCubic = [](float t) { return t * t * t; };
-			float childBgAlpha = std::clamp(
-			    easeInCubic(unlerp(MAX_NO_HOVER_TIME, 0.f, lastHoveredTime)), 0.25f, 1.f);
-			ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.f);
-			ImGui::PushStyleColor(ImGuiCol_ChildBg,
-			                      ImGui::GetColorU32(ImGuiCol_WindowBg, childBgAlpha));
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.0f, 0.0f, 0.0f });
-
-			ImGui::Begin("###preview_toolbar", NULL,
-			             ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar |
-			                 ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar |
-			                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
-			                 ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_ChildWindow);
-			toolBarWidth = ImGui::GetWindowWidth();
-			float centeredXBtn = toolBarWidth / 2 - UI::btnNormal.x / 2;
-			if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
-				lastHoveredTime = 0;
-			else
-				lastHoveredTime = std::min(io.DeltaTime + lastHoveredTime, MAX_NO_HOVER_TIME);
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(ICON_FA_ANGLE_DOUBLE_UP, UI::btnNormal, true,
-			                          context.currentTick <
-			                              context.scorePreviewDrawData.maxTicks + TICKS_PER_BEAT))
-			{
-				if (timeline.isPlaying())
-					timeline.setPlaying(context, false);
-				context.currentTick =
-				    timeline.roundTickDown(context.currentTick, timeline.getDivision()) +
-				    (TICKS_PER_BEAT / (timeline.getDivision() / 4));
-			}
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(ICON_FA_ANGLE_UP, UI::btnNormal, true,
-			                          context.currentTick <
-			                              context.scorePreviewDrawData.maxTicks + TICKS_PER_BEAT))
-			{
-				if (timeline.isPlaying())
-					timeline.setPlaying(context, false);
-				context.currentTick++;
-			}
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(ICON_FA_STOP, UI::btnNormal, false))
-				timeline.stop(context);
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(timeline.isPlaying() ? ICON_FA_PAUSE : ICON_FA_PLAY,
-			                          UI::btnNormal))
-				timeline.setPlaying(context, !timeline.isPlaying());
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(ICON_FA_ANGLE_DOWN, UI::btnNormal, true,
-			                          context.currentTick > 0))
-			{
-				if (timeline.isPlaying())
-					timeline.setPlaying(context, false);
-				context.currentTick--;
-			}
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(ICON_FA_ANGLE_DOUBLE_DOWN, UI::btnNormal, true,
-			                          context.currentTick > 0))
-			{
-				if (timeline.isPlaying())
-					timeline.setPlaying(context, false);
-				context.currentTick =
-				    std::max(timeline.roundTickDown(context.currentTick, timeline.getDivision()) -
-				                 (TICKS_PER_BEAT / (timeline.getDivision() / 4)),
-				             0);
-			}
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(isFullWindow() ? ICON_FA_COMPRESS : ICON_FA_EXPAND))
-				fullWindow = !isFullWindow();
-
-			ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(ICON_FA_MINUS, UI::btnNormal, false,
-			                          timeline.getPlaybackSpeed() > 0.25f))
-				timeline.setPlaybackSpeed(context, timeline.getPlaybackSpeed() - 0.25f);
-
-			const float playbackStrWidth = ImGui::CalcTextSize("0000%").x;
-			ImGui::SetCursorPosX(toolBarWidth / 2 - playbackStrWidth / 2);
-			UI::transparentButton(
-			    IO::formatString("%.0f%%", timeline.getPlaybackSpeed() * 100).c_str(),
-			    ImVec2{ playbackStrWidth, UI::btnNormal.y }, false, false);
-
-			ImGui::SetCursorPosX(centeredXBtn);
-			if (UI::transparentButton(ICON_FA_PLUS, UI::btnNormal, false,
-			                          timeline.getPlaybackSpeed() < 1.0f))
-				timeline.setPlaybackSpeed(context, timeline.getPlaybackSpeed() + 0.25f);
-
-			ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
-
-			float currentTm =
-			    accumulateDuration(context.currentTick, TICKS_PER_BEAT, context.score.tempoChanges);
-
-			//  ツールバーの表示用には、現在選択されているレイヤーの視覚的時間を用いる
-			int currentLayer =
-			    std::clamp(context.selectedLayer, 0, (int)context.score.layers.size() - 1);
-			double currentScaledTm =
-			    getCachedLayerScaledTime(context, context.currentTick, currentLayer);
-			int currentMeasure = accumulateMeasures(context.currentTick, TICKS_PER_BEAT,
-			                                        context.score.timeSignatures);
-			const TimeSignature& ts = context.score.timeSignatures[findTimeSignature(
-			    currentMeasure, context.score.timeSignatures)];
-			const Tempo& tempo = getTempoAt(context.currentTick, context.score.tempoChanges);
-			int hiSpeedIdx =
-			    findHighSpeedChange(context.currentTick, context.score.hiSpeedChanges, 0);
-			float speed =
-			    (hiSpeedIdx == -1 ? 1.0f : context.score.hiSpeedChanges[hiSpeedIdx].speed);
-
-			char rhythmString[256];
-			snprintf(rhythmString, sizeof(rhythmString), "%02d:%02d:%02d|%.2fs|%d/%d|%g BPM|%.2fx",
-			         static_cast<int>(currentTm / 60), static_cast<int>(std::fmod(currentTm, 60.f)),
-			         static_cast<int>(std::fmod(currentTm * 100, 100.f)), currentScaledTm,
-			         ts.numerator, ts.denominator, tempo.bpm, speed);
-			char* str = strtok(rhythmString, "|");
-			ImGui::SetCursorPosX(toolBarWidth / 2 - ImGui::CalcTextSize(str).x / 2);
-			ImGui::Text(str);
-			for (auto&& col : { feverColor, timeColor, tempoColor, speedColor })
-			{
-				str = strtok(NULL, "|");
-				ImGui::SetCursorPosX(toolBarWidth / 2 - ImGui::CalcTextSize(str).x / 2);
-				ImGui::TextColored(ImColor(col), str);
-			}
-			ImGui::EndChild();
-			ImGui::PopStyleColor(2);
-			ImGui::PopStyleVar();
-		}
-
-		float ScorePreviewWindow::getScrollbarWidth() const
-		{
-			return ImGui::GetStyle().ScrollbarSize + 4.f;
-		}
-
-		void ScorePreviewWindow::updateScrollbar(ScoreEditorTimeline & timeline,
-		                                         ScoreContext & context) const
-		{
-			constexpr float scrollpadY = 30.f;
-			ImGuiIO& io = ImGui::GetIO();
-			ImGuiStyle& style = ImGui::GetStyle();
-			ImVec2 contentSize = ImGui::GetWindowContentRegionMax();
-			ImVec2 cursorBegPos = ImGui::GetCursorStartPos();
-			ImVec2 scrollbarSize = { getScrollbarWidth(), contentSize.y - cursorBegPos.y };
-
-			ImGui::SetCursorPos(
-			    cursorBegPos +
-			    ImVec2{ contentSize.x - scrollbarSize.x - style.WindowPadding.x / 2, 0 });
-			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarBg));
-			ImGui::BeginChild("###scrollbar", scrollbarSize, false,
-			                  ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar);
-			ImGui::PopStyleColor();
-
-			ImVec2 scrollContentSize = ImGui::GetContentRegionAvail();
-			ImVec2 scrollMaxSize = ImGui::GetWindowContentRegionMax();
-			int maxTicks = std::max(context.scorePreviewDrawData.maxTicks, 1);
-
-			float scrollRatio =
-			    std::min((float)(Engine::getNoteDuration(config.pvNoteSpeed) /
-			                     accumulateDuration(context.scorePreviewDrawData.maxTicks,
-			                                        TICKS_PER_BEAT, context.score.tempoChanges)),
-			             1.f);
-
-			float progress = 1.f - std::min(float(context.currentTick) / maxTicks, 1.f);
-			float handleHeight = std::max(20.f, scrollContentSize.y * scrollRatio);
-
-			bool scrollbarActive = false;
-			ImGui::BeginDisabled(timeline.isPlaying());
-			ImGui::SetCursorPos(ImGui::GetCursorStartPos());
-			ImGui::InvisibleButton("##scroll_bg", contentSize, ImGuiButtonFlags_NoNavFocus);
-			scrollbarActive |= ImGui::IsItemActive();
-
-			ImVec2 handleSize = { style.ScrollbarSize, handleHeight };
-			ImVec2 handlePos = { scrollMaxSize.x / 2 - handleSize.x / 2,
-				                 lerp(0.f, scrollMaxSize.y - handleHeight, progress) };
-			ImVec2 absHandlePos = ImGui::GetWindowPos() + handlePos;
-
-			ImGui::SetCursorPos(handlePos);
-			ImGui::InvisibleButton("##scroll_handle", handleSize);
-			scrollbarActive |= ImGui::IsItemActive();
-
-			ImGuiCol_ handleColBase = scrollbarActive          ? ImGuiCol_ScrollbarGrabActive
-			                          : ImGui::IsItemHovered() ? ImGuiCol_ScrollbarGrabHovered
-			                                                   : ImGuiCol_ScrollbarGrab;
-
-			ImGui::RenderFrame(absHandlePos, absHandlePos + ImGui::GetItemRectSize(),
-			                   ImGui::GetColorU32(handleColBase), true, 3.f);
-			ImGui::EndDisabled();
-
-			if (scrollbarActive)
-			{
-				float absScrollStart = ImGui::GetWindowPos().y + handleSize.y / 2.f;
-				float absScrollEnd = ImGui::GetWindowPos().y + scrollMaxSize.y - handleSize.y / 2.f;
-				float mouseProgress =
-				    1.f - std::clamp(unlerp(absScrollStart, absScrollEnd, io.MousePos.y), 0.f, 1.f);
-				context.currentTick = (int)std::round(lerp(0.f, (float)maxTicks, mouseProgress));
-			}
-			ImGui::EndChild();
 		}
 	}
+
+	void ScorePreviewWindow::updateToolbar(ScoreEditorTimeline& timeline,
+	                                       ScoreContext& context) const
+	{
+		static float lastHoveredTime = -1;
+		constexpr float MAX_NO_HOVER_TIME = 1.5f;
+		static float toolBarWidth = UI::btnNormal.x * 2;
+		if (!config.pvDrawToolbar)
+			return;
+		ImGuiIO io = ImGui::GetIO();
+		ImGui::SetNextWindowPos(ImGui::GetWindowPos() +
+		                        ImVec2{ ImGui::GetContentRegionAvail().x -
+		                                    ImGui::GetStyle().WindowPadding.x * 4 - toolBarWidth,
+		                                ImGui::GetStyle().WindowPadding.y * 5 });
+		ImGui::SetNextWindowSizeConstraints({ 48, 0 }, { 120, FLT_MAX }, NULL);
+		auto easeInCubic = [](float t) { return t * t * t; };
+		float childBgAlpha =
+		    std::clamp(easeInCubic(unlerp(MAX_NO_HOVER_TIME, 0.f, lastHoveredTime)), 0.25f, 1.f);
+		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.f);
+		ImGui::PushStyleColor(ImGuiCol_ChildBg,
+		                      ImGui::GetColorU32(ImGuiCol_WindowBg, childBgAlpha));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.0f, 0.0f, 0.0f, 0.0f });
+
+		ImGui::Begin("###preview_toolbar", NULL,
+		             ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar |
+		                 ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar |
+		                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
+		                 ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_ChildWindow);
+		toolBarWidth = ImGui::GetWindowWidth();
+		float centeredXBtn = toolBarWidth / 2 - UI::btnNormal.x / 2;
+		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+			lastHoveredTime = 0;
+		else
+			lastHoveredTime = std::min(io.DeltaTime + lastHoveredTime, MAX_NO_HOVER_TIME);
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(ICON_FA_ANGLE_DOUBLE_UP, UI::btnNormal, true,
+		                          context.currentTick <
+		                              context.scorePreviewDrawData.maxTicks + TICKS_PER_BEAT))
+		{
+			if (timeline.isPlaying())
+				timeline.setPlaying(context, false);
+			context.currentTick =
+			    timeline.roundTickDown(context.currentTick, timeline.getDivision()) +
+			    (TICKS_PER_BEAT / (timeline.getDivision() / 4));
+		}
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(ICON_FA_ANGLE_UP, UI::btnNormal, true,
+		                          context.currentTick <
+		                              context.scorePreviewDrawData.maxTicks + TICKS_PER_BEAT))
+		{
+			if (timeline.isPlaying())
+				timeline.setPlaying(context, false);
+			context.currentTick++;
+		}
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(ICON_FA_STOP, UI::btnNormal, false))
+			timeline.stop(context);
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(timeline.isPlaying() ? ICON_FA_PAUSE : ICON_FA_PLAY,
+		                          UI::btnNormal))
+			timeline.setPlaying(context, !timeline.isPlaying());
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(ICON_FA_ANGLE_DOWN, UI::btnNormal, true, context.currentTick > 0))
+		{
+			if (timeline.isPlaying())
+				timeline.setPlaying(context, false);
+			context.currentTick--;
+		}
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(ICON_FA_ANGLE_DOUBLE_DOWN, UI::btnNormal, true,
+		                          context.currentTick > 0))
+		{
+			if (timeline.isPlaying())
+				timeline.setPlaying(context, false);
+			context.currentTick =
+			    std::max(timeline.roundTickDown(context.currentTick, timeline.getDivision()) -
+			                 (TICKS_PER_BEAT / (timeline.getDivision() / 4)),
+			             0);
+		}
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(isFullWindow() ? ICON_FA_COMPRESS : ICON_FA_EXPAND))
+			fullWindow = !isFullWindow();
+
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(ICON_FA_MINUS, UI::btnNormal, false,
+		                          timeline.getPlaybackSpeed() > 0.25f))
+			timeline.setPlaybackSpeed(context, timeline.getPlaybackSpeed() - 0.25f);
+
+		const float playbackStrWidth = ImGui::CalcTextSize("0000%").x;
+		ImGui::SetCursorPosX(toolBarWidth / 2 - playbackStrWidth / 2);
+		UI::transparentButton(IO::formatString("%.0f%%", timeline.getPlaybackSpeed() * 100).c_str(),
+		                      ImVec2{ playbackStrWidth, UI::btnNormal.y }, false, false);
+
+		ImGui::SetCursorPosX(centeredXBtn);
+		if (UI::transparentButton(ICON_FA_PLUS, UI::btnNormal, false,
+		                          timeline.getPlaybackSpeed() < 1.0f))
+			timeline.setPlaybackSpeed(context, timeline.getPlaybackSpeed() + 0.25f);
+
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal);
+
+		float currentTm =
+		    accumulateDuration(context.currentTick, TICKS_PER_BEAT, context.score.tempoChanges);
+
+		//  ツールバーの表示用には、現在選択されているレイヤーの視覚的時間を用いる
+		int currentLayer =
+		    std::clamp(context.selectedLayer, 0, (int)context.score.layers.size() - 1);
+		double currentScaledTm =
+		    getCachedLayerScaledTime(context, context.currentTick, currentLayer);
+		int currentMeasure =
+		    accumulateMeasures(context.currentTick, TICKS_PER_BEAT, context.score.timeSignatures);
+		const TimeSignature& ts =
+		    context.score
+		        .timeSignatures[findTimeSignature(currentMeasure, context.score.timeSignatures)];
+		const Tempo& tempo = getTempoAt(context.currentTick, context.score.tempoChanges);
+		int hiSpeedIdx = findHighSpeedChange(context.currentTick, context.score.hiSpeedChanges, 0);
+		float speed = (hiSpeedIdx == -1 ? 1.0f : context.score.hiSpeedChanges[hiSpeedIdx].speed);
+
+		char rhythmString[256];
+		snprintf(rhythmString, sizeof(rhythmString), "%02d:%02d:%02d|%.2fs|%d/%d|%g BPM|%.2fx",
+		         static_cast<int>(currentTm / 60), static_cast<int>(std::fmod(currentTm, 60.f)),
+		         static_cast<int>(std::fmod(currentTm * 100, 100.f)), currentScaledTm, ts.numerator,
+		         ts.denominator, tempo.bpm, speed);
+		char* str = strtok(rhythmString, "|");
+		ImGui::SetCursorPosX(toolBarWidth / 2 - ImGui::CalcTextSize(str).x / 2);
+		ImGui::Text(str);
+		for (auto&& col : { feverColor, timeColor, tempoColor, speedColor })
+		{
+			str = strtok(NULL, "|");
+			ImGui::SetCursorPosX(toolBarWidth / 2 - ImGui::CalcTextSize(str).x / 2);
+			ImGui::TextColored(ImColor(col), str);
+		}
+		ImGui::EndChild();
+		ImGui::PopStyleColor(2);
+		ImGui::PopStyleVar();
+	}
+
+	float ScorePreviewWindow::getScrollbarWidth() const
+	{
+		return ImGui::GetStyle().ScrollbarSize + 4.f;
+	}
+
+	void ScorePreviewWindow::updateScrollbar(ScoreEditorTimeline& timeline,
+	                                         ScoreContext& context) const
+	{
+		constexpr float scrollpadY = 30.f;
+		ImGuiIO& io = ImGui::GetIO();
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImVec2 contentSize = ImGui::GetWindowContentRegionMax();
+		ImVec2 cursorBegPos = ImGui::GetCursorStartPos();
+		ImVec2 scrollbarSize = { getScrollbarWidth(), contentSize.y - cursorBegPos.y };
+
+		ImGui::SetCursorPos(
+		    cursorBegPos +
+		    ImVec2{ contentSize.x - scrollbarSize.x - style.WindowPadding.x / 2, 0 });
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarBg));
+		ImGui::BeginChild("###scrollbar", scrollbarSize, false,
+		                  ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar);
+		ImGui::PopStyleColor();
+
+		ImVec2 scrollContentSize = ImGui::GetContentRegionAvail();
+		ImVec2 scrollMaxSize = ImGui::GetWindowContentRegionMax();
+		int maxTicks = std::max(context.scorePreviewDrawData.maxTicks, 1);
+
+		float scrollRatio =
+		    std::min((float)(Engine::getNoteDuration(config.pvNoteSpeed) /
+		                     accumulateDuration(context.scorePreviewDrawData.maxTicks,
+		                                        TICKS_PER_BEAT, context.score.tempoChanges)),
+		             1.f);
+
+		float progress = 1.f - std::min(float(context.currentTick) / maxTicks, 1.f);
+		float handleHeight = std::max(20.f, scrollContentSize.y * scrollRatio);
+
+		bool scrollbarActive = false;
+		ImGui::BeginDisabled(timeline.isPlaying());
+		ImGui::SetCursorPos(ImGui::GetCursorStartPos());
+		ImGui::InvisibleButton("##scroll_bg", contentSize, ImGuiButtonFlags_NoNavFocus);
+		scrollbarActive |= ImGui::IsItemActive();
+
+		ImVec2 handleSize = { style.ScrollbarSize, handleHeight };
+		ImVec2 handlePos = { scrollMaxSize.x / 2 - handleSize.x / 2,
+			                 lerp(0.f, scrollMaxSize.y - handleHeight, progress) };
+		ImVec2 absHandlePos = ImGui::GetWindowPos() + handlePos;
+
+		ImGui::SetCursorPos(handlePos);
+		ImGui::InvisibleButton("##scroll_handle", handleSize);
+		scrollbarActive |= ImGui::IsItemActive();
+
+		ImGuiCol_ handleColBase = scrollbarActive          ? ImGuiCol_ScrollbarGrabActive
+		                          : ImGui::IsItemHovered() ? ImGuiCol_ScrollbarGrabHovered
+		                                                   : ImGuiCol_ScrollbarGrab;
+
+		ImGui::RenderFrame(absHandlePos, absHandlePos + ImGui::GetItemRectSize(),
+		                   ImGui::GetColorU32(handleColBase), true, 3.f);
+		ImGui::EndDisabled();
+
+		if (scrollbarActive)
+		{
+			float absScrollStart = ImGui::GetWindowPos().y + handleSize.y / 2.f;
+			float absScrollEnd = ImGui::GetWindowPos().y + scrollMaxSize.y - handleSize.y / 2.f;
+			float mouseProgress =
+			    1.f - std::clamp(unlerp(absScrollStart, absScrollEnd, io.MousePos.y), 0.f, 1.f);
+			context.currentTick = (int)std::round(lerp(0.f, (float)maxTicks, mouseProgress));
+		}
+		ImGui::EndChild();
+	}
+}

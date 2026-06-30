@@ -196,9 +196,6 @@ remove,Remove
 edit_time_signature,Edit Time Signature
 measure,Measure
 skill,Skill
-insert_skill_trigger,Insert Skill Trigger
-insert_fever_start,Insert Fever Start
-insert_fever_end,Insert Fever End
 increase_note_size,Increase Note Size
 decrease_note_size,Decrease Note Size
 hi_speed,Hi-Speed
@@ -378,3 +375,48 @@ gallery_sort_ascending,Ascending
 gallery_sort_descending,Descending
 gallery_modified,Modified
 gallery_return_to_editor,Return to Editor
+
+# skill-procs
+insert_skill_trigger,Insert Skill Trigger
+insert_fever_start,Insert FEVER Start
+insert_fever_end,Insert FEVER End
+
+# dynamic stage
+stages,Stages
+new_stage,New Stage
+insert_camera_change,Insert Camera Change
+insert_stage_mask_change,Insert Stage Mask Change
+insert_stage_pivot_change,Insert Stage Mask Change
+insert_stage_style_change,Insert Stage Style Change
+stage_delete_confirm,Delete Stages
+stage_delete_msg1,Do you sure you want to delete this stage?
+stage_delete_msg2,All stage events inside this stage will be deleted aswell.
+
+edit_stage_pivot_change,Edit Stage Pivot Change
+pivot_lane,Pivot Lane
+pivot_division_size,Pivot Division
+pivot_divison_parity_odd,Odd Pivot Divison Parity
+pivot_y_offset,Pivot Y Offset
+pivot_y_beat,Pivot Y Beat
+
+edit_camera_change,Edit Camera Change
+camera_left,Camera left
+camera_size,Camera size
+camera_zoom,Camera Zoom
+camera_zoom_target_lane,Camera Zoom Target lane 
+camera_zoom_target_y,Camera Zoom Target Y
+camera_zoom_vertical_align,Camera Zoom Vertical align
+camera_rotate,Camera Rotate
+camera_stage_tilt,Camera Tilt
+
+edit_stage_mask_change,Edit Stage Mask Change
+mask_left,Mask left
+mask_size,Mask size
+
+edit_stage_style_change,Edit Stage Style Change
+judge_line_color,Judge Line color
+left_border_style,Left Border style
+right_border_style,Right Border style
+stage_alpha,Stage Alpha
+lane_alpha,Lane Alpha
+judge_line_alpha,Judge Line Alpha

@@ -807,11 +807,174 @@ namespace MikuMikuWorld
 			drawList->AddTriangleFilled({ x, y2 }, { x + 10, y2 }, { x + 10, y2 + 10 }, 0xFFCCCCCC);
 		}
 
+		static int draggingFeverPart = 0; // 0 = none, 1 = start, 2 = end
+		static bool feverWasDragged = false;
+		static Score prevScoreForFeverDrag;
+
 		feverControl(context, context.score.fever);
 
+		{
+			bool isStart = true;
+			feverControl(context, context.score.fever.startTick, true, !playing);
+			bool isHovered = ImGui::IsItemHovered();
+			bool isDraggingThis = (draggingFeverPart == 1);
+
+			if (isHovered || isDraggingThis)
+				isHoveringNote = true;
+
+			if (isHovered && draggingFeverPart == 0 && ImGui::IsMouseClicked(0))
+			{
+				draggingFeverPart = 1;
+				feverWasDragged = false;
+				prevScoreForFeverDrag = context.score;
+			}
+
+			if (isDraggingThis)
+			{
+				if (ImGui::IsMouseDragging(0, 2.0f))
+					feverWasDragged = true;
+
+				if (feverWasDragged)
+				{
+					context.score.fever.startTick = std::max(0, hoverTick);
+					ImGui::BeginTooltip();
+					ImGui::Text("Fever Start Tick: %d", context.score.fever.startTick);
+					ImGui::EndTooltip();
+				}
+
+				if (ImGui::IsMouseReleased(0))
+				{
+					if (feverWasDragged)
+						context.pushHistory("Move fever start", prevScoreForFeverDrag,
+						                    context.score);
+					else
+					{
+						eventEdit.type = EventType::Fever;
+						ImGui::OpenPopup("edit_event");
+					}
+					draggingFeverPart = 0;
+				}
+			}
+		}
+
+		{
+			feverControl(context, context.score.fever.endTick, false, !playing);
+			bool isHovered = ImGui::IsItemHovered();
+			bool isDraggingThis = (draggingFeverPart == 2);
+
+			if (isHovered || isDraggingThis)
+				isHoveringNote = true;
+
+			if (isHovered && draggingFeverPart == 0 && ImGui::IsMouseClicked(0))
+			{
+				draggingFeverPart = 2;
+				feverWasDragged = false;
+				prevScoreForFeverDrag = context.score;
+			}
+
+			if (isDraggingThis)
+			{
+				if (ImGui::IsMouseDragging(0, 2.0f))
+					feverWasDragged = true;
+
+				if (feverWasDragged)
+				{
+					context.score.fever.endTick = std::max(0, hoverTick);
+					ImGui::BeginTooltip();
+					ImGui::Text("Fever End Tick: %d", context.score.fever.endTick);
+					ImGui::EndTooltip();
+				}
+
+				if (ImGui::IsMouseReleased(0))
+				{
+					if (feverWasDragged)
+						context.pushHistory("Move fever end", prevScoreForFeverDrag, context.score);
+					else
+					{
+						eventEdit.type = EventType::Fever;
+						ImGui::OpenPopup("edit_event");
+					}
+					draggingFeverPart = 0;
+				}
+			}
+		}
+
 		// Update skill triggers
-		for (const auto& [_, skill] : context.score.skills)
+		static id_t draggingSkillID = NO_ID;
+		static bool skillWasDragged = false;
+		static Score prevScoreForSkillDrag;
+
+		for (const auto& [id, skill] : context.score.skills)
+		{
 			skillControl(context, skill);
+
+			bool isHovered = ImGui::IsItemHovered();
+			bool isDraggingThis = (draggingSkillID == id);
+
+			if (isHovered || isDraggingThis)
+				isHoveringNote = true;
+
+			if (isHovered && draggingSkillID == NO_ID)
+			{
+				if (ImGui::IsMouseClicked(0))
+				{
+					draggingSkillID = id;
+					skillWasDragged = false;
+					prevScoreForSkillDrag = context.score;
+				}
+			}
+
+			if (isDraggingThis)
+			{
+				if (ImGui::IsMouseDragging(0, 2.0f))
+					skillWasDragged = true;
+
+				if (skillWasDragged)
+				{
+					int newTick = std::max(0, hoverTick);
+					context.score.skills[id].tick = newTick;
+
+					ImGui::BeginTooltip();
+					ImGui::Text("Tick: %d", newTick);
+					ImGui::EndTooltip();
+				}
+
+				if (ImGui::IsMouseReleased(0))
+				{
+					if (skillWasDragged)
+					{
+						context.pushHistory("Move skill trigger", prevScoreForSkillDrag,
+						                    context.score);
+					}
+					else
+					{
+						eventEdit.editId = id;
+						eventEdit.editSkillEffect = skill.effect;
+						eventEdit.editSkillLevel = skill.level;
+						eventEdit.type = EventType::Skill;
+						ImGui::OpenPopup("edit_event");
+					}
+					draggingSkillID = NO_ID;
+				}
+			}
+		}
+
+		if (context.stageEventEditMode == StageEventEditMode::Camera)
+		{
+			drawCameraShiftGraph(context);
+		}
+		else if (context.stageEventEditMode == StageEventEditMode::Mask)
+		{
+			drawStageMaskGraph(context);
+		}
+		else if (context.stageEventEditMode == StageEventEditMode::Pivot)
+		{
+			drawStagePivotGraph(context);
+		}
+		else if (context.stageEventEditMode == StageEventEditMode::Style)
+		{
+			drawStageStyleLine(context);
+		}
 
 		eventEditor(context);
 		updateNotes(context, edit, renderer);
@@ -2581,7 +2744,23 @@ namespace MikuMikuWorld
 
 	bool ScoreEditorTimeline::skillControl(const ScoreContext& context, const SkillTrigger& skill)
 	{
-		return skillControl(context, skill.tick, !playing);
+		float dpiScale = ImGui::GetMainViewport()->DpiScale;
+		Vector2 pos{ getTimelineStartX(context) - (50 * dpiScale),
+			         position.y - tickToPosition(skill.tick) + visualOffset };
+
+		std::string label;
+		if (context.score.metadata.isExtendedScore)
+		{
+			static constexpr const char* shortEffect[] = { "S", "H", "P" };
+			label = IO::formatString("%s [%s.%d]", getString("skill"),
+			                         shortEffect[(int)skill.effect], (int)skill.level);
+		}
+		else
+		{
+			label = getString("skill");
+		}
+
+		return eventControl(getTimelineStartX(context), pos, skillColor, label.c_str(), !playing);
 	}
 
 	bool ScoreEditorTimeline::skillControl(const ScoreContext& context, int tick, bool enabled)
@@ -2669,9 +2848,54 @@ namespace MikuMikuWorld
 		return eventControl(getTimelineStartX(context), pos, waypointColor, name.c_str(), true);
 	}
 
+	bool ScoreEditorTimeline::cameraChangeControl(const ScoreContext& context,
+	                                              const CameraChangeEvent& camera)
+	{
+		float dpiScale = ImGui::GetMainViewport()->DpiScale;
+		Vector2 pos{ getTimelineStartX(context) - 260 * dpiScale,
+			         position.y - tickToPosition(camera.tick) + visualOffset };
+		return eventControl(getTimelineStartX(context), pos, skillColor, getString("camera_change"),
+		                    !playing);
+	}
+
+	bool ScoreEditorTimeline::stageMaskChangeControl(const ScoreContext& context,
+	                                                 const StageMaskChangeEvent& mask)
+	{
+		float dpiScale = ImGui::GetMainViewport()->DpiScale;
+		Vector2 pos{ getTimelineStartX(context) - 260 * dpiScale,
+			         position.y - tickToPosition(mask.tick) + visualOffset };
+		return eventControl(getTimelineStartX(context), pos, feverColor,
+		                    getString("stage_mask_change"), !playing);
+	}
+
+	bool ScoreEditorTimeline::stagePivotChangeControl(const ScoreContext& context,
+	                                                  const StagePivotChangeEvent& pivot)
+	{
+		float dpiScale = ImGui::GetMainViewport()->DpiScale;
+		Vector2 pos{ getTimelineStartX(context) - 260 * dpiScale,
+			         position.y - tickToPosition(pivot.tick) + visualOffset };
+		return eventControl(getTimelineStartX(context), pos, waypointColor,
+		                    getString("stage_pivot_change"), !playing);
+	}
+
+	bool ScoreEditorTimeline::stageStyleChangeControl(const ScoreContext& context,
+	                                                  const StageStyleChangeEvent& style)
+	{
+		float dpiScale = ImGui::GetMainViewport()->DpiScale;
+		Vector2 pos{ getTimelineStartX(context) - 260 * dpiScale,
+			         position.y - tickToPosition(style.tick) + visualOffset };
+		return eventControl(getTimelineStartX(context), pos, tempoColor,
+		                    getString("stage_style_change"), !playing);
+	}
+
 	void ScoreEditorTimeline::eventEditor(ScoreContext& context)
 	{
-		ImGui::SetNextWindowSize(ImVec2(300, -1), ImGuiCond_Always);
+		bool isDynamicStageEvent = eventEdit.type == EventType::CameraChange ||
+		                           eventEdit.type == EventType::StageMaskChange ||
+		                           eventEdit.type == EventType::StagePivotChange ||
+		                           eventEdit.type == EventType::StageStyleChange;
+		float popupWidth = isDynamicStageEvent ? 450.f : 300.f;
+		ImGui::SetNextWindowSizeConstraints(ImVec2(450, 0), ImVec2(FLT_MAX, FLT_MAX));
 		if (ImGui::BeginPopup("edit_event"))
 		{
 			std::string editLabel{ "edit_" };
@@ -2855,6 +3079,288 @@ namespace MikuMikuWorld
 					context.pushHistory("Remove waypint", prev, context.score);
 				}
 			}
+
+			else if (eventEdit.type == EventType::CameraChange)
+			{
+				if (context.score.cameraChanges.find(eventEdit.editId) ==
+				    context.score.cameraChanges.end())
+				{
+					ImGui::CloseCurrentPopup();
+					ImGui::EndPopup();
+					return;
+				}
+
+				bool eventEdited = false;
+				UI::beginPropertyColumns();
+				if (ImGui::IsWindowAppearing())
+					ImGui::SetColumnWidth(0, minimumColumnWidth);
+				UI::addFloatProperty(fitColumn(getString("camera_left")), eventEdit.editCamera.left,
+				                     "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("camera_size")), eventEdit.editCamera.size,
+				                     "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("camera_zoom")), eventEdit.editCamera.zoom,
+				                     "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("camera_zoom_target_lane")),
+				                     eventEdit.editCamera.zoomTargetLane, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("camera_zoom_target_y")),
+				                     eventEdit.editCamera.zoomTargetY, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				eventEdited |= UI::addSelectProperty(
+				    fitColumn(getString("camera_zoom_vertical_align")),
+				    eventEdit.editCamera.zoomVerticalAlign, stageZoomVerticalAlignNames,
+				    arrayLength(stageZoomVerticalAlignNames));
+				UI::addFloatProperty(fitColumn(getString("camera_rotate")),
+				                     eventEdit.editCamera.rotate, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("camera_stage_tilt")),
+				                     eventEdit.editCamera.stageTilt, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				eventEdited |= UI::addSelectProperty(fitColumn(getString("ease_type")),
+				                                     eventEdit.editCamera.ease, easeNames,
+				                                     arrayLength(easeNames));
+
+				CameraChangeEvent& camera = context.score.cameraChanges[eventEdit.editId];
+				if (eventEdited)
+				{
+					Score prev = context.score;
+					eventEdit.editCamera.ID = camera.ID;
+					eventEdit.editCamera.tick = camera.tick;
+					context.score.cameraChanges[eventEdit.editId] = eventEdit.editCamera;
+					context.pushHistory("Change camera change", prev, context.score);
+				}
+				UI::endPropertyColumns();
+
+				ImGui::Separator();
+				if (ImGui::Button(getString("remove"), ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					Score prev = context.score;
+					context.score.cameraChanges.erase(eventEdit.editId);
+					context.pushHistory("Remove camera change", prev, context.score);
+				}
+			}
+			else if (eventEdit.type == EventType::StageMaskChange)
+			{
+				if (context.score.stageMaskChanges.find(eventEdit.editId) ==
+				    context.score.stageMaskChanges.end())
+				{
+					ImGui::CloseCurrentPopup();
+					ImGui::EndPopup();
+					return;
+				}
+
+				bool eventEdited = false;
+				UI::beginPropertyColumns();
+				if (ImGui::IsWindowAppearing())
+					ImGui::SetColumnWidth(0, minimumColumnWidth);
+				UI::addFloatProperty(fitColumn(getString("mask_left")), eventEdit.editMask.left,
+				                     "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("mask_size")), eventEdit.editMask.size,
+				                     "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				eventEdited |= UI::addSelectProperty(fitColumn(getString("ease_type")),
+				                                     eventEdit.editMask.ease, easeNames,
+				                                     arrayLength(easeNames));
+
+				StageMaskChangeEvent& mask = context.score.stageMaskChanges[eventEdit.editId];
+				if (eventEdited)
+				{
+					Score prev = context.score;
+					eventEdit.editMask.ID = mask.ID;
+					eventEdit.editMask.stageID = mask.stageID;
+					eventEdit.editMask.tick = mask.tick;
+					context.score.stageMaskChanges[eventEdit.editId] = eventEdit.editMask;
+					context.pushHistory("Change stage mask change", prev, context.score);
+				}
+				UI::endPropertyColumns();
+
+				ImGui::Separator();
+				if (ImGui::Button(getString("remove"), ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					Score prev = context.score;
+					context.score.stageMaskChanges.erase(eventEdit.editId);
+					context.pushHistory("Remove stage mask change", prev, context.score);
+				}
+			}
+			else if (eventEdit.type == EventType::StagePivotChange)
+			{
+				if (context.score.stagePivotChanges.find(eventEdit.editId) ==
+				    context.score.stagePivotChanges.end())
+				{
+					ImGui::CloseCurrentPopup();
+					ImGui::EndPopup();
+					return;
+				}
+
+				bool eventEdited = false;
+				UI::beginPropertyColumns();
+				if (ImGui::IsWindowAppearing())
+					ImGui::SetColumnWidth(0, minimumColumnWidth);
+				UI::addFloatProperty(fitColumn(getString("pivot_lane")), eventEdit.editPivot.lane,
+				                     "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("pivot_division_size")),
+				                     *reinterpret_cast<float*>(&eventEdit.editPivot.divisionSize),
+				                     "%g");
+				UI::addCheckboxProperty(fitColumn(getString("pivot_division_parity_odd")),
+				                        eventEdit.editPivot.divisionParityOdd);
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("pivot_y_offset")),
+				                     eventEdit.editPivot.yOffset, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("pivot_y_offset_beat")),
+				                     eventEdit.editPivot.yOffsetBeat, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				eventEdited |= UI::addSelectProperty(fitColumn(getString("ease_type")),
+				                                     eventEdit.editPivot.ease, easeNames,
+				                                     arrayLength(easeNames));
+
+				StagePivotChangeEvent& pivot = context.score.stagePivotChanges[eventEdit.editId];
+				if (eventEdited)
+				{
+					Score prev = context.score;
+					eventEdit.editPivot.ID = pivot.ID;
+					eventEdit.editPivot.stageID = pivot.stageID;
+					eventEdit.editPivot.tick = pivot.tick;
+					context.score.stagePivotChanges[eventEdit.editId] = eventEdit.editPivot;
+					context.pushHistory("Change stage pivot change", prev, context.score);
+				}
+				UI::endPropertyColumns();
+
+				ImGui::Separator();
+				if (ImGui::Button(getString("remove"), ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					Score prev = context.score;
+					context.score.stagePivotChanges.erase(eventEdit.editId);
+					context.pushHistory("Remove stage pivot change", prev, context.score);
+				}
+			}
+			else if (eventEdit.type == EventType::StageStyleChange)
+			{
+				if (context.score.stageStyleChanges.find(eventEdit.editId) ==
+				    context.score.stageStyleChanges.end())
+				{
+					ImGui::CloseCurrentPopup();
+					ImGui::EndPopup();
+					return;
+				}
+
+				bool eventEdited = false;
+				UI::beginPropertyColumns();
+				if (ImGui::IsWindowAppearing())
+					ImGui::SetColumnWidth(0, minimumColumnWidth);
+				eventEdited |= UI::addSelectProperty(fitColumn(getString("judge_line_color")),
+				                                     eventEdit.editStyle.judgeLineColor,
+				                                     guideColors, arrayLength(guideColors));
+				eventEdited |= UI::addSelectProperty(
+				    fitColumn(getString("left_border_style")), eventEdit.editStyle.leftBorderStyle,
+				    stageBorderStyleNames, arrayLength(stageBorderStyleNames));
+				eventEdited |= UI::addSelectProperty(fitColumn(getString("right_border_style")),
+				                                     eventEdit.editStyle.rightBorderStyle,
+				                                     stageBorderStyleNames,
+				                                     arrayLength(stageBorderStyleNames));
+				UI::addFloatProperty(fitColumn(getString("stage_alpha")), eventEdit.editStyle.alpha,
+				                     "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("lane_alpha")),
+				                     eventEdit.editStyle.laneAlpha, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("judge_line_alpha")),
+				                     eventEdit.editStyle.judgeLineAlpha, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				eventEdited |= UI::addSelectProperty(fitColumn(getString("ease_type")),
+				                                     eventEdit.editStyle.ease, easeNames,
+				                                     arrayLength(easeNames));
+
+				StageStyleChangeEvent& style = context.score.stageStyleChanges[eventEdit.editId];
+				if (eventEdited)
+				{
+					Score prev = context.score;
+					eventEdit.editStyle.ID = style.ID;
+					eventEdit.editStyle.stageID = style.stageID;
+					eventEdit.editStyle.tick = style.tick;
+					context.score.stageStyleChanges[eventEdit.editId] = eventEdit.editStyle;
+					context.pushHistory("Change stage style change", prev, context.score);
+				}
+				UI::endPropertyColumns();
+
+				ImGui::Separator();
+				if (ImGui::Button(getString("remove"), ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					Score prev = context.score;
+					context.score.stageStyleChanges.erase(eventEdit.editId);
+					context.pushHistory("Remove stage style change", prev, context.score);
+				}
+			}
+			else if (eventEdit.type == EventType::Skill)
+			{
+				if (context.score.skills.find(eventEdit.editId) == context.score.skills.end())
+				{
+					ImGui::CloseCurrentPopup();
+					ImGui::EndPopup();
+					return;
+				}
+
+				ImGui::Separator();
+
+				if (context.score.metadata.isExtendedScore)
+				{
+					static constexpr const char* skillEffectNames[] = { "Score Up", "Heal",
+						                                                "Perfect Lock" };
+
+					bool eventEdited = false;
+					UI::beginPropertyColumns();
+					if (ImGui::IsWindowAppearing())
+						ImGui::SetColumnWidth(0, minimumColumnWidth);
+
+					eventEdited |= UI::addSelectProperty<SkillEffect>(
+					    fitColumn("Effect"), eventEdit.editSkillEffect, skillEffectNames,
+					    arrayLength(skillEffectNames));
+					eventEdited |=
+					    UI::addIntProperty(fitColumn("Level"), eventEdit.editSkillLevel, 1, 4);
+
+					UI::endPropertyColumns();
+
+					if (eventEdited)
+					{
+						Score prev = context.score;
+						SkillTrigger& skill = context.score.skills[eventEdit.editId];
+						skill.effect = eventEdit.editSkillEffect;
+						skill.level = (uint8_t)eventEdit.editSkillLevel;
+						context.pushHistory("Edit skill trigger", prev, context.score);
+					}
+				}
+
+				ImGui::Separator();
+				if (ImGui::Button("Remove Skill Procs", ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					Score prev = context.score;
+					context.score.skills.erase(eventEdit.editId);
+					context.pushHistory("Remove skill trigger", prev, context.score);
+				}
+			}
+			else if (eventEdit.type == EventType::Fever)
+			{
+				ImGui::Separator();
+				if (ImGui::Button("Remove Fever", ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					Score prev = context.score;
+					context.score.fever.startTick = -1;
+					context.score.fever.endTick = -1;
+					context.pushHistory("Remove fever", prev, context.score);
+				}
+			}
+
 			ImGui::EndPopup();
 		}
 	}
@@ -3683,4 +4189,593 @@ namespace MikuMikuWorld
 		}
 	}
 }
+
+	void ScoreEditorTimeline::drawStageMaskGraph(ScoreContext& context)
+{
+	ImDrawList* drawList = ImGui::GetWindowDrawList();
+	if (!drawList)
+		return;
+
+	if (context.selectedStage == NO_ID)
+		return;
+
+	auto laneToScreenX = [&](float lane) { return getTimelineStartX(context) + lane * laneWidth; };
+	auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
+
+	std::vector<StageMaskChangeEvent*> changes;
+	for (auto& [id, mask] : context.score.stageMaskChanges)
+		if (mask.stageID == context.selectedStage)
+			changes.push_back(&mask);
+
+	std::sort(changes.begin(), changes.end(),
+		      [](const StageMaskChangeEvent* a, const StageMaskChangeEvent* b)
+		      { return a->tick < b->tick; });
+
+	ImVec2 mousePos = ImGui::GetMousePos();
+	bool isAnyNodeHovered = false;
+
+	ImU32 lineColor = maskGraphColor;
+	ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+	ImU32 hoverColor = IM_COL32(128, 255, 128, 255);
+
+	static id_t draggingNodeID = NO_ID;
+	static bool nodeWasDragged = false;
+	static Score prevScoreForDrag;
+	static float dragGrabLane = 0.0f;
+
+	const StageMaskChangeEvent* hoveredTooltip = nullptr;
+
+	for (size_t i = 0; i < changes.size(); ++i)
+	{
+		StageMaskChangeEvent& current = *changes[i];
+		float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+		float xLeft1 = laneToScreenX(current.left);
+		float xRight1 = laneToScreenX(current.left + current.size);
+
+		drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xRight1, y1), lineColor, 2.0f);
+
+		if (i + 1 < changes.size())
+		{
+			StageMaskChangeEvent& next = *changes[i + 1];
+			float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+			float xLeft2 = laneToScreenX(next.left);
+			float xRight2 = laneToScreenX(next.left + next.size);
+
+			if (current.ease == EaseType::Linear)
+			{
+				drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft2, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight2, y2), lineColor, 2.0f);
+			}
+			else
+			{
+				drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft1, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(xLeft1, y2), ImVec2(xLeft2, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight1, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(xRight1, y2), ImVec2(xRight2, y2), lineColor, 2.0f);
+			}
+		}
+
+		bool isDraggingThis = (draggingNodeID == current.ID);
+		bool isHoveredLeft =
+			std::abs(mousePos.x - xLeft1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+		bool isHoveredRight =
+			std::abs(mousePos.x - xRight1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+		bool isHovered = isHoveredLeft || isHoveredRight;
+
+		if (isHovered)
+			isAnyNodeHovered = true;
+		if (isHovered || isDraggingThis)
+			isHoveringNote = true;
+
+		float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
+		ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
+		drawList->AddCircleFilled(ImVec2(xLeft1, y1), radius, circleColor);
+		drawList->AddCircleFilled(ImVec2(xRight1, y1), radius, circleColor);
+
+		if (isHovered && draggingNodeID == NO_ID)
+		{
+			hoveredTooltip = &current;
+
+			if (ImGui::IsMouseClicked(0))
+			{
+				draggingNodeID = current.ID;
+				nodeWasDragged = false;
+				prevScoreForDrag = context.score;
+				dragGrabLane = screenXToLane(mousePos.x);
+			}
+
+			if (ImGui::IsMouseClicked(1))
+			{
+				Score prev = context.score;
+				context.score.stageMaskChanges.erase(current.ID);
+				context.pushHistory("Remove stage mask change", prev, context.score);
+			}
+		}
+
+		if (isDraggingThis)
+		{
+			if (ImGui::IsMouseDragging(0, 2.0f))
+				nodeWasDragged = true;
+
+			if (nodeWasDragged)
+			{
+				const auto& prevMask = prevScoreForDrag.stageMaskChanges.at(current.ID);
+				float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
+
+				auto& editingMask = context.score.stageMaskChanges[current.ID];
+				editingMask.left = prevMask.left + laneDelta;
+				editingMask.tick = std::max(0, hoverTick);
+
+				ImGui::BeginTooltip();
+				ImGui::Text("Left: %.2f", editingMask.left);
+				ImGui::Text("Size: %.2f", editingMask.size);
+				ImGui::Text("Tick: %d", editingMask.tick);
+				ImGui::EndTooltip();
+			}
+
+			if (ImGui::IsMouseReleased(0))
+			{
+				if (nodeWasDragged)
+				{
+					context.pushHistory("Drag stage mask change", prevScoreForDrag, context.score);
+				}
+				else
+				{
+					eventEdit.editId = current.ID;
+					eventEdit.editMask = current;
+					eventEdit.type = EventType::StageMaskChange;
+					ImGui::OpenPopup("edit_event");
+				}
+				draggingNodeID = NO_ID;
+			}
+		}
+	}
+
+	if (hoveredTooltip && draggingNodeID == NO_ID)
+	{
+		ImGui::BeginTooltip();
+		ImGui::Text("Left: %.2f  Size: %.2f", hoveredTooltip->left, hoveredTooltip->size);
+		ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
+		ImGui::EndTooltip();
+	}
+
+	if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+	{
+		bool duplicate = false;
+		for (const auto* mask : changes)
+			if (mask->tick == hoverTick)
+				duplicate = true;
+
+		if (!duplicate)
+		{
+			Score prev = context.score;
+			id_t newId = getNextStageMaskChangeID();
+			StageMaskChangeEvent mask{};
+			mask.ID = newId;
+			mask.stageID = context.selectedStage;
+			mask.tick = hoverTick;
+			context.score.stageMaskChanges[newId] = mask;
+			context.pushHistory("Add stage mask change", prev, context.score);
+		}
+	}
+}
+
+	void ScoreEditorTimeline::drawCameraShiftGraph(ScoreContext& context)
+{
+	ImDrawList* drawList = ImGui::GetWindowDrawList();
+	if (!drawList)
+		return;
+
+	auto laneToScreenX = [&](float lane) { return getTimelineStartX(context) + lane * laneWidth; };
+	auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
+
+	std::vector<CameraChangeEvent*> changes;
+	for (auto& [id, camera] : context.score.cameraChanges)
+		changes.push_back(&camera);
+
+	std::sort(changes.begin(), changes.end(),
+		      [](const CameraChangeEvent* a, const CameraChangeEvent* b)
+		      { return a->tick < b->tick; });
+
+	ImVec2 mousePos = ImGui::GetMousePos();
+	bool isAnyNodeHovered = false;
+
+	ImU32 lineColor = cameraGraphColor;
+	ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+	ImU32 hoverColor = IM_COL32(255, 102, 102, 255);
+
+
+	static id_t draggingNodeID = NO_ID;
+	static bool nodeWasDragged = false;
+	static Score prevScoreForDrag;
+	static float dragGrabLane = 0.0f;
+
+	const CameraChangeEvent* hoveredTooltip = nullptr;
+
+	for (size_t i = 0; i < changes.size(); ++i)
+	{
+		CameraChangeEvent& current = *changes[i];
+		float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+		float xLeft1 = laneToScreenX(current.left);
+		float xRight1 = laneToScreenX(current.left + current.size);
+
+		drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xRight1, y1), lineColor, 2.0f);
+
+		if (i + 1 < changes.size())
+		{
+			CameraChangeEvent& next = *changes[i + 1];
+			float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+			float xLeft2 = laneToScreenX(next.left);
+			float xRight2 = laneToScreenX(next.left + next.size);
+
+			if (current.ease == EaseType::Linear)
+			{
+				drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft2, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight2, y2), lineColor, 2.0f);
+			}
+			else
+			{
+				drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft1, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(xLeft1, y2), ImVec2(xLeft2, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight1, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(xRight1, y2), ImVec2(xRight2, y2), lineColor, 2.0f);
+			}
+		}
+
+		bool isDraggingThis = (draggingNodeID == current.ID);
+		bool isHoveredLeft =
+			std::abs(mousePos.x - xLeft1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+		bool isHoveredRight =
+			std::abs(mousePos.x - xRight1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+		bool isHovered = isHoveredLeft || isHoveredRight;
+
+		if (isHovered)
+			isAnyNodeHovered = true;
+		if (isHovered || isDraggingThis)
+			isHoveringNote = true;
+
+		float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
+		ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
+		drawList->AddCircleFilled(ImVec2(xLeft1, y1), radius, circleColor);
+		drawList->AddCircleFilled(ImVec2(xRight1, y1), radius, circleColor);
+
+		if (isHovered && draggingNodeID == NO_ID)
+		{
+			hoveredTooltip = &current;
+
+			if (ImGui::IsMouseClicked(0))
+			{
+				draggingNodeID = current.ID;
+				nodeWasDragged = false;
+				prevScoreForDrag = context.score;
+				dragGrabLane = screenXToLane(mousePos.x);
+			}
+
+			if (ImGui::IsMouseClicked(1))
+			{
+				Score prev = context.score;
+				context.score.cameraChanges.erase(current.ID);
+				context.pushHistory("Remove camera change", prev, context.score);
+			}
+		}
+
+		if (isDraggingThis)
+		{
+			if (ImGui::IsMouseDragging(0, 2.0f))
+				nodeWasDragged = true;
+
+			if (nodeWasDragged)
+			{
+				const auto& prevCamera = prevScoreForDrag.cameraChanges.at(current.ID);
+				float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
+
+				auto& editingCamera = context.score.cameraChanges[current.ID];
+				editingCamera.left = prevCamera.left + laneDelta;
+				editingCamera.tick = std::max(0, hoverTick);
+
+				ImGui::BeginTooltip();
+				ImGui::Text("Left: %.2f", editingCamera.left);
+				ImGui::Text("Size: %.2f", editingCamera.size);
+				ImGui::Text("Tick: %d", editingCamera.tick);
+				ImGui::EndTooltip();
+			}
+
+			if (ImGui::IsMouseReleased(0))
+			{
+				if (nodeWasDragged)
+				{
+					context.pushHistory("Drag camera change", prevScoreForDrag, context.score);
+				}
+				else
+				{
+					eventEdit.editId = current.ID;
+					eventEdit.editCamera = current;
+					eventEdit.type = EventType::CameraChange;
+					ImGui::OpenPopup("edit_event");
+				}
+				draggingNodeID = NO_ID;
+			}
+		}
+	}
+
+	if (hoveredTooltip && draggingNodeID == NO_ID)
+	{
+		ImGui::BeginTooltip();
+		ImGui::Text("Left: %.2f  Size: %.2f", hoveredTooltip->left, hoveredTooltip->size);
+		ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
+		ImGui::EndTooltip();
+	}
+
+	if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+	{
+		bool duplicate = false;
+		for (const auto* camera : changes)
+			if (camera->tick == hoverTick)
+				duplicate = true;
+
+		if (!duplicate)
+		{
+			Score prev = context.score;
+			id_t newId = getNextCameraChangeID();
+			CameraChangeEvent camera{};
+			camera.ID = newId;
+			camera.tick = hoverTick;
+			context.score.cameraChanges[newId] = camera;
+			context.pushHistory("Add camera change", prev, context.score);
+		}
+	}
+}
+
+	void ScoreEditorTimeline::drawStagePivotGraph(ScoreContext& context)
+{
+	ImDrawList* drawList = ImGui::GetWindowDrawList();
+	if (!drawList)
+		return;
+
+	if (context.selectedStage == NO_ID)
+		return;
+
+	auto laneToScreenX = [&](float lane) { return getTimelineStartX(context) + lane * laneWidth; };
+	auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
+
+	std::vector<StagePivotChangeEvent*> changes;
+	for (auto& [id, pivot] : context.score.stagePivotChanges)
+		if (pivot.stageID == context.selectedStage)
+			changes.push_back(&pivot);
+
+	std::sort(changes.begin(), changes.end(),
+		      [](const StagePivotChangeEvent* a, const StagePivotChangeEvent* b)
+		      { return a->tick < b->tick; });
+
+	ImVec2 mousePos = ImGui::GetMousePos();
+	bool isAnyNodeHovered = false;
+
+	ImU32 lineColor = pivotGraphColor;
+	ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+	ImU32 hoverColor = IM_COL32(128, 191, 255, 255);
+
+	static id_t draggingNodeID = NO_ID;
+	static bool nodeWasDragged = false;
+	static Score prevScoreForDrag;
+	static float dragGrabLane = 0.0f;
+
+	const StagePivotChangeEvent* hoveredTooltip = nullptr;
+
+	for (size_t i = 0; i < changes.size(); ++i)
+	{
+		StagePivotChangeEvent& current = *changes[i];
+		float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+		float x1 = laneToScreenX(current.lane);
+
+		if (i + 1 < changes.size())
+		{
+			StagePivotChangeEvent& next = *changes[i + 1];
+			float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+			float x2 = laneToScreenX(next.lane);
+
+			if (current.ease == EaseType::Linear)
+			{
+				drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), lineColor, 2.0f);
+			}
+			else
+			{
+				drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), lineColor, 2.0f);
+			}
+		}
+
+		bool isDraggingThis = (draggingNodeID == current.ID);
+		bool isHovered = std::abs(mousePos.x - x1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+
+		if (isHovered)
+			isAnyNodeHovered = true;
+		if (isHovered || isDraggingThis)
+			isHoveringNote = true;
+
+		float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
+		ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
+		drawList->AddCircleFilled(ImVec2(x1, y1), radius, circleColor);
+
+		if (isHovered && draggingNodeID == NO_ID)
+		{
+			hoveredTooltip = &current;
+
+			if (ImGui::IsMouseClicked(0))
+			{
+				draggingNodeID = current.ID;
+				nodeWasDragged = false;
+				prevScoreForDrag = context.score;
+				dragGrabLane = screenXToLane(mousePos.x);
+			}
+
+			if (ImGui::IsMouseClicked(1))
+			{
+				Score prev = context.score;
+				context.score.stagePivotChanges.erase(current.ID);
+				context.pushHistory("Remove stage pivot change", prev, context.score);
+			}
+		}
+
+		if (isDraggingThis)
+		{
+			if (ImGui::IsMouseDragging(0, 2.0f))
+				nodeWasDragged = true;
+
+			if (nodeWasDragged)
+			{
+				const auto& prevPivot = prevScoreForDrag.stagePivotChanges.at(current.ID);
+				float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
+
+				auto& editingPivot = context.score.stagePivotChanges[current.ID];
+				editingPivot.lane = std::round((prevPivot.lane + laneDelta) * 2.0f) / 2.0f;
+				editingPivot.tick = std::max(0, hoverTick);
+
+				ImGui::BeginTooltip();
+				ImGui::Text("Lane: %.2f", editingPivot.lane);
+				ImGui::Text("Tick: %d", editingPivot.tick);
+				ImGui::EndTooltip();
+			}
+
+			if (ImGui::IsMouseReleased(0))
+			{
+				if (nodeWasDragged)
+				{
+					context.pushHistory("Drag stage pivot change", prevScoreForDrag, context.score);
+				}
+				else
+				{
+					eventEdit.editId = current.ID;
+					eventEdit.editPivot = current;
+					eventEdit.type = EventType::StagePivotChange;
+					ImGui::OpenPopup("edit_event");
+				}
+				draggingNodeID = NO_ID;
+			}
+		}
+	}
+
+	if (hoveredTooltip && draggingNodeID == NO_ID)
+	{
+		ImGui::BeginTooltip();
+		ImGui::Text("Lane: %.2f", hoveredTooltip->lane);
+		ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
+		ImGui::EndTooltip();
+	}
+
+	if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+	{
+		bool duplicate = false;
+		for (const auto* pivot : changes)
+			if (pivot->tick == hoverTick)
+				duplicate = true;
+
+		if (!duplicate)
+		{
+			Score prev = context.score;
+			id_t newId = getNextStagePivotChangeID();
+			StagePivotChangeEvent pivot{};
+			pivot.ID = newId;
+			pivot.stageID = context.selectedStage;
+			pivot.tick = hoverTick;
+			pivot.lane = std::round(screenXToLane(mousePos.x) * 2.0f) / 2.0f;
+			context.score.stagePivotChanges[newId] = pivot;
+			context.pushHistory("Add stage pivot change", prev, context.score);
+		}
+	}
+}
+
+	void ScoreEditorTimeline::drawStageStyleLine(ScoreContext& context)
+{
+	ImDrawList* drawList = ImGui::GetWindowDrawList();
+	if (!drawList)
+		return;
+
+	if (context.selectedStage == NO_ID)
+		return;
+
+	std::vector<StageStyleChangeEvent*> changes;
+	for (auto& [id, style] : context.score.stageStyleChanges)
+		if (style.stageID == context.selectedStage)
+			changes.push_back(&style);
+
+	std::sort(changes.begin(), changes.end(),
+		      [](const StageStyleChangeEvent* a, const StageStyleChangeEvent* b)
+		      { return a->tick < b->tick; });
+
+	ImVec2 mousePos = ImGui::GetMousePos();
+	bool isAnyLineHovered = false;
+
+	ImU32 lineColor = styleLineColor;
+	ImU32 hoverColor = IM_COL32(92, 0, 163, 255);
+
+	float xLeft = getTimelineStartX(context);
+	float xRight = getTimelineEndX(context);
+
+	const StageStyleChangeEvent* hoveredStyle = nullptr;
+
+	for (auto* stylePtr : changes)
+	{
+		StageStyleChangeEvent& current = *stylePtr;
+		float y = position.y - tickToPosition(current.tick) + visualOffset;
+
+		bool isHovered = mouseInTimeline && std::abs(mousePos.y - y) < 6.0f &&
+			             mousePos.x >= xLeft && mousePos.x <= xRight;
+		if (isHovered)
+		{
+			isAnyLineHovered = true;
+			isHoveringNote = true;
+		}
+
+		ImU32 color = isHovered ? hoverColor : lineColor;
+		drawList->AddLine(ImVec2(xLeft, y), ImVec2(xRight, y), color, isHovered ? 3.0f : 2.0f);
+
+		if (isHovered)
+		{
+			hoveredStyle = &current;
+
+			if (ImGui::IsMouseClicked(0))
+			{
+				eventEdit.editId = current.ID;
+				eventEdit.editStyle = current;
+				eventEdit.type = EventType::StageStyleChange;
+				ImGui::OpenPopup("edit_event");
+			}
+
+			if (ImGui::IsMouseClicked(1))
+			{
+				Score prev = context.score;
+				context.score.stageStyleChanges.erase(current.ID);
+				context.pushHistory("Remove stage style change", prev, context.score);
+			}
+		}
+	}
+
+	if (hoveredStyle)
+	{
+		ImGui::BeginTooltip();
+		ImGui::Text("Tick: %d", hoveredStyle->tick);
+		ImGui::EndTooltip();
+	}
+
+	if (!isAnyLineHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+	{
+		bool duplicate = false;
+		for (const auto* style : changes)
+			if (style->tick == hoverTick)
+				duplicate = true;
+
+		if (!duplicate)
+		{
+			Score prev = context.score;
+			id_t newId = getNextStageStyleChangeID();
+			StageStyleChangeEvent style{};
+			style.ID = newId;
+			style.stageID = context.selectedStage;
+			style.tick = hoverTick;
+			context.score.stageStyleChanges[newId] = style;
+			context.pushHistory("Add stage style change", prev, context.score);
+		}
+	}
+}
+
 }

@@ -64,6 +64,24 @@ namespace MikuMikuWorld
 		static bool canSerialize(const Score& score);
 
 	  private:
+		static Sonolus::LevelDataEntity toInitializationEntity();
+		static Sonolus::LevelDataEntity toStageEntity(const Stage& stage);
+		static Sonolus::LevelDataEntity toCameraChangeEntity(const CameraChangeEvent& camera);
+		static Sonolus::LevelDataEntity toStageMaskChangeEntity(const StageMaskChangeEvent& mask);
+		static Sonolus::LevelDataEntity
+		toStagePivotChangeEntity(const StagePivotChangeEvent& pivot);
+		static Sonolus::LevelDataEntity
+		toStageStyleChangeEntity(const StageStyleChangeEvent& style);
+
+		static bool fromStageEntity(const Sonolus::LevelDataEntity& e, Stage& stage);
+		static bool fromCameraChangeEntity(const Sonolus::LevelDataEntity& e,
+		                                   CameraChangeEvent& camera);
+		static bool fromStageMaskChangeEntity(const Sonolus::LevelDataEntity& e,
+		                                      StageMaskChangeEvent& mask);
+		static bool fromStagePivotChangeEntity(const Sonolus::LevelDataEntity& e,
+		                                       StagePivotChangeEvent& pivot);
+		static bool fromStageStyleChangeEntity(const Sonolus::LevelDataEntity& e,
+		                                       StageStyleChangeEvent& style);
 		static Sonolus::LevelDataEntity toGroupEntity(const Layer& layer);
 		static Sonolus::LevelDataEntity toTimeScaleEntity(const HiSpeedChange& hispeed,
 		                                                  const RefType& groupName);
@@ -72,10 +90,16 @@ namespace MikuMikuWorld
 		toFeverEntities(const Fever& fever);
 		static Sonolus::LevelDataEntity toNoteEntity(const Note& note, const std::string& archetype,
 		                                             const RefType& groupName,
+		                                             const RefType& stageRef = {}, float pivotLane = 0,
 		                                             const HoldNote* hold = nullptr,
 		                                             const HoldStep* holdStep = nullptr);
+
+		static float getActiveStagePivotLane(const Score& score, id_t stageID, int tick);
+
 		static std::string getSingleNoteArchetype(const Note& note);
-		static std::string getHoldNoteArchetype(const Note& note, bool isHead, bool isTail);
+		static std::string getHoldNoteArchetype(const Note& note, bool isHead, bool isTail,
+		                                        bool isAnchor);
+		static int toSegmentNumeric(const Note& note, const HoldNote* hold);
 		static void insertTransientTickNote(size_t headIndex, size_t tailIndex, bool isActiveHead,
 		                                    std::vector<Sonolus::LevelDataEntity>& entities);
 		static void estimateAttachEntity(Sonolus::LevelDataEntity& attach,
@@ -83,6 +107,8 @@ namespace MikuMikuWorld
 		                                 const Sonolus::LevelDataEntity& tail);
 		static int toDirectionNumeric(FlickType flick);
 		static int toEaseNumeric(EaseType ease);
+		static int toFadeNumeric(FadeType fade);
+		static FadeType fromFadeNumeric(int fade);
 		static int toSegmentNumeric(const HoldStep* holdStep = nullptr);
 
 		static bool fromGroupEntity(const Sonolus::LevelDataEntity& groupEntity, Layer& layer);
@@ -95,11 +121,16 @@ namespace MikuMikuWorld
 		static bool fromFeverEntity(const Sonolus::LevelDataEntity& feverEntity, Fever& fever);
 
 		static int fromNoteEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
-		                          const std::unordered_map<RefType, size_t>& groupNameMap);
+		                          const std::unordered_map<RefType, size_t>& groupNameMap,
+		                          const std::unordered_map<RefType, id_t>& stageNameMap);
 		static int fromTapNoteEntity(const Sonolus::LevelDataEntity& tapNoteEntity, Note& note,
-		                             const std::unordered_map<RefType, size_t>& groupNameMap);
+		                             const std::unordered_map<RefType, size_t>& groupNameMap,
+		                             const std::unordered_map<RefType, id_t>& stageNameMap,
+		                             NoteType anchorType = NoteType::Tap);
 		static int fromHoldMidEntity(const Sonolus::LevelDataEntity& noteEntity, Note& note,
-		                             const std::unordered_map<RefType, size_t>& groupNameMap);
+		                             const std::unordered_map<RefType, size_t>& groupNameMap,
+		                             const std::unordered_map<RefType, id_t>& stageNameMap,
+		                             NoteType anchorType = NoteType::HoldMid);
 
 		static bool isValidNoteState(const Note& note);
 		static bool isValidHoldNotes(const std::vector<Note>& holdNotes, const HoldNote& hold);

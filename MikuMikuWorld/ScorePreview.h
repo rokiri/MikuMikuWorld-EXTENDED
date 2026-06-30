@@ -36,6 +36,18 @@ namespace MikuMikuWorld
 		void draw(Renderer* renderer, float scrWidth, float scrHeight) const;		
 	};
 
+	struct CameraRenderProps
+	{
+		float lane = 0;
+		float scale = 1;
+		float zoom = 1;
+		float zoomTargetX = 0;
+		float zoomTargetTravel = 1;
+		float zoomAnchorY = 1;
+		float rotate = 0;
+		float stageTilt = 1;
+	};
+
 	class ScorePreviewWindow
 	{
 		Framebuffer previewBuffer;
@@ -46,9 +58,13 @@ namespace MikuMikuWorld
 		mutable bool fullWindow{};
 		const Texture& getNoteTexture();
 
-		void drawNoteBase(Renderer* renderer, const Note& note, float left, float right, float y, float zScalar = 1);
-		void drawTraceDiamond(Renderer* renderer, const Note& note, float left, float right, float y);
-		void drawFlickArrow(Renderer* renderer, const Note& note, float y, double cur_time);
+		void drawNoteBase(Renderer* renderer, const Note& note, float noteLeft, float noteRight,
+		                  float y, float zScalar = 1.f,
+		                  const CameraRenderProps& camera = CameraRenderProps{});
+		void drawTraceDiamond(Renderer* renderer, const Note& note, float noteLeft, float noteRight,
+		                      float y, const CameraRenderProps& camera = CameraRenderProps{});
+		void drawFlickArrow(Renderer* renderer, const Note& note, float y, double time,
+		                    const CameraRenderProps& camera = CameraRenderProps{});
 
 		void drawStageCoverMask(Renderer* renderer);
 		
@@ -70,6 +86,7 @@ namespace MikuMikuWorld
 		void drawStage(Renderer* renderer);
 		void drawStageCover(Renderer* renderer);
 		void drawStageCoverDecoration(Renderer* renderer);
+		void drawDynamicStage(Renderer* renderer, ScoreContext& context);
 		void loadNoteEffects(Effect::EffectView& effectView);
 
 		void setFullWindow(bool fullScreen);

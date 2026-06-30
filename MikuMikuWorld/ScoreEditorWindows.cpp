@@ -7,6 +7,7 @@
 #include "ScoreContext.h"
 #include "UI.h"
 #include "Utilities.h"
+#include "Score.h"
 
 namespace MikuMikuWorld
 {
@@ -41,6 +42,22 @@ namespace MikuMikuWorld
 
 			UI::addIntProperty(getString("lane_extension"), context.workingData.laneExtension, 0,
 			                   100);
+			if (UI::addCheckboxProperty("Extended Score", context.workingData.isExtendedScore))
+			{
+				Score prev = context.score;
+				context.score.metadata.isExtendedScore = context.workingData.isExtendedScore;
+				context.pushHistory("Change extended score", prev, context.score);
+			}
+			if (context.workingData.isExtendedScore)
+			{
+				int& lifeRef = context.workingData.baseLifePoint;
+				if (UI::addIntProperty("Base Life Points", lifeRef, 0, 99999))
+				{
+					Score prev = context.score;
+					context.score.metadata.baseLifePoint = lifeRef;
+					context.pushHistory("Change base life points", prev, context.score);
+				}
+			}
 			UI::endPropertyColumns();
 		}
 
@@ -757,6 +774,9 @@ namespace MikuMikuWorld
 				}
 			}
 			ImGui::EndChild();
+			ImGui::Separator();
+
+			ImGui::PopStyleVar();
 			ImGui::Separator();
 
 			const bool disable =
@@ -1691,6 +1711,10 @@ namespace MikuMikuWorld
 						UI::addCheckboxProperty(getString("flicks_animation"), config.pvFlickAnimation);
 						UI::addCheckboxProperty(getString("holds_animation"), config.pvHoldAnimation);
 						UI::addCheckboxProperty(getString("simultaneous_lines"), config.pvSimultaneousLine);
+						UI::addCheckboxProperty(getString("preview_draw_score_hud"),
+						                        config.pvDrawScoreHud);
+						UI::addCheckboxProperty(getString("preview_draw_life_hud"),
+						                        config.pvDrawLifeHud);
 						ImGui::Separator();
 
 						float hold_alpha = config.pvHoldAlpha * 100.f;
@@ -2229,6 +2253,175 @@ namespace MikuMikuWorld
 
 				context.pushHistory("Delete Layer/Folder", prev, context.score);
 			}
+		}
+	}
+
+	void StagesWindow::update(ScoreContext& context)
+	{
+		bool doDeleteStage = false;
+
+		if (ImGui::Begin(IMGUI_TITLE(ICON_FA_LAYER_GROUP, "stages")))
+		{
+			float buttonHeight = ImGui::GetFrameHeight();
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
+
+			if (UI::transparentButton(ICON_FA_PLUS, ImVec2(buttonHeight, buttonHeight), false))
+			{
+				id_t id = getNextStageID();
+				Stage newStage;
+				newStage.ID = id;
+				newStage.editorName = "New Stage";
+				context.score.stages[id] = newStage;
+				context.score.stageOrder.push_back(id);
+
+				StageStyleChangeEvent defaultStyle{};
+				defaultStyle.ID = getNextStageStyleChangeID();
+				defaultStyle.stageID = id;
+				context.score.stageStyleChanges[defaultStyle.ID] = defaultStyle;
+
+				StageMaskChangeEvent defaultMask{};
+				defaultMask.ID = getNextStageMaskChangeID();
+				defaultMask.stageID = id;
+				context.score.stageMaskChanges[defaultMask.ID] = defaultMask;
+
+				renameID = id;
+				stageName = newStage.editorName;
+				context.selectedStage = id;
+				focusRenameInput = true;
+			}
+			UI::tooltip(getString("create_stage"));
+			ImGui::SameLine();
+
+			bool canDelete = context.selectedStage != NO_ID;
+			if (!canDelete)
+				ImGui::BeginDisabled();
+			if (UI::transparentButton(ICON_FA_TRASH, ImVec2(buttonHeight, buttonHeight), false))
+				ImGui::OpenPopup(getString("stage_delete_confirm"));
+			if (!canDelete)
+				ImGui::EndDisabled();
+			UI::tooltip(getString("delete"));
+
+			ImGui::PopStyleVar();
+			ImGui::Separator();
+
+			ImGui::TextUnformatted(getString("edit_stage_event"));
+			ImGui::SetNextItemWidth(-1);
+			int modeIndex = (int)context.stageEventEditMode;
+			if (ImGui::Combo("##edit_stage_event_mode", &modeIndex, stageEventEditModeNames,
+			                 (int)StageEventEditMode::StageEventEditModeMax))
+				context.stageEventEditMode = (StageEventEditMode)modeIndex;
+			ImGui::Separator();
+
+			if (ImGui::BeginChild("stages_child_window", ImVec2(-1, -(buttonHeight + 8)), true))
+			{
+				for (id_t id : context.score.stageOrder)
+				{
+					auto it = context.score.stages.find(id);
+					if (it == context.score.stages.end())
+						continue;
+
+					Stage& stage = it->second;
+					ImGui::PushID(id);
+
+					bool isSelected = (id == context.selectedStage);
+					std::string displayName =
+					    stage.editorName.empty() ? "(unnamed)" : stage.editorName;
+
+					if (isSelected)
+					{
+						ImGui::PushStyleColor(ImGuiCol_Button,
+						                      ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+						ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+						                      ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+					}
+
+					if (ImGui::Button(displayName.c_str(), ImVec2(-1, buttonHeight)))
+						context.selectedStage = id;
+
+					if (isSelected)
+						ImGui::PopStyleColor(2);
+
+					ImGui::PopID();
+				}
+			}
+			ImGui::EndChild();
+
+			if (context.selectedStage != NO_ID)
+			{
+				auto stageIt = context.score.stages.find(context.selectedStage);
+				if (stageIt != context.score.stages.end())
+				{
+					static std::string editBuffer;
+					static id_t lastEditedID = NO_ID;
+					if (lastEditedID != context.selectedStage)
+					{
+						editBuffer = stageIt->second.editorName;
+						lastEditedID = context.selectedStage;
+					}
+
+					ImGui::SetNextItemWidth(-1);
+					if (ImGui::InputText("##stage_name_edit", &editBuffer))
+						stageIt->second.editorName = editBuffer;
+				}
+			}
+
+			if (ImGui::BeginPopupModal(getString("stage_delete_confirm"), NULL,
+			                           ImGuiWindowFlags_AlwaysAutoResize |
+			                               ImGuiWindowFlags_NoSavedSettings))
+			{
+				ImGui::Text("%s", getString("stage_delete_msg1"));
+				ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s",
+				                   getString("stage_delete_msg2"));
+				ImGui::Separator();
+
+				if (ImGui::Button(getString("yes"), ImVec2(120, 0)))
+				{
+					doDeleteStage = true;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SetItemDefaultFocus();
+				ImGui::SameLine();
+				if (ImGui::Button(getString("cancel"), ImVec2(120, 0)))
+					ImGui::CloseCurrentPopup();
+
+				ImGui::EndPopup();
+			}
+		}
+		ImGui::End();
+
+		if (doDeleteStage)
+		{
+			id_t deleteID = context.selectedStage;
+			Score prev = context.score;
+
+			for (auto& [_, note] : context.score.notes)
+				if (note.stageID == deleteID)
+					note.stageID = NO_ID;
+
+			for (auto it = context.score.stageMaskChanges.begin();
+			     it != context.score.stageMaskChanges.end();)
+				it = (it->second.stageID == deleteID) ? context.score.stageMaskChanges.erase(it)
+				                                      : std::next(it);
+
+			for (auto it = context.score.stagePivotChanges.begin();
+			     it != context.score.stagePivotChanges.end();)
+				it = (it->second.stageID == deleteID) ? context.score.stagePivotChanges.erase(it)
+				                                      : std::next(it);
+
+			for (auto it = context.score.stageStyleChanges.begin();
+			     it != context.score.stageStyleChanges.end();)
+				it = (it->second.stageID == deleteID) ? context.score.stageStyleChanges.erase(it)
+				                                      : std::next(it);
+
+			auto orderIt = std::find(context.score.stageOrder.begin(),
+			                         context.score.stageOrder.end(), deleteID);
+			if (orderIt != context.score.stageOrder.end())
+				context.score.stageOrder.erase(orderIt);
+
+			context.score.stages.erase(deleteID);
+			context.selectedStage = NO_ID;
+
+			context.pushHistory("Delete Stage", prev, context.score);
 		}
 	}
 

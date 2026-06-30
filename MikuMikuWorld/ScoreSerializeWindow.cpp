@@ -2,6 +2,7 @@
 #include "ScoreSerializeWindow.h"
 
 #include "NativeScoreSerializer.h"
+#include "ExtendedNativeScoreSerializer.h"
 #include "SusSerializer.h"
 #include "UscSerializer.h"
 #include "SonolusSerializer.h"
@@ -20,9 +21,11 @@ namespace MikuMikuWorld
 		IO::formatString("%s (%s)", IO::susFilter.filterName.c_str(), SUS_EXTENSION),
 		IO::formatString("%s (%s)", IO::uscFilter.filterName.c_str(), USC_EXTENSION),
 		IO::lvlDatFilter.filterName,
+		IO::formatString("%s (%s)", IO::mmwppsFilter.filterName.c_str(), "*.mmwpps"),
 	};
 
-	static constexpr std::array<size_t, 4> EXPORT_AVAILABILITY = { false, true, true, true };
+	static constexpr std::array<size_t, FORMAT_COUNT> EXPORT_AVAILABILITY = { false, true, true,
+		                                                                      true, false };
 
 	DefaultScoreSerializeController::DefaultScoreSerializeController(Score score)
 	{
@@ -42,10 +45,16 @@ namespace MikuMikuWorld
 
 	bool DefaultScoreSerializeController::isSerializable(SerializeFormat format, const Score& score)
 	{
+		if (score.metadata.isExtendedScore)
+			if (format == SerializeFormat::SusFormat || format == SerializeFormat::UscFormat)
+				return false;
+
 		switch (format)
 		{
 		case SerializeFormat::NativeFormat:
 			return NativeScoreSerializer::canSerialize(score);
+		case SerializeFormat::ExtendedNativeFormat:
+			return ExtendedNativeScoreSerializer::canSerialize(score);
 		case SerializeFormat::SusFormat:
 			return SusSerializer::canSerialize(score);
 		case SerializeFormat::UscFormat:
@@ -65,6 +74,9 @@ namespace MikuMikuWorld
 		case SerializeFormat::NativeFormat:
 			serializer = std::make_unique<NativeScoreSerializer>();
 			break;
+		case SerializeFormat::ExtendedNativeFormat:
+			serializer = std::make_unique<ExtendedNativeScoreSerializer>();
+			break;
 		case SerializeFormat::SusFormat:
 			serializer = std::make_unique<SusSerializer>();
 			break;
@@ -81,7 +93,8 @@ namespace MikuMikuWorld
 			return;
 		}
 
-		if (format == SerializeFormat::NativeFormat)
+		if (format == SerializeFormat::NativeFormat ||
+		    format == SerializeFormat::ExtendedNativeFormat)
 			scoreFilename = filename;
 	}
 
@@ -206,6 +219,9 @@ namespace MikuMikuWorld
 		case SerializeFormat::NativeFormat:
 			deserializer = std::make_unique<NativeScoreSerializer>();
 			break;
+		case SerializeFormat::ExtendedNativeFormat:
+			deserializer = std::make_unique<ExtendedNativeScoreSerializer>();
+			break;
 		case SerializeFormat::SusFormat:
 			deserializer = std::make_unique<SusSerializer>();
 			break;
@@ -222,7 +238,8 @@ namespace MikuMikuWorld
 			return;
 		}
 
-		if (selectedFormat == SerializeFormat::NativeFormat)
+		if (selectedFormat == SerializeFormat::NativeFormat ||
+		    selectedFormat == SerializeFormat::ExtendedNativeFormat)
 			this->scoreFilename = filename;
 	}
 
@@ -347,6 +364,8 @@ namespace MikuMikuWorld
 			context.history.clear();
 			context.score = std::move(controller->getScore());
 			context.selectedLayer = 0;
+			context.selectedStage =
+			    context.score.stageOrder.empty() ? NO_ID : context.score.stageOrder.front();
 			context.workingData =
 			    EditorScoreData(context.score.metadata, controller->getScoreFilename());
 

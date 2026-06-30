@@ -24,6 +24,7 @@ namespace MikuMikuWorld
 		SusFormat,
 		UscFormat,
 		LvlDataFormat,
+		ExtendedNativeFormat,
 		FormatCount
 	};
 
