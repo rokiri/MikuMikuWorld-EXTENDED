@@ -254,6 +254,9 @@ namespace MikuMikuWorld
 		bool drawHoldStepOutlines = true;
 		Background background;
 
+		bool insertingSkill{ false };
+		int insertingFeverStage{ -1 };
+
 		struct EventEditParams
 		{
 			EventType type = EventType::None;

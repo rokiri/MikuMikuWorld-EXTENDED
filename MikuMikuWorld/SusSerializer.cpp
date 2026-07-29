@@ -110,10 +110,9 @@ namespace MikuMikuWorld
 		std::unordered_set<std::string> frictions;
 		std::unordered_set<std::string> hiddenHolds;
 
-		for (const auto& slides : { sus.slides, sus.guides })
-			for (const auto& slide : slides)
-			{
-				for (const auto& note : slide)
+		for (const auto& slide : sus.slides)
+		{
+			for (const auto& note : slide)
 				{
 					switch (note.type)
 					{

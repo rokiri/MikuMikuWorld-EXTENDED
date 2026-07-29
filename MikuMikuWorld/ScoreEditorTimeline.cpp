@@ -959,6 +959,56 @@ namespace MikuMikuWorld
 			}
 		}
 
+		if (insertingSkill && mouseInTimeline && !playing && !UI::isAnyPopupOpen())
+		{
+			bool duplicate = false;
+			for (const auto& [_, sk] : context.score.skills)
+				if (sk.tick == hoverTick)
+				{
+					duplicate = true;
+					break;
+				}
+
+			skillControl(context, hoverTick, !duplicate);
+
+			if (ImGui::IsMouseClicked(0) && !isHoveringNote)
+			{
+				if (!duplicate)
+				{
+					Score prev = context.score;
+					id_t id = getNextSkillID();
+					SkillTrigger skill{};
+					skill.ID = id;
+					skill.tick = hoverTick;
+					context.score.skills[id] = skill;
+					context.pushHistory("Insert skill trigger", prev, context.score);
+				}
+				insertingSkill = false;
+			}
+			if (ImGui::IsMouseClicked(1) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+				insertingSkill = false;
+		}
+
+		if (insertingFeverStage != -1 && mouseInTimeline && !playing && !UI::isAnyPopupOpen())
+		{
+			bool start = insertingFeverStage == 0;
+			feverControl(context, hoverTick, start, true);
+
+			if (ImGui::IsMouseClicked(0) && !isHoveringNote)
+			{
+				Score prev = context.score;
+				if (start)
+					context.score.fever.startTick = hoverTick;
+				else
+					context.score.fever.endTick = hoverTick;
+				context.pushHistory(start ? "Set fever start" : "Set fever end", prev,
+				                    context.score);
+				insertingFeverStage = -1;
+			}
+			if (ImGui::IsMouseClicked(1) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+				insertingFeverStage = -1;
+		}
+
 		if (context.stageEventEditMode == StageEventEditMode::Camera)
 		{
 			drawCameraShiftGraph(context);

@@ -1391,22 +1391,67 @@ namespace MikuMikuWorld
 		return active;
 	}
 
-	static float cameraTiltedWidth(float travel, float stageTilt)
+	static float cameraTiltedWidth(float depth, float stageTilt)
 	{
 		stageTilt = std::clamp(stageTilt, 0.f, 1.f);
 		const float mid = (powf(1.06f, -45.f) + 1.f) * 0.5f;
-		return stageTilt * travel + (1.f - stageTilt) * mid;
+		return stageTilt * depth + (1.f - stageTilt) * mid;
 	}
 
-	static float cameraTargetTravel(float progress, float stageTilt)
+	// this is the beginning of the real engine approach-at-tilt port
+	constexpr float APPROACH_SCALE_CONST = 0.07414833f;
+	constexpr float APPROACH_TILT_LERP_MIN = 0.05f;
+
+	static float approachCurveBase(float x) { return powf(APPROACH_SCALE_CONST, 1.f - x); }
+
+	static float inverseApproachCurveBase(float v)
+	{
+		v = std::max(0.000001f, v);
+		return 1.f - logf(v) / logf(APPROACH_SCALE_CONST);
+	}
+
+	static float remapRange(float a0, float a1, float b0, float b1, float v)
+	{
+		if (std::abs(a1 - a0) < 0.000001f)
+			return b0;
+		return b0 + (b1 - b0) * (v - a0) / (a1 - a0);
+	}
+
+	static void approachSliceWindow(float stageTilt, float spawnDepth, float& outStart,
+	                                float& outSliceSpawn)
+	{
+		float wJudge = cameraTiltedWidth(1.f, stageTilt);
+		float spawnFraction = stageTilt * (1.f - spawnDepth) / std::max(0.000001f, wJudge);
+		outSliceSpawn = 1.f - spawnFraction;
+		outStart = inverseApproachCurveBase(outSliceSpawn);
+	}
+
+	static float approachSlice(float progress, float stageTilt, float spawnDepth)
+	{
+		float start, sliceSpawn;
+		approachSliceWindow(stageTilt, spawnDepth, start, sliceSpawn);
+		float travel = approachCurveBase(lerp(start, 1.f, progress));
+		return remapRange(sliceSpawn, 1.f, spawnDepth, 1.f, travel);
+	}
+
+	static float approachAtTilt(float progress, float stageTilt)
 	{
 		stageTilt = std::clamp(stageTilt, 0.f, 1.f);
-		float base = (float)Engine::approachProgress((double)progress);
 		if (stageTilt >= 1.f)
-			return base;
-		const float linearMin = powf(1.06f, -45.f);
-		float linear = lerp(linearMin, 1.f, progress);
-		return lerp(linear, base, stageTilt);
+			return approachCurveBase(progress);
+
+		const float spawnDepth = APPROACH_SCALE_CONST;
+		if (stageTilt <= 0.f)
+			return lerp(spawnDepth, 1.f, progress);
+
+		if (stageTilt < APPROACH_TILT_LERP_MIN)
+		{
+			float linear = lerp(spawnDepth, 1.f, progress);
+			float sliceAtFloor = approachSlice(progress, APPROACH_TILT_LERP_MIN, spawnDepth);
+			return lerp(linear, sliceAtFloor, stageTilt / APPROACH_TILT_LERP_MIN);
+		}
+
+		return approachSlice(progress, stageTilt, spawnDepth);
 	}
 
 	static CameraRenderProps getCameraPropsAt(const Score& score, int tick)
@@ -1443,7 +1488,7 @@ namespace MikuMikuWorld
 		float lane = (position - 6.0f) + halfSize;
 		float scale = 6.0f / std::max(0.0001f, halfSize);
 
-		float targetTravel = cameraTargetTravel(1.f - zoomTargetY, stageTilt);
+		float targetTravel = approachAtTilt(1.f - zoomTargetY, stageTilt);
 		float targetWidth = cameraTiltedWidth(targetTravel, stageTilt);
 		float targetX = ((lane + zoomTargetLane) * targetWidth - lane) * scale;
 
@@ -1466,6 +1511,10 @@ namespace MikuMikuWorld
 	    (Engine::STAGE_TARGET_WIDTH * Engine::STAGE_WIDTH_RATIO) /
 	    (Engine::STAGE_TARGET_HEIGHT * Engine::STAGE_HEIGHT_RATIO);
 
+	constexpr float CAMERA_ROTATE_PIVOT_Y =
+	    (Engine::STAGE_LANE_TOP + Engine::STAGE_TEX_HEIGHT / 2.f) / Engine::STAGE_LANE_HEIGHT -
+	    0.06f / Engine::STAGE_HEIGHT_RATIO;
+
 	static void applyCameraPoint(float& x, float& y, const CameraRenderProps& camera)
 	{
 		float baseX = (x - camera.lane) * camera.scale;
@@ -1474,16 +1523,11 @@ namespace MikuMikuWorld
 
 		if (std::abs(camera.rotate) > 0.000001f)
 		{
-			const float stageTopY = Engine::STAGE_LANE_TOP / Engine::STAGE_LANE_HEIGHT;
-			const float stageBottomY =
-			    stageTopY + Engine::STAGE_TEX_HEIGHT / Engine::STAGE_LANE_HEIGHT;
-			const float pivotY = (stageTopY + stageBottomY) * 0.5f;
-
 			float c = cosf(camera.rotate), s = sinf(camera.rotate);
 			float px = tx * CAMERA_ASPECT_CORRECTION;
-			float py = ty - pivotY;
+			float py = ty - CAMERA_ROTATE_PIVOT_Y;
 			tx = (px * c - py * s) / CAMERA_ASPECT_CORRECTION;
-			ty = (px * s + py * c) + pivotY;
+			ty = (px * s + py * c) + CAMERA_ROTATE_PIVOT_Y;
 		}
 
 		x = tx;
@@ -1494,8 +1538,20 @@ namespace MikuMikuWorld
 	{
 		float untiltedWidth = std::abs(y) > 0.000001f ? y : 1.f;
 		float lane = x / untiltedWidth;
-		float tiltedX = lane * cameraTiltedWidth(y, camera.stageTilt);
-		x = tiltedX;
+		x = lane * cameraTiltedWidth(y, camera.stageTilt);
+		applyCameraPoint(x, y, camera);
+	}
+
+	// this is the beginning of the icon camera projection
+	static void applyCameraTiltIcon(float& x, float& y, float baseTravel,
+	                                const CameraRenderProps& camera)
+	{
+		float stageTilt = std::clamp(camera.stageTilt, 0.f, 1.f);
+		float lineY = std::abs(y) > 0.000001f ? y : 1.f;
+		float lane = x / lineY;
+		float depth = baseTravel + (lineY - 1.f) * lerp(1.f, baseTravel, stageTilt);
+		x = lane * cameraTiltedWidth(depth, stageTilt);
+		y = depth;
 		applyCameraPoint(x, y, camera);
 	}
 
@@ -1664,8 +1720,7 @@ namespace MikuMikuWorld
 				             context.score, context.currentTick);
 				dsPushSprite(renderer, tex, SPR_DS_JUDGE_EDGE_BLACK + colorIdx,
 				             laneRight - DS_JUDGE_EDGE_WIDTH, laneRight, curJudgeTop,
-				             curJudgeBottom, a,
-				             1, context.score, context.currentTick);
+				             curJudgeBottom, a, 1, context.score, context.currentTick);
 
 				if (props.divisionSize > 0)
 				{
@@ -1832,11 +1887,8 @@ namespace MikuMikuWorld
 			if (scaled_tm < note.visualTime.min)
 				continue;
 
-			double yPerspective =
-			    Engine::approach(note.visualTime.min, note.visualTime.max, scaled_tm);
-			double yLinear =
-			    (scaled_tm - note.visualTime.min) / (note.visualTime.max - note.visualTime.min);
-			double y = lerp(yLinear, yPerspective, (double)camera.stageTilt);
+			double progress = unlerpD(note.visualTime.min, note.visualTime.max, scaled_tm);
+			double y = approachAtTilt((float)progress, camera.stageTilt);
 			float l = Engine::laneToLeft(noteData.lane),
 			      r = Engine::laneToLeft(noteData.lane) + noteData.width;
 
@@ -1866,6 +1918,7 @@ namespace MikuMikuWorld
 		if (!isArrayIndexInBounds(transIndex, ResourceManager::spriteTransforms))
 			return;
 		const SpriteTransform& lineTransform = ResourceManager::spriteTransforms[transIndex];
+		CameraRenderProps lineCamera = getCameraPropsAt(context.score, context.currentTick);
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();
@@ -1911,8 +1964,10 @@ namespace MikuMikuWorld
 				adj_right_lane = lerpD(line.leftLane, line.rightLane, adj_right_frac);
 			}
 
-			float adj_left_travel = Engine::approachProgress(adj_left_progress);
-			float adj_right_travel = Engine::approachProgress(adj_right_progress);
+			// this is the beginning of the double-reshape fix (sim line)
+			float adj_left_travel = approachAtTilt((float)adj_left_progress, lineCamera.stageTilt);
+			float adj_right_travel =
+			    approachAtTilt((float)adj_right_progress, lineCamera.stageTilt);
 
 			if (std::abs(adj_left_lane - adj_right_lane) < 1e-6 &&
 			    std::abs(adj_left_travel - adj_right_travel) < 1e-6)
@@ -1952,6 +2007,9 @@ namespace MikuMikuWorld
 			vPos[3].x *= adj_left_travel;
 			vPos[3].y *= adj_left_travel;
 
+			for (auto& v : vPos)
+				applyCameraTilt(v.x, v.y, lineCamera);
+
 			auto uv =
 			    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
 			                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
@@ -1970,6 +2028,7 @@ namespace MikuMikuWorld
 		if (noteTextures.notes == -1)
 			return;
 		const auto layer_stm = getCurrentLayerScaledTimes(context);
+		CameraRenderProps tickCamera = getCameraPropsAt(context.score, context.currentTick);
 
 		const float notesHeight = Engine::getNoteHeight() * 1.3f;
 		const float w = notesHeight / scaledAspectRatio;
@@ -2000,7 +2059,9 @@ namespace MikuMikuWorld
 			if (scaled_tm < tick.visualTime.min)
 				continue;
 
-			float y = (float)Engine::approach(tick.visualTime.min, tick.visualTime.max, scaled_tm);
+			float tickProgress =
+			    (float)unlerpD(tick.visualTime.min, tick.visualTime.max, scaled_tm);
+			float y = approachAtTilt(tickProgress, tickCamera.stageTilt);
 
 			//  Y座標クリッピング
 			if (y < -0.1 || y > 1.2)
@@ -2014,11 +2075,13 @@ namespace MikuMikuWorld
 
 			auto vPos = transform.apply(
 			    Engine::quadvPos(tickCenter - w, tickCenter + w, noteTop, noteBottom));
+			for (auto& v : vPos)
+				applyCameraTiltIcon(v.x, v.y, y, tickCamera);
 			auto uv =
 			    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
 			                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
 
-			renderer->pushQuad(vPos, uv, DirectX::XMMatrixScaling(y, y, 1.f), toFloat4(defaultTint),
+			renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint),
 			                   (int)texture.getID(),
 			                   Engine::getZIndex(SpriteLayer::DIAMOND, tickCenter, y));
 		}
@@ -2034,7 +2097,7 @@ namespace MikuMikuWorld
 		const float mirror = config.pvMirrorScore ? -1 : 1;
 		const auto& drawData = context.scorePreviewDrawData;
 		const auto layer_stm = getCurrentLayerScaledTimes(context);
-
+		CameraRenderProps pathCamera = getCameraPropsAt(context.score, context.currentTick);
 		for (auto& segment : drawData.drawingHoldSegments)
 		{
 			// 存在チェックを行い、データが既に消えていたら描画を安全にスキップする
@@ -2073,14 +2136,8 @@ namespace MikuMikuWorld
 				start_time = current_tm;
 			}
 
-			double stm_top = current_stm + 1.0 * noteDuration;
-			double stm_bottom = current_stm - 0.2 * noteDuration;
-
-			// 画面に映る範囲のみを計算するカリング処理（元のコードの考え方と同じ）
-			double p_view_a = unlerpD(start_stm, segment.tailTime, stm_bottom);
-			double p_view_b = unlerpD(start_stm, segment.tailTime, stm_top);
-			double p_min = std::clamp(std::min(p_view_a, p_view_b), 0.0, 1.0);
-			double p_max = std::clamp(std::max(p_view_a, p_view_b), 0.0, 1.0);
+			double p_min = 0.0;
+			double p_max = 1.0;
 
 			if (p_min >= p_max)
 				continue;
@@ -2180,11 +2237,10 @@ namespace MikuMikuWorld
 				double base_frac = unlerpD(segment.startTime, segment.endTime, start_time);
 				float l = ease(startLeft, endLeft, (float)base_frac),
 				      r = ease(startRight, endRight, (float)base_frac);
-				CameraRenderProps holdCamera = getCameraPropsAt(context.score, context.currentTick);
 				drawNoteBase(renderer, holdStart, l, r, 1.f, segment.activeTime / total_tm,
-				             holdCamera);
+				             pathCamera);
 				if (holdStart.friction)
-					drawTraceDiamond(renderer, holdStart, l, r, 1.f);
+					drawTraceDiamond(renderer, holdStart, l, r, 1.f, pathCamera);
 			}
 
 			if (config.pvMirrorScore)
@@ -2213,11 +2269,11 @@ namespace MikuMikuWorld
 
 			// ループ初期値の設定
 			double stepStart_stm = lerpD(start_stm, segment.tailTime, p_min);
-			double stepTop =
-			    Engine::approach(stepStart_stm - noteDuration, stepStart_stm, current_stm);
+			double stepTopProgress =
+			    unlerpD(stepStart_stm - noteDuration, stepStart_stm, current_stm);
+			double stepTop = approachAtTilt((float)stepTopProgress, pathCamera.stageTilt);
 
-			double stepStart_time = lerpD(start_time, segment.endTime, p_min);
-			double stepStart_timeFrac = unlerpD(segment.startTime, segment.endTime, stepStart_time);
+			double stepStart_timeFrac = p_min;
 
 			auto model = DirectX::XMMatrixIdentity();
 			float baseAlpha = segment.isGuide ? config.pvGuideAlpha : config.pvHoldAlpha;
@@ -2231,12 +2287,12 @@ namespace MikuMikuWorld
 
 				// Y座標用には「STM」を補間して使う（純正コードの美しい曲線を維持）
 				double stepEnd_stm = lerpD(start_stm, segment.tailTime, to_p);
-				double stepBottom =
-				    Engine::approach(stepEnd_stm - noteDuration, stepEnd_stm, current_stm);
+				double stepBottomProgress =
+				    unlerpD(stepEnd_stm - noteDuration, stepEnd_stm, current_stm);
+				double stepBottom = approachAtTilt((float)stepBottomProgress, pathCamera.stageTilt);
 
 				// X座標用には「時間割合」を補間して使う（レーンの移動が時間ベースで正確になる）
-				double stepEnd_time = lerpD(start_time, segment.endTime, to_p);
-				double stepEnd_timeFrac = unlerpD(segment.startTime, segment.endTime, stepEnd_time);
+				double stepEnd_timeFrac = to_p;
 
 				float stepStartLeft = ease(startLeft, endLeft, (float)stepStart_timeFrac);
 				float stepEndLeft = ease(startLeft, endLeft, (float)stepEnd_timeFrac);
@@ -2262,6 +2318,8 @@ namespace MikuMikuWorld
 
 				auto vPos = Engine::perspectiveQuadvPos(q_leftStart, q_leftStop, q_rightStart,
 				                                        q_rightStop, q_top, q_bottom);
+				for (auto& v : vPos)
+					applyCameraTilt(v.x, v.y, pathCamera);
 				// =======================================================================================
 
 				float spr_x1, spr_x2, spr_y1, spr_y2;
@@ -2381,17 +2439,10 @@ namespace MikuMikuWorld
 		    Engine::getZIndex(!note.friction ? SpriteLayer::BASE_NOTE : SpriteLayer::TICK_NOTE,
 		                      noteLeft + (noteRight - noteLeft) / 2.f, y * zScalar);
 
-		float scaleY = lerp(1.f, (float)y, camera.stageTilt);
-		float flatTranslateY = lerp(-(1.f - (float)y) * 1.5f, 0.f, camera.stageTilt);
-		auto model =
-		    DirectX::XMMatrixMultiply(DirectX::XMMatrixTranslation(0.f, flatTranslateY, 0.f),
-		                              DirectX::XMMatrixScaling(scaleY, scaleY, 1.f));
-
 		auto applyCamera = [&](std::array<DirectX::XMFLOAT4, 4>& vp)
 		{
-			if (camera.stageTilt >= 0.0001f)
-				for (auto& v : vp)
-					applyCameraPoint(v.x, v.y, camera);
+			for (auto& v : vp)
+				applyCameraTiltIcon(v.x, v.y, (float)y, camera);
 		};
 
 		float texW = (float)texture.getWidth();
@@ -2425,17 +2476,7 @@ namespace MikuMikuWorld
 		}
 
 		auto makeQuad = [&](float l, float r) -> std::array<DirectX::XMFLOAT4, 4>
-		{
-			if (camera.stageTilt < 0.0001f)
-			{
-				float cl = l, cy = 1.0f;
-				float cr = r, cy2 = 1.0f;
-				applyCameraPoint(cl, cy, camera);
-				applyCameraPoint(cr, cy2, camera);
-				return Engine::quadvPos(cl, cr, noteTop, noteBottom);
-			}
-			return Engine::perspectiveQuadvPos(l, r, noteTop, noteBottom);
-		};
+		{ return Engine::perspectiveQuadvPos(l, r, noteTop, noteBottom); };
 
 		if (geomWidth > 0.0f)
 		{
@@ -2443,8 +2484,8 @@ namespace MikuMikuWorld
 			applyCamera(vPos);
 			uv = Utils::getUV(midUvLeft / texW, midUvRight / texW, sprite.getY() / texH,
 			                  (sprite.getY() + sprite.getHeight()) / texH);
-			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(),
-			                   zIndex);
+			renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint),
+			                   (int)texture.getID(), zIndex);
 		}
 
 		// Left slice (純正完全維持)
@@ -2453,7 +2494,8 @@ namespace MikuMikuWorld
 		uv = Utils::getUV((sprite.getX() + NOTE_SIDE_PAD) / texW,
 		                  (sprite.getX() + NOTE_SIDE_WIDTH) / texW, sprite.getY() / texH,
 		                  (sprite.getY() + sprite.getHeight()) / texH);
-		renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(), zIndex);
+		renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint),
+		                   (int)texture.getID(), zIndex);
 
 		// Right slice (純正完全維持)
 		vPos = rTransform.apply(makeQuad(noteRight - 0.3f, noteRight));
@@ -2461,7 +2503,8 @@ namespace MikuMikuWorld
 		uv = Utils::getUV((sprite.getX() + sprite.getWidth() - NOTE_SIDE_WIDTH) / texW,
 		                  (sprite.getX() + sprite.getWidth() - NOTE_SIDE_PAD) / texW,
 		                  sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
-		renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(), zIndex);
+		renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint),
+		                   (int)texture.getID(), zIndex);
 	}
 
 	void ScorePreviewWindow::drawTraceDiamond(Renderer* renderer, const Note& note, float noteLeft,
@@ -2490,27 +2533,10 @@ namespace MikuMikuWorld
 		const float noteCenter = noteLeft + (noteRight - noteLeft) / 2.f;
 		int zIndex = Engine::getZIndex(SpriteLayer::DIAMOND, noteCenter, y);
 
-		auto applyCamera = [&](std::array<DirectX::XMFLOAT4, 4>& vp)
-		{
-			for (auto& v : vp)
-			{
-				if (camera.stageTilt < 0.0001f)
-				{
-					float origY = v.y;
-					v.y = 1.0f;
-					applyCameraPoint(v.x, v.y, camera);
-					v.y = origY;
-				}
-				else
-				{
-					applyCameraPoint(v.x, v.y, camera);
-				}
-			}
-		};
-
 		auto vPos =
 		    transform.apply(Engine::quadvPos(noteCenter - w, noteCenter + w, noteTop, noteBottom));
-		applyCamera(vPos);
+		for (auto& v : vPos)
+			applyCameraTiltIcon(v.x, v.y, (float)y, camera);
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();
@@ -2518,8 +2544,8 @@ namespace MikuMikuWorld
 		    frictionSpr.getX() / texW, (frictionSpr.getX() + frictionSpr.getWidth()) / texW,
 		    frictionSpr.getY() / texH, (frictionSpr.getY() + frictionSpr.getHeight()) / texH);
 
-		auto model = DirectX::XMMatrixScaling((float)y, (float)y, 1.f);
-		renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(), zIndex);
+		renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint),
+		                   (int)texture.getID(), zIndex);
 	}
 
 	void ScorePreviewWindow::drawFlickArrow(Renderer* renderer, const Note& note, float y,
@@ -2552,28 +2578,10 @@ namespace MikuMikuWorld
 		const float w = std::clamp((int)note.width, 1, MAX_FLICK_SPRITES) *
 		                (isRightward ? -1.f : 1.f) * mirror / 4.f;
 
-		float scaleY = lerp(1.f, y, camera.stageTilt);
-		auto applyCamera = [&](std::array<DirectX::XMFLOAT4, 4>& vp)
-		{
-			for (auto& v : vp)
-			{
-				if (camera.stageTilt < 0.0001f)
-				{
-					float origY = v.y;
-					v.y = 1.0f;
-					applyCameraPoint(v.x, v.y, camera);
-					v.y = origY;
-				}
-				else
-				{
-					applyCameraPoint(v.x, v.y, camera);
-				}
-			}
-		};
-
 		auto vPos = transform.apply(Engine::quadvPos(center - w, center + w, 1.f,
 		                                             1.f - 2.f * std::abs(w) * scaledAspectRatio));
-		applyCamera(vPos);
+		for (auto& v : vPos)
+			applyCameraTiltIcon(v.x, v.y, (float)y, camera);
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();
@@ -2600,17 +2608,14 @@ namespace MikuMikuWorld
 			auto animationVector = DirectX::XMVectorScale(
 			    DirectX::XMVectorSet((float)flickDirection, -2.f * scaledAspectRatio, 0.f, 0.f),
 			    (float)t);
-			auto model =
-			    DirectX::XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(animationVector),
-			                              DirectX::XMMatrixScaling(scaleY, scaleY, 1.f));
+			auto model = DirectX::XMMatrixTranslationFromVector(animationVector);
 			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, 1.f - cubicEaseIn(t)),
 			                   (int)texture.getID(), zIndex);
 		}
 		else
 		{
-			auto model = DirectX::XMMatrixScaling((float)y, (float)y, 1.f);
-			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint), (int)texture.getID(),
-			                   zIndex);
+			renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint),
+			                   (int)texture.getID(), zIndex);
 		}
 	}
 
