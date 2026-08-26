@@ -4,7 +4,7 @@
 namespace MikuMikuWorld
 {
 	static const char* EX_MMWS_SIGNATURE = "UCEXMMWS";
-	static const int EX_MMWS_VERSION = 1;
+	static const int EX_MMWS_VERSION = 2;
 
 	namespace
 	{
@@ -287,6 +287,18 @@ namespace MikuMikuWorld
 			writer.writeInt32(static_cast<int>(style.ease));
 		}
 
+		writer.writeInt32((int)score.stageTransformChanges.size());
+		for (const auto& [_, transform] : score.stageTransformChanges)
+		{
+			writeStageRefIndex(transform.stageID);
+			writer.writeInt32(transform.tick);
+			writer.writeSingle(transform.rotate);
+			writer.writeSingle(transform.xLaneTranslate);
+			writer.writeSingle(transform.yLaneTranslate);
+			writer.writeInt32(static_cast<int>(transform.anchor));
+			writer.writeInt32(static_cast<int>(transform.ease));
+		}
+
 		uint32_t tapsAddress = writer.getStreamPosition();
 		writer.writeNull(sizeof(uint32_t));
 
@@ -356,7 +368,10 @@ namespace MikuMikuWorld
 
 		writer.writeInt32((int)score.layers.size());
 		for (const auto& layer : score.layers)
+		{
 			writer.writeString(layer.name);
+			writer.writeSingle(layer.forceNoteSpeed);
+		}
 
 		uint32_t waypointsAddress = writer.getStreamPosition();
 		writer.writeInt32((int)score.waypoints.size());
@@ -395,7 +410,6 @@ namespace MikuMikuWorld
 		}
 
 		int version = reader.readUInt32();
-		(void)version;
 
 		uint32_t metadataAddress = reader.readUInt32();
 		uint32_t eventsAddress = reader.readUInt32();
@@ -501,6 +515,22 @@ namespace MikuMikuWorld
 			score.stageStyleChanges[style.ID] = style;
 		}
 
+		int transformCount = reader.readUInt32();
+		score.stageTransformChanges.clear();
+		for (int i = 0; i < transformCount; ++i)
+		{
+			StageTransformEvent transform;
+			transform.ID = getNextStageTransformChangeID();
+			transform.stageID = resolveStageIndex(reader.readInt32());
+			transform.tick = reader.readUInt32();
+			transform.rotate = reader.readSingle();
+			transform.xLaneTranslate = reader.readSingle();
+			transform.yLaneTranslate = reader.readSingle();
+			transform.anchor = static_cast<StageTransformAnchor>(reader.readUInt32());
+			transform.ease = static_cast<EaseType>(reader.readUInt32());
+			score.stageTransformChanges[transform.ID] = transform;
+		}
+
 		reader.seek(tapsAddress);
 		int noteCount = reader.readUInt32();
 		id_t nextID = 0;
@@ -580,7 +610,13 @@ namespace MikuMikuWorld
 		int layerCount = reader.readUInt32();
 		score.layers.clear();
 		for (int i = 0; i < layerCount; ++i)
-			score.layers.push_back({ reader.readString() });
+		{
+			std::string name = reader.readString();
+			float forceNoteSpeed = version >= 2 ? reader.readSingle() : 0.0f;
+			if (forceNoteSpeed < 1.0f || forceNoteSpeed > 12.0f)
+				forceNoteSpeed = 0.0f;
+			score.layers.push_back({ name, forceNoteSpeed });
+		}
 
 		reader.seek(waypointsAddress);
 		int waypointCount = reader.readUInt32();

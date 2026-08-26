@@ -13,7 +13,11 @@ namespace MikuMikuWorld
 		resetCombo();
 	}
 
-	void ScoreStats::resetCounts() { hispeeds = 1; taps = flicks = holds = steps = guides = traces = total = 0; }
+	void ScoreStats::resetCounts()
+	{
+		hispeeds = 1;
+		taps = flicks = holds = steps = guides = traces = total = 0;
+	}
 
 	void ScoreStats::resetCombo() { combo = 0; }
 
@@ -32,10 +36,8 @@ namespace MikuMikuWorld
 		holds = std::count_if(score.holdNotes.begin(), score.holdNotes.end(),
 		                      [](const auto& h) { return !h.second.isGuide(); });
 
-
-		steps =
-		    std::count_if(score.notes.begin(), score.notes.end(),
-		                  [](const auto& n) { return n.second.getType() == NoteType::HoldMid; });
+		steps = std::count_if(score.notes.begin(), score.notes.end(), [](const auto& n)
+		                      { return n.second.getType() == NoteType::HoldMid; });
 
 		guides = std::count_if(score.holdNotes.begin(), score.holdNotes.end(),
 		                       [](const auto& h) { return h.second.isGuide(); });
@@ -55,7 +57,9 @@ namespace MikuMikuWorld
 		resetCombo();
 		combo = score.notes.size();
 
-		constexpr int halfBeat = TICKS_PER_BEAT / 2;
+		// Hold notes generate an extra combo tick every quarter beat (1/4),
+		// not every eighth beat (1/8).
+		constexpr int quarterBeat = TICKS_PER_BEAT;
 		for (const auto& [id, note] : score.notes)
 		{
 			if (note.dummy)
@@ -82,9 +86,7 @@ namespace MikuMikuWorld
 			if (!endIt->second.dummy && hold.endType != HoldNoteType::Normal)
 				combo--;
 
-
-			combo -= std::count_if(hold.steps.begin(), hold.steps.end(),
-			                       [](const HoldStep& step)
+			combo -= std::count_if(hold.steps.begin(), hold.steps.end(), [](const HoldStep& step)
 			                       { return step.type == HoldStepType::Hidden; });
 
 			if (hold.dummy)
@@ -92,20 +94,20 @@ namespace MikuMikuWorld
 
 			int startTick = startIt->second.tick;
 			int endTick = endIt->second.tick;
-			int eighthTick = startTick;
+			int quarterTick = startTick;
 
-			eighthTick += halfBeat;
-			if (eighthTick % halfBeat)
-				eighthTick -= (eighthTick % halfBeat);
+			quarterTick += quarterBeat;
+			if (quarterTick % quarterBeat)
+				quarterTick -= (quarterTick % quarterBeat);
 
-			// hold <= 1/8th long
-			if (eighthTick == startTick || eighthTick == endTick)
+			// hold <= 1/4th long
+			if (quarterTick == startTick || quarterTick == endTick)
 				continue;
 
-			if (endTick % halfBeat)
-				endTick += halfBeat - (endTick % halfBeat);
+			if (endTick % quarterBeat)
+				endTick += quarterBeat - (endTick % quarterBeat);
 
-			combo += (endTick - eighthTick) / halfBeat;
+			combo += (endTick - quarterTick) / quarterBeat;
 		}
 	}
 
@@ -162,7 +164,9 @@ namespace MikuMikuWorld
 			comboEvents.push_back({ note.tick, weight, true });
 		}
 
-		constexpr int halfBeat = TICKS_PER_BEAT / 2;
+		// Hold notes emit a scoring/combo tick every quarter beat (1/4),
+		// not every eighth beat (1/8) — must match calculateCombo() above.
+		constexpr int quarterBeat = TICKS_PER_BEAT;
 		for (const auto& [holdId, hold] : score.holdNotes)
 		{
 			if (hold.isGuide() || hold.dummy)
@@ -175,15 +179,15 @@ namespace MikuMikuWorld
 			const Note& holdStart = holdStartIt->second;
 			const int startTick = holdStart.tick;
 			int endTick = holdEndIt->second.tick;
-			int eighthTick = startTick + halfBeat;
-			if (eighthTick % halfBeat)
-				eighthTick -= eighthTick % halfBeat;
-			if (eighthTick == startTick || eighthTick == endTick)
+			int quarterTick = startTick + quarterBeat;
+			if (quarterTick % quarterBeat)
+				quarterTick -= quarterTick % quarterBeat;
+			if (quarterTick == startTick || quarterTick == endTick)
 				continue;
-			if (endTick % halfBeat)
-				endTick += halfBeat - (endTick % halfBeat);
+			if (endTick % quarterBeat)
+				endTick += quarterBeat - (endTick % quarterBeat);
 
-			for (int tick = eighthTick; tick < endTick; tick += halfBeat)
+			for (int tick = quarterTick; tick < endTick; tick += quarterBeat)
 				comboEvents.push_back({ tick, holdStart.critical ? 0.2f : 0.1f, false });
 		}
 

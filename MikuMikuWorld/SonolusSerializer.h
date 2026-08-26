@@ -73,6 +73,11 @@ namespace MikuMikuWorld
 		static Sonolus::LevelDataEntity
 		toStageStyleChangeEntity(const StageStyleChangeEvent& style);
 
+		static Sonolus::LevelDataEntity
+		toStageTransformChangeEntity(const StageTransformEvent& transform);
+		static bool fromStageTransformChangeEntity(const Sonolus::LevelDataEntity& e,
+		                                           StageTransformEvent& transform);
+
 		static bool fromStageEntity(const Sonolus::LevelDataEntity& e, Stage& stage);
 		static bool fromCameraChangeEntity(const Sonolus::LevelDataEntity& e,
 		                                   CameraChangeEvent& camera);

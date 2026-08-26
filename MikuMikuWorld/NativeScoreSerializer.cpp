@@ -7,7 +7,7 @@ namespace MikuMikuWorld
 	const char* MMWS_SIGNATURE = "MMWS";
 	const int CC_MMWS_VERSION = 6;
 	const char* CC_MMWS_SIGNATURE = "CCMMWS";
-	const int UC_MMWS_VERSION = 4;
+	const int UC_MMWS_VERSION = 5;
 	const char* UC_MMWS_SIGNATURE = "UCMMWS";
 
 	namespace
@@ -360,7 +360,10 @@ namespace MikuMikuWorld
 
 		writer.writeInt32((int)score.layers.size());
 		for (const auto& layer : score.layers)
+		{
 			writer.writeString(layer.name);
+			writer.writeSingle(layer.forceNoteSpeed);
+		}
 
 		uint32_t waypointsAddress = writer.getStreamPosition();
 		writer.writeInt32((int)score.waypoints.size());
@@ -614,7 +617,6 @@ namespace MikuMikuWorld
 		}
 
 		int version = reader.readUInt32();
-		(void)version;
 
 		uint32_t metadataAddress = reader.readUInt32();
 		uint32_t eventsAddress = reader.readUInt32();
@@ -712,7 +714,13 @@ namespace MikuMikuWorld
 		int layerCount = reader.readUInt32();
 		score.layers.clear();
 		for (int i = 0; i < layerCount; ++i)
-			score.layers.push_back({ reader.readString() });
+		{
+			std::string name = reader.readString();
+			float forceNoteSpeed = version >= 5 ? reader.readSingle() : 0.0f;
+			if (forceNoteSpeed < 1.0f || forceNoteSpeed > 12.0f)
+				forceNoteSpeed = 0.0f;
+			score.layers.push_back({ name, forceNoteSpeed });
+		}
 
 		reader.seek(waypointsAddress);
 		int waypointCount = reader.readUInt32();

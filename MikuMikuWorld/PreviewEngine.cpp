@@ -199,6 +199,16 @@ namespace MikuMikuWorld::Engine
 		}};
 	}
 
+	std::array<DirectX::XMFLOAT4, 4> perspectiveIconQuadvPos(float left, float right, float top, float bottom)
+	{
+		return {{
+			{ right * bottom, bottom, 0.0f, 1.0f },
+			{ right *    top,    top, 0.0f, 1.0f },
+			{  left *    top,    top, 0.0f, 1.0f },
+			{  left * bottom, bottom, 0.0f, 1.0f }
+		}};
+	}
+
 	std::array<DirectX::XMFLOAT4, 4> quadUV(const Sprite& sprite, const Texture &texture)
 	{
 		float left = sprite.getX() / texture.getWidth();

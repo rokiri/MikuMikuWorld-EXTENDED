@@ -40,11 +40,20 @@ namespace MikuMikuWorld
 	{
 		std::string name;
 		bool hidden = false;
+		float forceNoteSpeed = 0.0f; // 0 = follow global note speed; 1-12 = forced layer speed
 
 		// --- フォルダ機能用の拡張 ---
 		bool isFolder = false;    // 自分が「フォルダ」であるかどうか
 		bool inFolder = false;    // 自分が直上のフォルダに「属している」かどうか
 		bool isCollapsed = false; // フォルダが折りたたまれているかどうか（UI用）
+	
+
+		Layer() = default;
+		Layer(std::string name) : name(std::move(name)) {}
+		Layer(std::string name, float forceNoteSpeed)
+		    : name(std::move(name)), forceNoteSpeed(forceNoteSpeed)
+		{
+		}
 	};
 
 	struct Waypoint
@@ -94,6 +103,7 @@ namespace MikuMikuWorld
 		std::unordered_map<id_t, StageMaskChangeEvent> stageMaskChanges;
 		std::unordered_map<id_t, StagePivotChangeEvent> stagePivotChanges;
 		std::unordered_map<id_t, StageStyleChangeEvent> stageStyleChanges;
+		std::unordered_map<id_t, StageTransformEvent> stageTransformChanges;
 
 		std::vector<id_t> stageOrder;
 

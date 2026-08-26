@@ -302,6 +302,7 @@ namespace MikuMikuWorld::Text
 	MMW_TEXT(layers);
 	MMW_TEXT(layerName, "layer_name");
 	MMW_TEXT(layerForceNoteSpeed, "layer_force_note_speed");
+	MMW_TEXT(layerForceNoteSpeedEnabled, "layer_force_note_speed_enabled");
 	MMW_TEXT(createLayer, "create_layer");
 	MMW_TEXT(showAllLayers, "show_all_layers");
 	MMW_TEXT(layerRename, "layer_rename");

@@ -90,6 +90,25 @@ namespace MikuMikuWorld
 		EaseType ease = EaseType::Linear;
 	};
 
+	enum class StageTransformAnchor : uint8_t
+	{
+		Default,
+		Center
+	};
+	constexpr const char* stageTransformAnchorNames[]{ "Default", "Center" };
+
+	struct StageTransformEvent
+	{
+		id_t ID;
+		id_t stageID = NO_ID;
+		int tick;
+		float rotate = 0;
+		float xLaneTranslate = 0;
+		float yLaneTranslate = 0;
+		StageTransformAnchor anchor = StageTransformAnchor::Default;
+		EaseType ease = EaseType::Linear;
+	};
+
 	enum class StageEventEditMode : uint8_t
 	{
 		None,

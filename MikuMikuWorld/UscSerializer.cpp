@@ -46,6 +46,8 @@ namespace MikuMikuWorld
 		{
 			json timeScaleGroup;
 			timeScaleGroup["type"] = "timeScaleGroup";
+			if (score.layers[i].forceNoteSpeed != 0.0f)
+				timeScaleGroup["forceNoteSpeed"] = score.layers[i].forceNoteSpeed;
 			std::vector<json> timeScaleObjects;
 			for (const auto& [_, hs] : score.hiSpeedChanges)
 			{
@@ -237,7 +239,12 @@ namespace MikuMikuWorld
 			else if (obj["type"] == "timeScaleGroup")
 			{
 				int index = score.layers.size();
-				score.layers.push_back(Layer{ IO::formatString("#%d", index) });
+				float forceNoteSpeed = 0.0f;
+				if (obj.contains("forceNoteSpeed"))
+					forceNoteSpeed = obj["forceNoteSpeed"].get<float>();
+				if (forceNoteSpeed < 1.0f || forceNoteSpeed > 12.0f)
+					forceNoteSpeed = 0.0f;
+				score.layers.push_back(Layer{ IO::formatString("#%d", index), forceNoteSpeed });
 				for (const auto& change : obj["changes"])
 				{
 					id_t id = Note::getNextID();

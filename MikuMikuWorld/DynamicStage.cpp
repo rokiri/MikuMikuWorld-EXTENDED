@@ -10,6 +10,7 @@ namespace MikuMikuWorld
 	id_t nextStageMaskChangeID = 1;
 	id_t nextStagePivotChangeID = 1;
 	id_t nextStageStyleChangeID = 1;
+	id_t nextStageTransformChangeID = 1;
 
 	id_t getNextStageID()
 	{
@@ -49,5 +50,13 @@ namespace MikuMikuWorld
 		std::memcpy(data, &nextStageStyleChangeID, sizeof(id_t));
 		nextStageStyleChangeID = choc::hash::xxHash64::hash(&data, sizeof(id_t), HASH_SEED + 8);
 		return nextStageStyleChangeID;
+	}
+
+	id_t getNextStageTransformChangeID()
+	{
+		uint8_t data[sizeof(id_t)];
+		std::memcpy(data, &nextStageTransformChangeID, sizeof(id_t));
+		nextStageTransformChangeID = choc::hash::xxHash64::hash(&data, sizeof(id_t), HASH_SEED + 9);
+		return nextStageTransformChangeID;
 	}
 }

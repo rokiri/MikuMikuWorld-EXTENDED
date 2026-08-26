@@ -63,6 +63,13 @@ namespace MikuMikuWorld::Engine
 	std::array<DirectX::XMFLOAT4, 4> quadvPos(float left, float right, float top, float bottom);
 	std::array<DirectX::XMFLOAT4, 4> perspectiveQuadvPos(float left, float right, float top, float bottom);
 	std::array<DirectX::XMFLOAT4, 4> perspectiveQuadvPos(float leftStart, float leftStop, float rightStart, float rightStop, float top, float bottom);
+	// Same vertex order as quadvPos (BR, TR, TL, BL) but with x pre-foreshortened as x*y at
+	// each vertex, matching the convention applyCameraTiltIcon() expects. Use this instead of
+	// perspectiveQuadvPos() for icon-style sprites (ticks, flick arrows) whose SpriteTransform
+	// matrices were authored assuming quadvPos's vertex ordering -- perspectiveQuadvPos() uses a
+	// different vertex order/winding and will feed vertices into the transform matrix out of
+	// sequence.
+	std::array<DirectX::XMFLOAT4, 4> perspectiveIconQuadvPos(float left, float right, float top, float bottom);
 	std::array<DirectX::XMFLOAT4, 4> quadUV(const Sprite& sprite, const Texture& texture);
 
 	// 【追加】MMW4UC向けに、プレビュー用の時間計算関数をここに定義します

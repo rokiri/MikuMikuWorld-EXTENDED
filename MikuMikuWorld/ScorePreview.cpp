@@ -1543,11 +1543,14 @@ namespace MikuMikuWorld
 	}
 
 	// this is the beginning of the icon camera projection
-	static void applyCameraTiltIcon(float& x, float& y, float baseTravel,
+	// refY must be the vertex's Y BEFORE any icon-shape SpriteTransform is applied (i.e. the
+	// flat near-judgeline offset). Using the post-transform Y here (like the arrow/diamond's
+	// baked-in shape skew) makes each corner reproject to a different depth and shears the icon.
+	static void applyCameraTiltIcon(float& x, float& y, float refY, float baseTravel,
 	                                const CameraRenderProps& camera)
 	{
 		float stageTilt = std::clamp(camera.stageTilt, 0.f, 1.f);
-		float lineY = std::abs(y) > 0.000001f ? y : 1.f;
+		float lineY = std::abs(refY) > 0.000001f ? refY : 1.f;
 		float lane = x / lineY;
 		float depth = baseTravel + (lineY - 1.f) * lerp(1.f, baseTravel, stageTilt);
 		x = lane * cameraTiltedWidth(depth, stageTilt);
@@ -2073,10 +2076,14 @@ namespace MikuMikuWorld
 			const Sprite& sprite = texture.sprites[sprIndex];
 			const float tickCenter = tick.center * (config.pvMirrorScore ? -1 : 1);
 
-			auto vPos = transform.apply(
-			    Engine::quadvPos(tickCenter - w, tickCenter + w, noteTop, noteBottom));
-			for (auto& v : vPos)
-				applyCameraTiltIcon(v.x, v.y, y, tickCamera);
+			// keep the shape transform centered at 0, then shift by tickCenter afterward
+			auto rawPos = Engine::quadvPos(-w, w, noteTop, noteBottom);
+			auto vPos = transform.apply(rawPos);
+			for (int i = 0; i < 4; ++i)
+			{
+				vPos[i].x += tickCenter;
+				applyCameraTiltIcon(vPos[i].x, vPos[i].y, rawPos[i].y, y, tickCamera);
+			}
 			auto uv =
 			    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
 			                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
@@ -2267,13 +2274,20 @@ namespace MikuMikuWorld
 
 			double from_percentage = 0;
 
+			// this is the beginning of the hold-head/body X sync fix
+			// Y is anchored to "now" via start_stm above, but the lane (X) ease was still being
+			// evaluated from time_frac=0 (the segment's original start) every frame, so the body's
+			// bottom edge lagged behind the head cap (which correctly uses base_frac). Anchor the
+			// X time-fraction the same way so both track the same current position.
+			double xBaseFrac = unlerpD(segment.startTime, segment.endTime, start_time);
+
 			// ループ初期値の設定
 			double stepStart_stm = lerpD(start_stm, segment.tailTime, p_min);
 			double stepTopProgress =
 			    unlerpD(stepStart_stm - noteDuration, stepStart_stm, current_stm);
 			double stepTop = approachAtTilt((float)stepTopProgress, pathCamera.stageTilt);
 
-			double stepStart_timeFrac = p_min;
+			double stepStart_timeFrac = xBaseFrac;
 
 			auto model = DirectX::XMMatrixIdentity();
 			float baseAlpha = segment.isGuide ? config.pvGuideAlpha : config.pvHoldAlpha;
@@ -2292,7 +2306,7 @@ namespace MikuMikuWorld
 				double stepBottom = approachAtTilt((float)stepBottomProgress, pathCamera.stageTilt);
 
 				// X座標用には「時間割合」を補間して使う（レーンの移動が時間ベースで正確になる）
-				double stepEnd_timeFrac = to_p;
+				double stepEnd_timeFrac = lerpD(xBaseFrac, 1.0, to_p);
 
 				float stepStartLeft = ease(startLeft, endLeft, (float)stepStart_timeFrac);
 				float stepEndLeft = ease(startLeft, endLeft, (float)stepEnd_timeFrac);
@@ -2442,7 +2456,7 @@ namespace MikuMikuWorld
 		auto applyCamera = [&](std::array<DirectX::XMFLOAT4, 4>& vp)
 		{
 			for (auto& v : vp)
-				applyCameraTiltIcon(v.x, v.y, (float)y, camera);
+				applyCameraTiltIcon(v.x, v.y, v.y, (float)y, camera);
 		};
 
 		float texW = (float)texture.getWidth();
@@ -2533,10 +2547,14 @@ namespace MikuMikuWorld
 		const float noteCenter = noteLeft + (noteRight - noteLeft) / 2.f;
 		int zIndex = Engine::getZIndex(SpriteLayer::DIAMOND, noteCenter, y);
 
-		auto vPos =
-		    transform.apply(Engine::quadvPos(noteCenter - w, noteCenter + w, noteTop, noteBottom));
-		for (auto& v : vPos)
-			applyCameraTiltIcon(v.x, v.y, (float)y, camera);
+		// keep the shape transform centered at 0, then shift by noteCenter afterward
+		auto rawPos = Engine::quadvPos(-w, w, noteTop, noteBottom);
+		auto vPos = transform.apply(rawPos);
+		for (int i = 0; i < 4; ++i)
+		{
+			vPos[i].x += noteCenter;
+			applyCameraTiltIcon(vPos[i].x, vPos[i].y, rawPos[i].y, (float)y, camera);
+		}
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();
@@ -2578,10 +2596,16 @@ namespace MikuMikuWorld
 		const float w = std::clamp((int)note.width, 1, MAX_FLICK_SPRITES) *
 		                (isRightward ? -1.f : 1.f) * mirror / 4.f;
 
-		auto vPos = transform.apply(Engine::quadvPos(center - w, center + w, 1.f,
-		                                             1.f - 2.f * std::abs(w) * scaledAspectRatio));
-		for (auto& v : vPos)
-			applyCameraTiltIcon(v.x, v.y, (float)y, camera);
+		// this is the beginning of the lane-offset fix: keep the icon shape transform centered
+		// at 0 (instead of feeding it the note's absolute lane position) so it isn't sheared
+		// for notes far from lane 0, then shift into place afterward
+		auto rawPos = Engine::quadvPos(-w, w, 1.f, 1.f - 2.f * std::abs(w) * scaledAspectRatio);
+		auto vPos = transform.apply(rawPos);
+		for (int i = 0; i < 4; ++i)
+		{
+			vPos[i].x += center;
+			applyCameraTiltIcon(vPos[i].x, vPos[i].y, rawPos[i].y, (float)y, camera);
+		}
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();
@@ -2605,9 +2629,12 @@ namespace MikuMikuWorld
 		{
 			double t = std::fmod(time, 0.5) / 0.5;
 			auto cubicEaseIn = [](double val) { return (float)(val * val * val); };
+			// bob distance shrinks with the note's depth (tilt_width_factor(travel)) so it stays
+			// proportional to the icon's own size instead of a fixed screen-space offset
+			float depthScale = cameraTiltedWidth((float)y, camera.stageTilt);
 			auto animationVector = DirectX::XMVectorScale(
 			    DirectX::XMVectorSet((float)flickDirection, -2.f * scaledAspectRatio, 0.f, 0.f),
-			    (float)t);
+			    (float)t * depthScale);
 			auto model = DirectX::XMMatrixTranslationFromVector(animationVector);
 			renderer->pushQuad(vPos, uv, model, toFloat4(defaultTint, 1.f - cubicEaseIn(t)),
 			                   (int)texture.getID(), zIndex);

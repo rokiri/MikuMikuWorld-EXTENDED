@@ -247,6 +247,8 @@ confirm,Confirm
 # layer manager
 layers,Layers
 layer_name,Name
+layer_force_note_speed,Force Note Speed
+layer_force_note_speed_enabled,Force Note Speed
 create_layer,Create Layer
 confirm,Confirm
 show_all_layers,Show All Layers

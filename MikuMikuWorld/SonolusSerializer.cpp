@@ -292,6 +292,35 @@ namespace MikuMikuWorld
 			}
 		}
 
+		for (const auto& [stageID, stageIdx] : stageEntityIndex)
+		{
+			std::vector<const StageTransformEvent*> transformList;
+			for (const auto& [_, transform] : score.stageTransformChanges)
+				if (transform.stageID == stageID)
+					transformList.push_back(&transform);
+			std::sort(transformList.begin(), transformList.end(),
+			          [](const StageTransformEvent* a, const StageTransformEvent* b)
+			          { return a->tick < b->tick; });
+
+			std::string stageName = levelData.entities[stageIdx].name;
+			size_t prevIdx = stageIdx;
+			for (const StageTransformEvent* transform : transformList)
+			{
+				size_t newIdx = levelData.entities.size();
+				levelData.entities.emplace_back(toStageTransformChangeEntity(*transform));
+				levelData.entities[newIdx].data["stage"] = stageName;
+				std::string newName = IO::formatString("transform%d", (int)newIdx);
+				levelData.entities[newIdx].name = newName;
+
+				if (prevIdx == stageIdx)
+					levelData.entities[prevIdx].data["firstTransformChange"] = newName;
+				else
+					levelData.entities[prevIdx].data["next"] = newName;
+
+				prevIdx = newIdx;
+			}
+		}
+
 		levelData.entities.emplace_back(
 		    "#BPM_CHANGE",
 		    LevelDataEntity::MapDataType{ { "#BEAT", RealType(0) }, { "#BPM", RealType(120) } });
@@ -641,6 +670,7 @@ namespace MikuMikuWorld
 			Layer& layer = score.layers.emplace_back();
 			layer.name = layerIdx == 0 ? "default" : ("#" + std::to_string(layerIdx));
 			layer.hidden = false;
+			fromGroupEntity(e, layer);
 			if (!e.name.empty())
 				groupNameMap.emplace(e.name, layerIdx);
 
@@ -963,7 +993,9 @@ namespace MikuMikuWorld
 
 	LevelDataEntity PySekaiEngine::toGroupEntity(const Layer& layer)
 	{
-		return { "#TIMESCALE_GROUP", { { "editorName", layer.name } } };
+		return { "#TIMESCALE_GROUP",
+			     { { "editorName", layer.name },
+			       { "forceNoteSpeed", static_cast<RealType>(layer.forceNoteSpeed) } } };
 	}
 
 	LevelDataEntity PySekaiEngine::toTimeScaleEntity(const HiSpeedChange& hispeed,
@@ -1045,6 +1077,36 @@ namespace MikuMikuWorld
 			       { "laneAlpha", static_cast<RealType>(style.laneAlpha) },
 			       { "judgeLineAlpha", static_cast<RealType>(style.judgeLineAlpha) },
 			       { "ease", static_cast<IntegerType>(toEaseNumeric(style.ease)) } } };
+	}
+
+	LevelDataEntity
+	PySekaiEngine::toStageTransformChangeEntity(const StageTransformEvent& transform)
+	{
+		return { "StageTransformChange",
+			     { { "#BEAT", ticksToBeats(transform.tick) },
+			       { "rotate", static_cast<RealType>(transform.rotate) },
+			       { "xLaneTranslate", static_cast<RealType>(transform.xLaneTranslate) },
+			       { "yLaneTranslate", static_cast<RealType>(transform.yLaneTranslate) },
+			       { "anchor", static_cast<IntegerType>(transform.anchor) },
+			       { "ease", static_cast<IntegerType>(toEaseNumeric(transform.ease)) } } };
+	}
+
+	bool PySekaiEngine::fromStageTransformChangeEntity(const Sonolus::LevelDataEntity& e,
+	                                                   StageTransformEvent& transform)
+	{
+		float beat;
+		if (!e.tryGetDataValue("#BEAT", beat))
+			return false;
+		transform.tick = beatsToTicks(beat);
+		e.tryGetDataValue("rotate", transform.rotate);
+		e.tryGetDataValue("xLaneTranslate", transform.xLaneTranslate);
+		e.tryGetDataValue("yLaneTranslate", transform.yLaneTranslate);
+		int anchor = 0, ease = 1;
+		e.tryGetDataValue("anchor", anchor);
+		transform.anchor = static_cast<StageTransformAnchor>(anchor);
+		e.tryGetDataValue("ease", ease);
+		transform.ease = fromEaseNumeric(ease);
+		return true;
 	}
 
 	bool PySekaiEngine::fromStageEntity(const Sonolus::LevelDataEntity& e, Stage& stage)
@@ -1363,6 +1425,9 @@ namespace MikuMikuWorld
 	bool PySekaiEngine::fromGroupEntity(const Sonolus::LevelDataEntity& groupEntity, Layer& layer)
 	{
 		groupEntity.tryGetDataValue("editorName", layer.name);
+		groupEntity.tryGetDataValue("forceNoteSpeed", layer.forceNoteSpeed);
+		if (layer.forceNoteSpeed < 1.0f || layer.forceNoteSpeed > 12.0f)
+			layer.forceNoteSpeed = 0.0f;
 		return true;
 	}
 

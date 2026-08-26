@@ -2034,6 +2034,36 @@ namespace MikuMikuWorld
 			ImGui::EndChild();
 			ImGui::PopStyleColor();
 
+			if (context.selectedLayer >= 0 && context.selectedLayer < (int)context.score.layers.size()
+			    && !context.score.layers[context.selectedLayer].isFolder)
+			{
+				ImGui::Separator();
+				auto& selectedLayerRef = context.score.layers[context.selectedLayer];
+				bool forceNoteSpeedEnabled = selectedLayerRef.forceNoteSpeed >= 1.0f
+				    && selectedLayerRef.forceNoteSpeed <= 12.0f;
+				float forceNoteSpeedValue = forceNoteSpeedEnabled ? selectedLayerRef.forceNoteSpeed : 6.0f;
+				bool forceNoteSpeedEdited = false;
+
+				forceNoteSpeedEdited |= ImGui::Checkbox(
+				    getString("layer_force_note_speed_enabled"), &forceNoteSpeedEnabled);
+
+				if (forceNoteSpeedEnabled)
+				{
+					ImGui::SetNextItemWidth(-1);
+					forceNoteSpeedEdited |= ImGui::SliderFloat(
+					    getString("layer_force_note_speed"), &forceNoteSpeedValue, 1.0f, 12.0f, "%.2fx");
+				}
+
+				if (forceNoteSpeedEdited)
+				{
+					forceNoteSpeedValue = std::clamp(forceNoteSpeedValue, 1.0f, 12.0f);
+					Score prev = context.score;
+					context.score.layers[context.selectedLayer].forceNoteSpeed =
+					    forceNoteSpeedEnabled ? forceNoteSpeedValue : 0.0f;
+					context.pushHistory("Change Layer Force Note Speed", prev, context.score);
+				}
+			}
+
 			if (dragDropFrom != -1 && dragDropTo != -1)
 			{
 				Score prev = context.score;
