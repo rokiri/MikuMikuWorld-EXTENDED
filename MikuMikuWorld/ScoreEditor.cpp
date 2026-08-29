@@ -830,6 +830,19 @@ namespace MikuMikuWorld
 				context.pushHistory("Insert stage style change", prev, context.score);
 			}
 
+			if (ImGui::MenuItem(getString("insert_stage_transform_change"), nullptr, false,
+			                    context.selectedStage != NO_ID))
+			{
+				Score prev = context.score;
+				id_t id = getNextStageTransformChangeID();
+				StageTransformEvent transform{};
+				transform.ID = id;
+				transform.stageID = context.selectedStage;
+				transform.tick = context.currentTick;
+				context.score.stageTransformChanges[id] = transform;
+				context.pushHistory("Insert stage transform change", prev, context.score);
+			}
+
 			ImGui::EndMenu();
 		}
 

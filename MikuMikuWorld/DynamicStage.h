@@ -10,6 +10,7 @@ namespace MikuMikuWorld
 	id_t getNextStageMaskChangeID();
 	id_t getNextStagePivotChangeID();
 	id_t getNextStageStyleChangeID();
+	id_t getNextStageTransformChangeID();
 
 	enum class StageZoomVerticalAlign : uint8_t
 	{
@@ -116,8 +117,10 @@ namespace MikuMikuWorld
 		Mask,
 		Pivot,
 		Style,
+		Transform,
 		StageEventEditModeMax
 	};
 
-	constexpr const char* stageEventEditModeNames[]{ "None", "Camera", "Mask", "Pivot", "Style" };
+	constexpr const char* stageEventEditModeNames[]{ "None",  "Camera", "Mask",
+		                                             "Pivot", "Style",  "Transform" };
 }

@@ -1025,6 +1025,10 @@ namespace MikuMikuWorld
 		{
 			drawStageStyleLine(context);
 		}
+		else if (context.stageEventEditMode == StageEventEditMode::Transform)
+		{
+			drawStageTransformGraph(context);
+		}
 
 		eventEditor(context);
 		updateNotes(context, edit, renderer);
@@ -2943,7 +2947,8 @@ namespace MikuMikuWorld
 		bool isDynamicStageEvent = eventEdit.type == EventType::CameraChange ||
 		                           eventEdit.type == EventType::StageMaskChange ||
 		                           eventEdit.type == EventType::StagePivotChange ||
-		                           eventEdit.type == EventType::StageStyleChange;
+		                           eventEdit.type == EventType::StageStyleChange ||
+		                           eventEdit.type == EventType::StageTransformChange;
 		float popupWidth = isDynamicStageEvent ? 450.f : 300.f;
 		ImGui::SetNextWindowSizeConstraints(ImVec2(450, 0), ImVec2(FLT_MAX, FLT_MAX));
 		if (ImGui::BeginPopup("edit_event"))
@@ -3348,6 +3353,59 @@ namespace MikuMikuWorld
 					Score prev = context.score;
 					context.score.stageStyleChanges.erase(eventEdit.editId);
 					context.pushHistory("Remove stage style change", prev, context.score);
+				}
+			}
+			else if (eventEdit.type == EventType::StageTransformChange)
+			{
+				if (context.score.stageTransformChanges.find(eventEdit.editId) ==
+				    context.score.stageTransformChanges.end())
+				{
+					ImGui::CloseCurrentPopup();
+					ImGui::EndPopup();
+					return;
+				}
+
+				bool eventEdited = false;
+				UI::beginPropertyColumns();
+				if (ImGui::IsWindowAppearing())
+					ImGui::SetColumnWidth(0, minimumColumnWidth);
+				UI::addFloatProperty(fitColumn(getString("transform_rotate")),
+				                     eventEdit.editTransform.rotate, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("transform_x_translate")),
+				                     eventEdit.editTransform.xLaneTranslate, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				UI::addFloatProperty(fitColumn(getString("transform_y_translate")),
+				                     eventEdit.editTransform.yLaneTranslate, "%g");
+				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
+				eventEdited |= UI::addSelectProperty(fitColumn(getString("transform_anchor")),
+				                                     eventEdit.editTransform.anchor,
+				                                     stageTransformAnchorNames,
+				                                     arrayLength(stageTransformAnchorNames));
+				eventEdited |= UI::addSelectProperty(fitColumn(getString("ease_type")),
+				                                     eventEdit.editTransform.ease, easeNames,
+				                                     arrayLength(easeNames));
+
+				StageTransformEvent& transform =
+				    context.score.stageTransformChanges[eventEdit.editId];
+				if (eventEdited)
+				{
+					Score prev = context.score;
+					eventEdit.editTransform.ID = transform.ID;
+					eventEdit.editTransform.stageID = transform.stageID;
+					eventEdit.editTransform.tick = transform.tick;
+					context.score.stageTransformChanges[eventEdit.editId] = eventEdit.editTransform;
+					context.pushHistory("Change stage transform change", prev, context.score);
+				}
+				UI::endPropertyColumns();
+
+				ImGui::Separator();
+				if (ImGui::Button(getString("remove"), ImVec2(-1, UI::btnSmall.y + 2)))
+				{
+					ImGui::CloseCurrentPopup();
+					Score prev = context.score;
+					context.score.stageTransformChanges.erase(eventEdit.editId);
+					context.pushHistory("Remove stage transform change", prev, context.score);
 				}
 			}
 			else if (eventEdit.type == EventType::Skill)
@@ -4730,6 +4788,170 @@ namespace MikuMikuWorld
 			pivot.lane = std::round(screenXToLane(mousePos.x) * 2.0f) / 2.0f;
 			context.score.stagePivotChanges[newId] = pivot;
 			context.pushHistory("Add stage pivot change", prev, context.score);
+		}
+	}
+}
+
+	void ScoreEditorTimeline::drawStageTransformGraph(ScoreContext& context)
+{
+	ImDrawList* drawList = ImGui::GetWindowDrawList();
+	if (!drawList)
+		return;
+
+	if (context.selectedStage == NO_ID)
+		return;
+
+	// x-axis represents xLaneTranslate; rotate/yLaneTranslate/anchor are popup-only, same
+	// convention as CameraChange (zoom/rotate aren't draggable, only left/size are)
+	auto laneToScreenX = [&](float lane) { return getTimelineStartX(context) + lane * laneWidth; };
+	auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
+
+	std::vector<StageTransformEvent*> changes;
+	for (auto& [id, transform] : context.score.stageTransformChanges)
+		if (transform.stageID == context.selectedStage)
+			changes.push_back(&transform);
+
+	std::sort(changes.begin(), changes.end(),
+	          [](const StageTransformEvent* a, const StageTransformEvent* b)
+	          { return a->tick < b->tick; });
+
+	ImVec2 mousePos = ImGui::GetMousePos();
+	bool isAnyNodeHovered = false;
+
+	ImU32 lineColor = transformGraphColor;
+	ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+	ImU32 hoverColor = IM_COL32(255, 180, 100, 255);
+
+	static id_t draggingNodeID = NO_ID;
+	static bool nodeWasDragged = false;
+	static Score prevScoreForDrag;
+	static float dragGrabLane = 0.0f;
+
+	const StageTransformEvent* hoveredTooltip = nullptr;
+
+	for (size_t i = 0; i < changes.size(); ++i)
+	{
+		StageTransformEvent& current = *changes[i];
+		float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+		float x1 = laneToScreenX(current.xLaneTranslate);
+
+		if (i + 1 < changes.size())
+		{
+			StageTransformEvent& next = *changes[i + 1];
+			float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+			float x2 = laneToScreenX(next.xLaneTranslate);
+
+			if (current.ease == EaseType::Linear)
+			{
+				drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), lineColor, 2.0f);
+			}
+			else
+			{
+				drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), lineColor, 2.0f);
+				drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), lineColor, 2.0f);
+			}
+		}
+
+		bool isDraggingThis = (draggingNodeID == current.ID);
+		bool isHovered = std::abs(mousePos.x - x1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+
+		if (isHovered)
+			isAnyNodeHovered = true;
+		if (isHovered || isDraggingThis)
+			isHoveringNote = true;
+
+		float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
+		ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
+		drawList->AddCircleFilled(ImVec2(x1, y1), radius, circleColor);
+
+		if (isHovered && draggingNodeID == NO_ID)
+		{
+			hoveredTooltip = &current;
+
+			if (ImGui::IsMouseClicked(0))
+			{
+				draggingNodeID = current.ID;
+				nodeWasDragged = false;
+				prevScoreForDrag = context.score;
+				dragGrabLane = screenXToLane(mousePos.x);
+			}
+
+			if (ImGui::IsMouseClicked(1))
+			{
+				Score prev = context.score;
+				context.score.stageTransformChanges.erase(current.ID);
+				context.pushHistory("Remove stage transform change", prev, context.score);
+			}
+		}
+
+		if (isDraggingThis)
+		{
+			if (ImGui::IsMouseDragging(0, 2.0f))
+				nodeWasDragged = true;
+
+			if (nodeWasDragged)
+			{
+				const auto& prevTransform = prevScoreForDrag.stageTransformChanges.at(current.ID);
+				float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
+
+				auto& editingTransform = context.score.stageTransformChanges[current.ID];
+				editingTransform.xLaneTranslate =
+				    std::round((prevTransform.xLaneTranslate + laneDelta) * 2.0f) / 2.0f;
+				editingTransform.tick = std::max(0, hoverTick);
+
+				ImGui::BeginTooltip();
+				ImGui::Text("X Translate: %.2f", editingTransform.xLaneTranslate);
+				ImGui::Text("Rotate: %.2f", editingTransform.rotate);
+				ImGui::Text("Tick: %d", editingTransform.tick);
+				ImGui::EndTooltip();
+			}
+
+			if (ImGui::IsMouseReleased(0))
+			{
+				if (nodeWasDragged)
+				{
+					context.pushHistory("Drag stage transform change", prevScoreForDrag,
+					                    context.score);
+				}
+				else
+				{
+					eventEdit.editId = current.ID;
+					eventEdit.editTransform = current;
+					eventEdit.type = EventType::StageTransformChange;
+					ImGui::OpenPopup("edit_event");
+				}
+				draggingNodeID = NO_ID;
+			}
+		}
+	}
+
+	if (hoveredTooltip && draggingNodeID == NO_ID)
+	{
+		ImGui::BeginTooltip();
+		ImGui::Text("X Translate: %.2f  Rotate: %.2f", hoveredTooltip->xLaneTranslate,
+		           hoveredTooltip->rotate);
+		ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
+		ImGui::EndTooltip();
+	}
+
+	if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+	{
+		bool duplicate = false;
+		for (const auto* transform : changes)
+			if (transform->tick == hoverTick)
+				duplicate = true;
+
+		if (!duplicate)
+		{
+			Score prev = context.score;
+			id_t newId = getNextStageTransformChangeID();
+			StageTransformEvent transform{};
+			transform.ID = newId;
+			transform.stageID = context.selectedStage;
+			transform.tick = hoverTick;
+			transform.xLaneTranslate = std::round(screenXToLane(mousePos.x) * 2.0f) / 2.0f;
+			context.score.stageTransformChanges[newId] = transform;
+			context.pushHistory("Add stage transform change", prev, context.score);
 		}
 	}
 }

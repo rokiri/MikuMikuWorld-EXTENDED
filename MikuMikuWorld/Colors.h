@@ -44,6 +44,8 @@ namespace MikuMikuWorld
 	const ImU32 pivotGraphColor =
 	    ImGui::ColorConvertFloat4ToU32(ImVec4(0.29f, 0.57f, 0.91f, 1.00f));
 	const ImU32 styleLineColor = ImGui::ColorConvertFloat4ToU32(ImVec4(0.56f, 0.00f, 1.00f, 1.00f));
+	const ImU32 transformGraphColor =
+	    ImGui::ColorConvertFloat4ToU32(ImVec4(1.00f, 0.55f, 0.00f, 1.00f));
 
 	static ImVec4 generateDarkColor(const ImVec4& color)
 	{

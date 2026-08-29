@@ -54,6 +54,7 @@ namespace MikuMikuWorld
 		StageMaskChange,
 		StagePivotChange,
 		StageStyleChange,
+		StageTransformChange,
 		EventTypeMax
 	};
 
@@ -67,7 +68,8 @@ namespace MikuMikuWorld
 		                                "camera_change",
 		                                "stage_mask_change",
 		                                "stage_pivot_change",
-		                                "stage_style_change" };
+		                                "stage_style_change",
+		                                "stage_transform_change" };
 
 	enum class Direction : uint8_t
 	{

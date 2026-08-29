@@ -180,6 +180,7 @@ namespace MikuMikuWorld
 		void drawStageMaskGraph(ScoreContext& context);
 		void drawCameraShiftGraph(ScoreContext& context);
 		void drawStagePivotGraph(ScoreContext& context);
+		void drawStageTransformGraph(ScoreContext& context);
 		void drawStageStyleLine(ScoreContext& context);
 
 		// Other stuff
@@ -280,6 +281,7 @@ namespace MikuMikuWorld
 			StageMaskChangeEvent editMask{};
 			StagePivotChangeEvent editPivot{};
 			StageStyleChangeEvent editStyle{};
+			StageTransformEvent editTransform{};
 
 		} eventEdit{};
 
