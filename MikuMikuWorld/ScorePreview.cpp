@@ -1558,6 +1558,42 @@ namespace MikuMikuWorld
 		applyCameraPoint(x, y, camera);
 	}
 
+	// Sonolus-accurate icon billboard projection (matches `layout_tick` / `layout_flick_arrow`
+	// in the reference engine, e.g. sonolus-next-rush-engine's sekai/lib/layout.py).
+	//
+	// Unlike the note body strip, icons (flick arrows, hold ticks, trace diamonds) do NOT recede
+	// in perspective across their own height in the real engine — they're flat billboards
+	// anchored at a single depth. The reference engine builds them by projecting two points at
+	// the SAME travel (the icon's left/right edge) to get a screen-space width vector, then
+	// rotating that vector 90 degrees to get the "up" (height) direction, so the icon keeps a
+	// consistent, unsheared shape under any stage tilt/rotation.
+	//
+	// applyCameraTiltIcon (above) instead re-derives a *different* depth per vertex from that
+	// vertex's own raw Y, which shears the icon into a trapezoid as tilt decreases -- that's the
+	// bug being fixed here. rawX/rawY are the vertex position from the local (pre-camera) shape,
+	// centered around baseline Y = 1; center/travel place that local shape's anchor in world
+	// space.
+	static void applyCameraTiltIconBillboard(float& x, float& y, float rawX, float rawY,
+	                                         float center, float travel,
+	                                         const CameraRenderProps& camera)
+	{
+		// Project the icon's anchor, and a point one lane-unit to its right, both at the same
+		// depth -- this gives the screen-space direction+length of one lane-unit of width once
+		// tilt, zoom, pan and rotation have all been applied.
+		float cx = center * travel, cy = travel;
+		applyCameraTilt(cx, cy, camera);
+
+		float rx = (center + 1.f) * travel, ry = travel;
+		applyCameraTilt(rx, ry, camera);
+
+		float dirX = rx - cx, dirY = ry - cy;
+		float perpX = -dirY, perpY = dirX; // 90-degree rotation of the width vector
+
+		float localX = rawX, localY = rawY - 1.f; // offsets around the icon's own baseline
+		x = cx + localX * dirX + localY * perpX;
+		y = cy + localX * dirY + localY * perpY;
+	}
+
 	constexpr int SPR_DS_LANE_BACKGROUND = 0;
 	constexpr int SPR_DS_LANE_DIVIDER = 1;
 	constexpr int SPR_DS_STAGE_BORDER = 2;
@@ -2076,14 +2112,12 @@ namespace MikuMikuWorld
 			const Sprite& sprite = texture.sprites[sprIndex];
 			const float tickCenter = tick.center * (config.pvMirrorScore ? -1 : 1);
 
-			// keep the shape transform centered at 0, then shift by tickCenter afterward
+			// keep the shape transform centered at 0, then project as a Sonolus-style billboard
 			auto rawPos = Engine::quadvPos(-w, w, noteTop, noteBottom);
 			auto vPos = transform.apply(rawPos);
 			for (int i = 0; i < 4; ++i)
-			{
-				vPos[i].x += tickCenter;
-				applyCameraTiltIcon(vPos[i].x, vPos[i].y, rawPos[i].y, y, tickCamera);
-			}
+				applyCameraTiltIconBillboard(vPos[i].x, vPos[i].y, vPos[i].x, vPos[i].y, tickCenter,
+				                             y, tickCamera);
 			auto uv =
 			    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
 			                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
@@ -2547,14 +2581,12 @@ namespace MikuMikuWorld
 		const float noteCenter = noteLeft + (noteRight - noteLeft) / 2.f;
 		int zIndex = Engine::getZIndex(SpriteLayer::DIAMOND, noteCenter, y);
 
-		// keep the shape transform centered at 0, then shift by noteCenter afterward
+		// keep the shape transform centered at 0, then project as a Sonolus-style billboard
 		auto rawPos = Engine::quadvPos(-w, w, noteTop, noteBottom);
 		auto vPos = transform.apply(rawPos);
 		for (int i = 0; i < 4; ++i)
-		{
-			vPos[i].x += noteCenter;
-			applyCameraTiltIcon(vPos[i].x, vPos[i].y, rawPos[i].y, (float)y, camera);
-		}
+			applyCameraTiltIconBillboard(vPos[i].x, vPos[i].y, vPos[i].x, vPos[i].y, noteCenter,
+			                             (float)y, camera);
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();
@@ -2598,14 +2630,13 @@ namespace MikuMikuWorld
 
 		// this is the beginning of the lane-offset fix: keep the icon shape transform centered
 		// at 0 (instead of feeding it the note's absolute lane position) so it isn't sheared
-		// for notes far from lane 0, then shift into place afterward
+		// for notes far from lane 0, then project as a Sonolus-style billboard (single-depth
+		// anchor + screen-space width/perp vectors, matching layout_flick_arrow)
 		auto rawPos = Engine::quadvPos(-w, w, 1.f, 1.f - 2.f * std::abs(w) * scaledAspectRatio);
 		auto vPos = transform.apply(rawPos);
 		for (int i = 0; i < 4; ++i)
-		{
-			vPos[i].x += center;
-			applyCameraTiltIcon(vPos[i].x, vPos[i].y, rawPos[i].y, (float)y, camera);
-		}
+			applyCameraTiltIconBillboard(vPos[i].x, vPos[i].y, vPos[i].x, vPos[i].y, center,
+			                             (float)y, camera);
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();
