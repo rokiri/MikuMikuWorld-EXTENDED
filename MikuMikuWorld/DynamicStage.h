@@ -91,6 +91,8 @@ namespace MikuMikuWorld
 		EaseType ease = EaseType::Linear;
 	};
 
+	// nih stage transform
+
 	enum class StageTransformAnchor : uint8_t
 	{
 		Default,

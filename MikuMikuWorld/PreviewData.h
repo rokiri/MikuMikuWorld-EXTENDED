@@ -28,10 +28,12 @@ namespace MikuMikuWorld::Engine
 		int leftTick;
 		float leftLane;
 		int leftLayer;
+		id_t leftStageID;
 
 		int rightTick;
 		float rightLane;
 		int rightLayer;
+		id_t rightStageID;
 	};
 
 	struct DrawingHoldTick
@@ -81,7 +83,7 @@ namespace MikuMikuWorld::Engine
 		float noteSpeed;
 		int maxTicks;
 		int cachedBaseLifePoint = -1;
-		bool cachedIsExtended = false;      
+		bool cachedIsExtended = false;
 		std::vector<DrawingNote> drawingNotes;
 		std::vector<DrawingLine> drawingLines;
 		std::vector<DrawingHoldTick> drawingHoldTicks;
@@ -96,7 +98,6 @@ namespace MikuMikuWorld::Engine
 		std::vector<int> hudLives;
 		std::vector<uint8_t> hudSkillEffects;
 		std::vector<uint8_t> hudSkillLevels;
-
 
 		std::vector<LayerHiSpeedCache> hsCache;
 

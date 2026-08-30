@@ -369,3 +369,7 @@ installer.nsi
 # VSCode settings
 .vscode/
 .update-changelog
+
+// Unfinished
+PluginManager.cpp
+PluginManager.h

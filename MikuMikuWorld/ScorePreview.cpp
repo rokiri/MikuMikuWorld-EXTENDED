@@ -1070,13 +1070,23 @@ namespace MikuMikuWorld
 		if (config.drawBackground && background.shouldUpdate(context.workingData.jacket))
 			background.update(renderer, context.workingData.jacket);
 
+		// this is the beginning of the dynamic-stage particle disable
+		// particles/hit effects still run through the old fixed 3D `Camera` pipeline and don't
+		// yet follow CameraRenderProps tilt or per-stage `applyStageTransform`, so until that's
+		// wired up, disable them entirely while dynamic stage is in use to avoid effects that
+		// visibly don't match the (possibly rotated/translated) note positions.
+		bool usingDynamicStage = !context.score.stages.empty();
+
 		if (!context.scorePreviewDrawData.effectView.isInitialized())
 			context.scorePreviewDrawData.effectView.init();
 
-		if (playbackState.isPlaying)
+		if (usingDynamicStage)
+			context.scorePreviewDrawData.effectView.reset();
+		else if (playbackState.isPlaying)
 			context.scorePreviewDrawData.effectView.update(context);
 		else if (playbackState.wasLastFramePlaying)
 			context.scorePreviewDrawData.effectView.reset();
+		// this is the end of the dynamic-stage particle disable
 
 		static int shaderId = ResourceManager::getShader("basic2d");
 		static int pteShaderId = ResourceManager::getShader("particles");
@@ -1129,8 +1139,9 @@ namespace MikuMikuWorld
 			drawDynamicStage(renderer, context);
 		renderer->endBatch();
 
-		context.scorePreviewDrawData.effectView.updateEffects(context, noteEffectsCamera,
-		                                                      currentTime);
+		if (!usingDynamicStage)
+			context.scorePreviewDrawData.effectView.updateEffects(context, noteEffectsCamera,
+			                                                      currentTime);
 
 		shader->use();
 		shader->setMatrix4("projection", viewProjection);
@@ -1149,7 +1160,8 @@ namespace MikuMikuWorld
 		pteShader->setMatrix4("projection", pProjection);
 		pteShader->setMatrix4("view", pView);
 		renderer->beginBatch();
-		context.scorePreviewDrawData.effectView.drawUnderNoteEffects(renderer, currentTime);
+		if (!usingDynamicStage)
+			context.scorePreviewDrawData.effectView.drawUnderNoteEffects(renderer, currentTime);
 		renderer->endBatchWithBlending(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
 		                               GL_ONE_MINUS_SRC_ALPHA);
 
@@ -1173,7 +1185,8 @@ namespace MikuMikuWorld
 		pteShader->setMatrix4("projection", pProjection);
 		pteShader->setMatrix4("view", pView);
 		renderer->beginBatch();
-		context.scorePreviewDrawData.effectView.drawEffects(renderer, currentTime);
+		if (!usingDynamicStage)
+			context.scorePreviewDrawData.effectView.drawEffects(renderer, currentTime);
 		renderer->endBatchWithBlending(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
 		                               GL_ONE_MINUS_SRC_ALPHA);
 
@@ -1594,6 +1607,108 @@ namespace MikuMikuWorld
 		y = cy + localX * dirY + localY * perpY;
 	}
 
+	// this is the beginning of the stage transform feature
+	struct StageTransformRenderProps
+	{
+		float rotate = 0;
+		float xTranslate = 0;
+		float yTranslate = 0;
+		float anchorWeight = 0;
+	};
+
+	static StageTransformRenderProps getStageTransformPropsAt(const Score& score, id_t stageID,
+	                                                          int tick)
+	{
+		StageTransformRenderProps props;
+		if (stageID == NO_ID)
+			return props;
+
+		const StageTransformEvent* next = nullptr;
+		const StageTransformEvent* cur =
+		    findActiveAndNext(score.stageTransformChanges, stageID, tick, next);
+		if (!cur)
+			return props;
+
+		float t =
+		    next ? getEaseFunction(cur->ease)(
+		               0.f, 1.f,
+		               std::clamp((float)(tick - cur->tick) / std::max(1, next->tick - cur->tick),
+		                          0.f, 1.f))
+		         : 0.f;
+
+		props.rotate = next ? lerp(cur->rotate, next->rotate, t) : cur->rotate;
+		props.xTranslate =
+		    next ? lerp(cur->xLaneTranslate, next->xLaneTranslate, t) : cur->xLaneTranslate;
+		props.yTranslate =
+		    next ? lerp(cur->yLaneTranslate, next->yLaneTranslate, t) : cur->yLaneTranslate;
+
+		float wA = cur->anchor == StageTransformAnchor::Center ? 1.f : 0.f;
+		float wB = next ? (next->anchor == StageTransformAnchor::Center ? 1.f : 0.f) : wA;
+		props.anchorWeight = next ? lerp(wA, wB, t) : wA;
+		return props;
+	}
+
+	// Ported from Supernova's score_preview.lua stage-transform point projection.
+	// Operates in the same aspect-corrected pseudo-screen space that applyCameraPoint already
+	// uses for camera rotation, rather than real screen pixels.
+	static void applyStageTransform(float& x, float& y, const Score& score, id_t stageID, int tick,
+	                                const CameraRenderProps& camera)
+	{
+		if (stageID == NO_ID || score.stageTransformChanges.empty())
+			return;
+
+		StageTransformRenderProps t = getStageTransformPropsAt(score, stageID, tick);
+		float rotation = t.rotate * (3.14159265f / 180.f);
+		if (std::abs(rotation) <= 0.000001f && std::abs(t.xTranslate) <= 0.000001f &&
+		    std::abs(t.yTranslate) <= 0.000001f && t.anchorWeight <= 0.000001f)
+			return;
+
+		StageRenderProps stageProps = getStagePropsAt(score, stageID, tick);
+		float pivotLane = stageProps.left + stageProps.size * 0.5f;
+
+		float judgeWidth = cameraTiltedWidth(1.f, camera.stageTilt);
+		float judgeX = pivotLane * judgeWidth, judgeY = 1.f;
+		applyCameraPoint(judgeX, judgeY, camera);
+
+		auto toPseudoScreen = [](float px, float py)
+		{ return std::pair<float, float>(px * CAMERA_ASPECT_CORRECTION, py); };
+
+		auto [jx, jy] = toPseudoScreen(judgeX, judgeY);
+		auto [sx0, sy0] = toPseudoScreen(x, y);
+		float sx = sx0, sy = sy0;
+
+		float c = cosf(rotation), s = sinf(rotation);
+		float dx = sx - jx, dy = sy - jy;
+		sx = jx + dx * c - dy * s;
+		sy = jy + dx * s + dy * c;
+
+		float ax0 = 0.f, ay0 = 1.f;
+		applyCameraPoint(ax0, ay0, camera);
+		float ax1 = judgeWidth, ay1 = 1.f;
+		applyCameraPoint(ax1, ay1, camera);
+		auto [sax0, say0] = toPseudoScreen(ax0, ay0);
+		auto [sax1, say1] = toPseudoScreen(ax1, ay1);
+		float laneAxisX = sax1 - sax0, laneAxisY = say1 - say0;
+		float laneLen = sqrtf(laneAxisX * laneAxisX + laneAxisY * laneAxisY);
+		if (laneLen > 0.000001f)
+		{
+			laneAxisX /= laneLen;
+			laneAxisY /= laneLen;
+			sx += t.xTranslate * laneLen * laneAxisX + t.yTranslate * laneLen * laneAxisY;
+			sy += t.xTranslate * laneLen * laneAxisY - t.yTranslate * laneLen * laneAxisX;
+		}
+
+		if (t.anchorWeight > 0.f)
+		{
+			sx += (0.f - jx) * t.anchorWeight;
+			sy += (CAMERA_ROTATE_PIVOT_Y - jy) * t.anchorWeight;
+		}
+
+		x = sx / CAMERA_ASPECT_CORRECTION;
+		y = sy;
+	}
+	// this is the end of the stage transform feature
+
 	constexpr int SPR_DS_LANE_BACKGROUND = 0;
 	constexpr int SPR_DS_LANE_DIVIDER = 1;
 	constexpr int SPR_DS_STAGE_BORDER = 2;
@@ -1641,18 +1756,25 @@ namespace MikuMikuWorld
 	}
 
 	static void dsPushSprite(Renderer* renderer, const Texture& tex, int sprIndex, float left,
-	                         float right, float top, float bottom, float alpha, int z,
+	                         float right, float top, float bottom, float alpha, int z, id_t stageID,
 	                         const Score& score, int tick)
 	{
 		if (alpha <= 0.001f || !isArrayIndexInBounds(sprIndex, tex.sprites))
 			return;
 		const Sprite& spr = tex.sprites[sprIndex];
 		auto vPos = Engine::perspectiveQuadvPos(left, right, top, bottom);
-		if (!score.cameraChanges.empty())
+		CameraRenderProps camera{};
+		bool hasCamera = !score.cameraChanges.empty();
+		if (hasCamera)
+			camera = getCameraPropsAt(score, tick);
+		if (hasCamera || !score.stageTransformChanges.empty())
 		{
-			CameraRenderProps camera = getCameraPropsAt(score, tick);
 			for (auto& v : vPos)
-				applyCameraTilt(v.x, v.y, camera);
+			{
+				if (hasCamera)
+					applyCameraTilt(v.x, v.y, camera);
+				applyStageTransform(v.x, v.y, score, stageID, tick, camera);
+			}
 		}
 		auto uv = dsPerspectiveUV(spr, tex);
 		renderer->pushQuad(vPos, uv, DirectX::XMMatrixIdentity(), toFloat4(defaultTint, alpha),
@@ -1674,6 +1796,8 @@ namespace MikuMikuWorld
 
 		float bgMaxAlpha = 0.f;
 		float bgLeft = FLT_MAX, bgRight = -FLT_MAX;
+		id_t bgSoleStageID = NO_ID;
+		int bgContributingStages = 0;
 
 		for (const auto& [stageID, stage] : context.score.stages)
 		{
@@ -1693,6 +1817,8 @@ namespace MikuMikuWorld
 			bgMaxAlpha = std::max(bgMaxAlpha, laneAlpha);
 			bgLeft = std::min(bgLeft, laneLeft);
 			bgRight = std::max(bgRight, laneRight);
+			bgSoleStageID = stageID;
+			++bgContributingStages;
 
 			if (laneAlpha > 0.001f && props.divisionSize > 0)
 			{
@@ -1706,7 +1832,7 @@ namespace MikuMikuWorld
 					if (lane > laneLeft + 0.01f && lane < laneRight - 0.01f)
 						dsPushSprite(renderer, tex, SPR_DS_LANE_DIVIDER,
 						             lane - DS_DIVIDER_WIDTH * 0.5f, lane + DS_DIVIDER_WIDTH * 0.5f,
-						             stageTop, stageBottom, laneAlpha, -1, context.score,
+						             stageTop, stageBottom, laneAlpha, -1, stageID, context.score,
 						             context.currentTick);
 				}
 			}
@@ -1722,8 +1848,8 @@ namespace MikuMikuWorld
 				                   : style == StageBorderStyle::Medium ? 0.85f
 				                                                       : 0.6f;
 				dsPushSprite(renderer, tex, SPR_DS_STAGE_BORDER, edge, edge + width * inward,
-				             stageTop, stageBottom, laneAlpha * alphaScale, -1, context.score,
-				             context.currentTick);
+				             stageTop, stageBottom, laneAlpha * alphaScale, -1, stageID,
+				             context.score, context.currentTick);
 			};
 			pushBorder(props.leftBorder, laneLeft, 1.f);
 			pushBorder(props.rightBorder, laneRight, -1.f);
@@ -1742,24 +1868,24 @@ namespace MikuMikuWorld
 				const float centerLane = (laneLeft + laneRight) * 0.5f;
 
 				dsPushSprite(renderer, tex, SPR_DS_JUDGE_GRADIENT_BLACK + colorIdx, laneLeft,
-				             centerLane, middleBottomG, curJudgeBottom, a, 0, context.score,
-				             context.currentTick);
+				             centerLane, middleBottomG, curJudgeBottom, a, 0, stageID,
+				             context.score, context.currentTick);
 				dsPushSprite(renderer, tex, SPR_DS_JUDGE_GRADIENT_BLACK + colorIdx, laneRight,
-				             centerLane, middleBottomG, curJudgeBottom, a, 0, context.score,
-				             context.currentTick);
+				             centerLane, middleBottomG, curJudgeBottom, a, 0, stageID,
+				             context.score, context.currentTick);
 				dsPushSprite(renderer, tex, SPR_DS_JUDGE_GRADIENT_BLACK + colorIdx, laneLeft,
-				             centerLane, curJudgeTop, middleTopG, a, 0, context.score,
+				             centerLane, curJudgeTop, middleTopG, a, 0, stageID, context.score,
 				             context.currentTick);
 				dsPushSprite(renderer, tex, SPR_DS_JUDGE_GRADIENT_BLACK + colorIdx, laneRight,
-				             centerLane, curJudgeTop, middleTopG, a, 0, context.score,
+				             centerLane, curJudgeTop, middleTopG, a, 0, stageID, context.score,
 				             context.currentTick);
 
 				dsPushSprite(renderer, tex, SPR_DS_JUDGE_EDGE_BLACK + colorIdx, laneLeft,
 				             laneLeft + DS_JUDGE_EDGE_WIDTH, curJudgeTop, curJudgeBottom, a, 1,
-				             context.score, context.currentTick);
+				             stageID, context.score, context.currentTick);
 				dsPushSprite(renderer, tex, SPR_DS_JUDGE_EDGE_BLACK + colorIdx,
 				             laneRight - DS_JUDGE_EDGE_WIDTH, laneRight, curJudgeTop,
-				             curJudgeBottom, a, 1, context.score, context.currentTick);
+				             curJudgeBottom, a, 1, stageID, context.score, context.currentTick);
 
 				if (props.divisionSize > 0)
 				{
@@ -1778,10 +1904,11 @@ namespace MikuMikuWorld
 						{
 							dsPushSprite(renderer, tex, SPR_DS_JUDGE_CENTER_BLACK + colorIdx,
 							             lane - divW * 0.5f, lane + divW * 0.5f, middleTop,
-							             middleBottom, a, 1, context.score, context.currentTick);
+							             middleBottom, a, 1, stageID, context.score,
+							             context.currentTick);
 							dsPushSprite(renderer, tex, SPR_DS_JUDGE_EDGE_BLACK + colorIdx,
 							             lane - divW * 0.5f, lane + divW * 0.5f, middleTop,
-							             middleBottom, a * 0.5f, 1, context.score,
+							             middleBottom, a * 0.5f, 1, stageID, context.score,
 							             context.currentTick);
 						}
 					}
@@ -1789,14 +1916,21 @@ namespace MikuMikuWorld
 			};
 
 			dsPushSprite(renderer, tex, SPR_DS_JUDGE_BACKGROUND, laneLeft, laneRight, curJudgeTop,
-			             curJudgeBottom, judgeAlpha * 0.5f, -1, context.score, context.currentTick);
+			             curJudgeBottom, judgeAlpha * 0.5f, -1, stageID, context.score,
+			             context.currentTick);
 			drawJudgeColor(colorIdxA, 1.f - props.styleBlend);
 			drawJudgeColor(colorIdxB, props.styleBlend);
 		}
 
+		// this background quad spans the union of every visible stage's lane extents; when only
+		// one stage actually contributes (the common case) it can safely be anchored to that
+		// stage's own transform. Only fall back to NO_ID when multiple stages with different
+		// transforms are unioned together, since there's no single anchor that fits all of them.
+		id_t bgStageID = bgContributingStages == 1 ? bgSoleStageID : NO_ID;
 		if (bgMaxAlpha > 0.001f && bgLeft < bgRight)
 			dsPushSprite(renderer, tex, SPR_DS_LANE_BACKGROUND, bgLeft, bgRight, stageTop,
-			             stageBottom, bgMaxAlpha, -1, context.score, context.currentTick);
+			             stageBottom, bgMaxAlpha, -1, bgStageID, context.score,
+			             context.currentTick);
 	}
 
 	void ScorePreviewWindow::drawStage(Renderer* renderer)
@@ -1931,11 +2065,14 @@ namespace MikuMikuWorld
 			float l = Engine::laneToLeft(noteData.lane),
 			      r = Engine::laneToLeft(noteData.lane) + noteData.width;
 
-			drawNoteBase(renderer, noteData, l, r, (float)y, 1.f, camera);
+			drawNoteBase(renderer, noteData, l, r, (float)y, 1.f, camera, &context.score,
+			             context.currentTick);
 			if (noteData.friction)
-				drawTraceDiamond(renderer, noteData, l, r, (float)y, camera);
+				drawTraceDiamond(renderer, noteData, l, r, (float)y, camera, &context.score,
+				                 context.currentTick);
 			if (noteData.isFlick())
-				drawFlickArrow(renderer, noteData, (float)y, current_tm, camera);
+				drawFlickArrow(renderer, noteData, (float)y, current_tm, camera, &context.score,
+				               context.currentTick);
 		}
 	}
 
@@ -2021,6 +2158,7 @@ namespace MikuMikuWorld
 			// laneToLeft の二重変換を排し、構築済みの物理座標をそのまま使用
 			float noteLeft = adj_left_lane;
 			float noteRight = adj_right_lane;
+			id_t leftStageID = line.leftStageID, rightStageID = line.rightStageID;
 
 			if (config.pvMirrorScore)
 			{
@@ -2028,6 +2166,7 @@ namespace MikuMikuWorld
 				noteRight *= -1.f;
 				std::swap(noteLeft, noteRight);
 				std::swap(adj_left_travel, adj_right_travel);
+				std::swap(leftStageID, rightStageID);
 			}
 
 			// ★ 純正の `auto vPos = lineTransform.apply(Engine::perspectiveQuadvPos(...));`
@@ -2046,8 +2185,17 @@ namespace MikuMikuWorld
 			vPos[3].x *= adj_left_travel;
 			vPos[3].y *= adj_left_travel;
 
-			for (auto& v : vPos)
-				applyCameraTilt(v.x, v.y, lineCamera);
+			// each end of the line can belong to a different stage (rare, but matches
+			// Supernova's per-note stage transform), so apply it per-vertex-pair rather than
+			// once for the whole quad
+			for (int i = 0; i < 4; ++i)
+			{
+				applyCameraTilt(vPos[i].x, vPos[i].y, lineCamera);
+				id_t sideStageID = (i < 2) ? rightStageID : leftStageID;
+				if (sideStageID != NO_ID)
+					applyStageTransform(vPos[i].x, vPos[i].y, context.score, sideStageID,
+					                    context.currentTick, lineCamera);
+			}
 
 			auto uv =
 			    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
@@ -2116,8 +2264,13 @@ namespace MikuMikuWorld
 			auto rawPos = Engine::quadvPos(-w, w, noteTop, noteBottom);
 			auto vPos = transform.apply(rawPos);
 			for (int i = 0; i < 4; ++i)
+			{
 				applyCameraTiltIconBillboard(vPos[i].x, vPos[i].y, vPos[i].x, vPos[i].y, tickCenter,
 				                             y, tickCamera);
+				if (noteData.stageID != NO_ID)
+					applyStageTransform(vPos[i].x, vPos[i].y, context.score, noteData.stageID,
+					                    context.currentTick, tickCamera);
+			}
 			auto uv =
 			    Utils::getUV(sprite.getX() / texW, (sprite.getX() + sprite.getWidth()) / texW,
 			                 sprite.getY() / texH, (sprite.getY() + sprite.getHeight()) / texH);
@@ -2279,9 +2432,10 @@ namespace MikuMikuWorld
 				float l = ease(startLeft, endLeft, (float)base_frac),
 				      r = ease(startRight, endRight, (float)base_frac);
 				drawNoteBase(renderer, holdStart, l, r, 1.f, segment.activeTime / total_tm,
-				             pathCamera);
+				             pathCamera, &context.score, context.currentTick);
 				if (holdStart.friction)
-					drawTraceDiamond(renderer, holdStart, l, r, 1.f, pathCamera);
+					drawTraceDiamond(renderer, holdStart, l, r, 1.f, pathCamera, &context.score,
+					                 context.currentTick);
 			}
 
 			if (config.pvMirrorScore)
@@ -2367,7 +2521,12 @@ namespace MikuMikuWorld
 				auto vPos = Engine::perspectiveQuadvPos(q_leftStart, q_leftStop, q_rightStart,
 				                                        q_rightStop, q_top, q_bottom);
 				for (auto& v : vPos)
+				{
 					applyCameraTilt(v.x, v.y, pathCamera);
+					if (holdStart.stageID != NO_ID)
+						applyStageTransform(v.x, v.y, context.score, holdStart.stageID,
+						                    context.currentTick, pathCamera);
+				}
 				// =======================================================================================
 
 				float spr_x1, spr_x2, spr_y1, spr_y2;
@@ -2452,7 +2611,8 @@ namespace MikuMikuWorld
 
 	void ScorePreviewWindow::drawNoteBase(Renderer* renderer, const Note& note, float noteLeft,
 	                                      float noteRight, float y, float zScalar,
-	                                      const CameraRenderProps& camera)
+	                                      const CameraRenderProps& camera, const Score* score,
+	                                      int tick)
 	{
 		int textureID =
 		    note.getType() == NoteType::Damage ? noteTextures.ccNotes : noteTextures.notes;
@@ -2490,7 +2650,11 @@ namespace MikuMikuWorld
 		auto applyCamera = [&](std::array<DirectX::XMFLOAT4, 4>& vp)
 		{
 			for (auto& v : vp)
+			{
 				applyCameraTiltIcon(v.x, v.y, v.y, (float)y, camera);
+				if (score && note.stageID != NO_ID)
+					applyStageTransform(v.x, v.y, *score, note.stageID, tick, camera);
+			}
 		};
 
 		float texW = (float)texture.getWidth();
@@ -2557,7 +2721,8 @@ namespace MikuMikuWorld
 
 	void ScorePreviewWindow::drawTraceDiamond(Renderer* renderer, const Note& note, float noteLeft,
 	                                          float noteRight, float y,
-	                                          const CameraRenderProps& camera)
+	                                          const CameraRenderProps& camera, const Score* score,
+	                                          int tick)
 	{
 
 		if (noteTextures.notes == -1)
@@ -2585,8 +2750,12 @@ namespace MikuMikuWorld
 		auto rawPos = Engine::quadvPos(-w, w, noteTop, noteBottom);
 		auto vPos = transform.apply(rawPos);
 		for (int i = 0; i < 4; ++i)
+		{
 			applyCameraTiltIconBillboard(vPos[i].x, vPos[i].y, vPos[i].x, vPos[i].y, noteCenter,
 			                             (float)y, camera);
+			if (score && note.stageID != NO_ID)
+				applyStageTransform(vPos[i].x, vPos[i].y, *score, note.stageID, tick, camera);
+		}
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();
@@ -2599,7 +2768,8 @@ namespace MikuMikuWorld
 	}
 
 	void ScorePreviewWindow::drawFlickArrow(Renderer* renderer, const Note& note, float y,
-	                                        double time, const CameraRenderProps& camera)
+	                                        double time, const CameraRenderProps& camera,
+	                                        const Score* score, int tick)
 	{
 		if (noteTextures.notes == -1)
 			return;
@@ -2635,8 +2805,12 @@ namespace MikuMikuWorld
 		auto rawPos = Engine::quadvPos(-w, w, 1.f, 1.f - 2.f * std::abs(w) * scaledAspectRatio);
 		auto vPos = transform.apply(rawPos);
 		for (int i = 0; i < 4; ++i)
+		{
 			applyCameraTiltIconBillboard(vPos[i].x, vPos[i].y, vPos[i].x, vPos[i].y, center,
 			                             (float)y, camera);
+			if (score && note.stageID != NO_ID)
+				applyStageTransform(vPos[i].x, vPos[i].y, *score, note.stageID, tick, camera);
+		}
 
 		float texW = (float)texture.getWidth();
 		float texH = (float)texture.getHeight();

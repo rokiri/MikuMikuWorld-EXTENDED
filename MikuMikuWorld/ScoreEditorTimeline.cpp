@@ -125,7 +125,8 @@ namespace MikuMikuWorld
 		ImVec2 windowEndBottom =
 		    windowEndTop +
 		    ImVec2{ scrollbarWidth + 2,
-			        ImGui::GetWindowSize().y - (paddingY * 1.3f) - (UI::toolbarBtnSize.y * 2.0f + ImGui::GetStyle().ItemSpacing.y) - 5 };
+			        ImGui::GetWindowSize().y - (paddingY * 1.3f) -
+			            (UI::toolbarBtnSize.y * 2.0f + ImGui::GetStyle().ItemSpacing.y) - 5 };
 
 		// calculate handle height
 		float heightRatio = size.y / ((maxOffset - minOffset) * zoom);
@@ -418,7 +419,8 @@ namespace MikuMikuWorld
 
 		// Make space for the scrollbar and the status bar
 		size = ImGui::GetContentRegionAvail() -
-		       ImVec2{ ImGui::GetStyle().ScrollbarSize, UI::toolbarBtnSize.y * 2.0f + ImGui::GetStyle().ItemSpacing.y };
+		       ImVec2{ ImGui::GetStyle().ScrollbarSize,
+			           UI::toolbarBtnSize.y * 2.0f + ImGui::GetStyle().ItemSpacing.y };
 
 		position = ImGui::GetCursorScreenPos();
 		boundaries = ImRect(position, position + size);
@@ -538,16 +540,20 @@ namespace MikuMikuWorld
 			{
 				float dpiScale = ImGui::GetMainViewport()->DpiScale;
 
-				// getTimelineEndX() にはウィンドウの絶対座標(position.x)が含まれてしまっているため、
+				// getTimelineEndX()
+				// にはウィンドウの絶対座標(position.x)が含まれてしまっているため、
 				// 引き算をしてタイムライン内での「相対X座標」に変換します。
 				float relativeEndX = getTimelineEndX(context) - position.x;
-				
+
 				float lx, rx;
-				if (config.drawHiSpeedAutomation) {
+				if (config.drawHiSpeedAutomation)
+				{
 					// グラフ表示（オートメーション）オンの場合の判定エリア
 					lx = relativeEndX + 10.0f * dpiScale;
 					rx = lx + 100.0f * dpiScale;
-				} else {
+				}
+				else
+				{
 					// 従来のテキスト表示（レガシー）の場合の判定エリア
 					lx = relativeEndX + 123.0f * dpiScale;
 					rx = relativeEndX + 180.0f * dpiScale;
@@ -722,8 +728,9 @@ namespace MikuMikuWorld
 
 		// HSレーン上での右クリックメニュー抑制はいったんWIPとして保留
 		contextMenu(context);
-		if (config.drawHiSpeedAutomation) {
-			// WIP 
+		if (config.drawHiSpeedAutomation)
+		{
+			// WIP
 			// HSレーン上での右クリックメニュー抑制
 			drawHiSpeedGraph(context);
 		}
@@ -1122,8 +1129,8 @@ namespace MikuMikuWorld
 		if (UI::inlineSelect(getString("snap_mode"), snapModeInt, snapModes,
 		                     (size_t)SnapMode::SnapModeMax))
 		{
-		snapMode = (SnapMode)snapModeInt;
-	}
+			snapMode = (SnapMode)snapModeInt;
+		}
 
 		static int gotoMeasure = 0;
 		bool activated = false;
@@ -1162,7 +1169,7 @@ namespace MikuMikuWorld
 			setPlaybackSpeed(context, playbackSpeed + 0.25f);
 
 		// ここで改行するために SameLine と Separator を削除します
-		
+
 		int currentMeasure =
 		    accumulateMeasures(context.currentTick, TICKS_PER_BEAT, context.score.timeSignatures);
 
@@ -2776,7 +2783,8 @@ namespace MikuMikuWorld
 		return bpmControl(context, tempo.bpm, tempo.tick, !playing);
 	}
 
-	bool ScoreEditorTimeline::bpmControl(const ScoreContext& context, float bpm, int tick, bool enabled)
+	bool ScoreEditorTimeline::bpmControl(const ScoreContext& context, float bpm, int tick,
+	                                     bool enabled)
 	{
 		float dpiScale = ImGui::GetMainViewport()->DpiScale;
 		// タイムラインの左端（StartX）から左へ110pxの位置に配置
@@ -2786,7 +2794,8 @@ namespace MikuMikuWorld
 		                    IO::formatString("%g BPM", bpm).c_str(), enabled);
 	}
 
-	bool ScoreEditorTimeline::timeSignatureControl(const ScoreContext& context, int numerator, int denominator, int tick, bool enabled)
+	bool ScoreEditorTimeline::timeSignatureControl(const ScoreContext& context, int numerator,
+	                                               int denominator, int tick, bool enabled)
 	{
 		float dpiScale = ImGui::GetMainViewport()->DpiScale;
 		// タイムラインの左端（StartX）から左へ45pxの位置に配置
@@ -2832,7 +2841,8 @@ namespace MikuMikuWorld
 		       feverControl(context, fever.endTick, false, !playing);
 	}
 
-	bool ScoreEditorTimeline::feverControl(const ScoreContext& context, int tick, bool start, bool enabled)
+	bool ScoreEditorTimeline::feverControl(const ScoreContext& context, int tick, bool start,
+	                                       bool enabled)
 	{
 		if (tick < 0)
 			return false;
@@ -2846,7 +2856,8 @@ namespace MikuMikuWorld
 		return eventControl(getTimelineStartX(context), pos, feverColor, txt.c_str(), enabled);
 	}
 
-	bool ScoreEditorTimeline::hiSpeedControl(const ScoreContext& context, const HiSpeedChange& hiSpeed)
+	bool ScoreEditorTimeline::hiSpeedControl(const ScoreContext& context,
+	                                         const HiSpeedChange& hiSpeed)
 	{
 		return hiSpeedControl(context, hiSpeed.tick, hiSpeed.speed, hiSpeed.layer, hiSpeed.skips,
 		                      hiSpeed.ease, hiSpeed.hideNotes,
@@ -2854,7 +2865,9 @@ namespace MikuMikuWorld
 		                          context.selectedHiSpeedChanges.end());
 	}
 
-	bool ScoreEditorTimeline::hiSpeedControl(const ScoreContext& context, int tick, float speed, int layer, float skip, HiSpeedEaseType ease, bool hideNotes, bool selected)
+	bool ScoreEditorTimeline::hiSpeedControl(const ScoreContext& context, int tick, float speed,
+	                                         int layer, float skip, HiSpeedEaseType ease,
+	                                         bool hideNotes, bool selected)
 	{
 		bool showLayerName = !(layer == -1 || context.selectedLayer == layer);
 		bool enabled = layer == -1 || context.selectedLayer == layer || context.showAllLayers;
@@ -2891,7 +2904,8 @@ namespace MikuMikuWorld
 		return waypointControl(context, waypoint.name, waypoint.tick);
 	}
 
-	bool ScoreEditorTimeline::waypointControl(const ScoreContext& context, std::string name, int tick)
+	bool ScoreEditorTimeline::waypointControl(const ScoreContext& context, std::string name,
+	                                          int tick)
 	{
 		if (tick < 0)
 			return false;
@@ -3378,10 +3392,9 @@ namespace MikuMikuWorld
 				UI::addFloatProperty(fitColumn(getString("transform_y_translate")),
 				                     eventEdit.editTransform.yLaneTranslate, "%g");
 				eventEdited |= ImGui::IsItemDeactivatedAfterEdit();
-				eventEdited |= UI::addSelectProperty(fitColumn(getString("transform_anchor")),
-				                                     eventEdit.editTransform.anchor,
-				                                     stageTransformAnchorNames,
-				                                     arrayLength(stageTransformAnchorNames));
+				eventEdited |= UI::addSelectProperty(
+				    fitColumn(getString("transform_anchor")), eventEdit.editTransform.anchor,
+				    stageTransformAnchorNames, arrayLength(stageTransformAnchorNames));
 				eventEdited |= UI::addSelectProperty(fitColumn(getString("ease_type")),
 				                                     eventEdit.editTransform.ease, easeNames,
 				                                     arrayLength(easeNames));
@@ -3473,7 +3486,8 @@ namespace MikuMikuWorld
 		}
 	}
 
-	bool ScoreEditorTimeline::isMouseInHoldPath(const Note& n1, const Note& n2, EaseType ease, float x, float y)
+	bool ScoreEditorTimeline::isMouseInHoldPath(const Note& n1, const Note& n2, EaseType ease,
+	                                            float x, float y)
 	{
 		float xStart1 = laneToPosition(n1.lane);
 		float xStart2 = laneToPosition(n1.lane + n1.width);
@@ -3527,6 +3541,8 @@ namespace MikuMikuWorld
 		Note newNote = inputNotes.tap;
 		newNote.ID = Note::getNextID();
 		newNote.layer = context.selectedLayer;
+		if (context.selectedStage != NO_ID)
+			newNote.stageID = context.selectedStage;
 
 		context.score.notes[newNote.ID] = newNote;
 		context.pushHistory("Insert note", prev, context.score);
@@ -3539,11 +3555,15 @@ namespace MikuMikuWorld
 		Note holdStart = inputNotes.holdStart;
 		holdStart.ID = Note::getNextID();
 		holdStart.layer = context.selectedLayer;
+		if (context.selectedStage != NO_ID)
+			holdStart.stageID = context.selectedStage;
 
 		Note holdEnd = inputNotes.holdEnd;
 		holdEnd.ID = Note::getNextID();
 		holdEnd.parentID = holdStart.ID;
 		holdEnd.layer = context.selectedLayer;
+		if (context.selectedStage != NO_ID)
+			holdEnd.stageID = context.selectedStage;
 
 		HoldEndType startType = edit.holdStartType;
 		HoldEndType endType = edit.holdEndType;
@@ -3623,6 +3643,9 @@ namespace MikuMikuWorld
 		holdStep.critical = holdStart.critical;
 		holdStep.parentID = holdStart.ID;
 		holdStep.layer = context.selectedLayer;
+		// a hold step must stay on the same stage as the rest of its hold, not whichever stage
+		// happens to be selected when the step is added
+		holdStep.stageID = holdStart.stageID;
 
 		context.score.notes[holdStep.ID] = holdStep;
 
@@ -3641,6 +3664,8 @@ namespace MikuMikuWorld
 		Note newNote = inputNotes.damage;
 		newNote.ID = Note::getNextID();
 		newNote.layer = context.selectedLayer;
+		if (context.selectedStage != NO_ID)
+			newNote.stageID = context.selectedStage;
 
 		context.score.notes[newNote.ID] = newNote;
 		context.pushHistory("Insert damage", prev, context.score);
@@ -3768,16 +3793,17 @@ namespace MikuMikuWorld
 				playSE = context.score.holdNotes.at(note.ID).startType == HoldNoteType::Normal;
 			}
 			else if (note.getType() == NoteType::HoldEnd)
-            {
-                if (context.score.holdNotes.find(note.parentID) != context.score.holdNotes.end()) 
-                {
-                    playSE = context.score.holdNotes.at(note.parentID).endType == HoldNoteType::Normal;
-                }
-                else 
-                {
-                    playSE = false;
-                }
-            }
+			{
+				if (context.score.holdNotes.find(note.parentID) != context.score.holdNotes.end())
+				{
+					playSE =
+					    context.score.holdNotes.at(note.parentID).endType == HoldNoteType::Normal;
+				}
+				else
+				{
+					playSE = false;
+				}
+			}
 			if (note.dummy)
 			{
 				playSE = false;
@@ -3910,1144 +3936,1243 @@ namespace MikuMikuWorld
 		offset = std::max(minOffset, tickToPosition(context.currentTick) +
 		                                 (size.y * (1.0f - config.cursorPositionThreshold)));
 	}
-	
+
 	void ScoreEditorTimeline::drawHiSpeedGraph(ScoreContext& context)
-{
-	ImDrawList* drawList = ImGui::GetWindowDrawList();
-	if (!drawList) return;
-
-	std::map<int, std::vector<HiSpeedChange>> layerChanges;
-	for (const auto& [id, hiSpeed] : context.score.hiSpeedChanges)
 	{
-		if (context.score.layers[hiSpeed.layer].hidden)
-			continue;
-		layerChanges[hiSpeed.layer].push_back(hiSpeed);
-	}
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		if (!drawList)
+			return;
 
-	if (layerChanges.empty()) return;
-
-	for (auto& [layer, changes] : layerChanges) {
-		std::sort(changes.begin(), changes.end(), [](const HiSpeedChange& a, const HiSpeedChange& b) {
-			return a.tick < b.tick;
-		});
-	}
-
-	float dpiScale = ImGui::GetMainViewport()->DpiScale;
-	float laneStartX = getTimelineEndX(context) + (10.0f * dpiScale); 
-	float laneWidth = 100.0f * dpiScale;
-	float laneEndX = laneStartX + laneWidth;
-	
-	// configの値 (0.0~1.0) を 0~255 に変換して適用
-	int bgAlpha = std::clamp((int)(config.hiSpeedGraphBgOpacity * 255.0f), 0, 255);
-	ImU32 bgColor = IM_COL32(31, 26, 28, bgAlpha);
-	drawList->AddRectFilled(ImVec2(laneStartX, position.y), ImVec2(laneEndX, position.y + size.y), bgColor);
-
-	float padding = 15.0f * dpiScale;
-	float drawableStartX = laneStartX + padding;
-	float drawableWidth = laneWidth - (padding * 2);
-
-	// 設定画面で指定された上限・下限値を参照する
-	float graphLimit = config.hiSpeedGraphLimit;
-
-	// スケール計算（余計なマージンを廃止し、上限に達したらピッタリ壁に付くように修正）
-	auto calcScale = [&](const std::vector<HiSpeedChange>& changes) {
-		float minS = 0.0f;
-		float maxS = 1.0f; // 最低でも 1.0x までは描画領域を確保
-		for (const auto& change : changes) {
-			float s = std::clamp(change.speed, -graphLimit, graphLimit);
-			if (s < minS) minS = s;
-			if (s > maxS) maxS = s;
-		}
-		// 0.0x の基準線が左壁にベタ付きにならないよう、マイナス側にだけ 25% の余白を設ける
-		// プラス側（右壁）には余白を足さないため、上限値はパディング位置にピッタリ張り付く
-		float requiredMin = -maxS * 0.25f;
-		if (minS > requiredMin) {
-			minS = requiredMin;
-		}
-		return std::make_pair(minS, maxS);
-	};
-
-	auto getX = [&](float speed, float minS, float maxS) {
-		float normalized = (speed - minS) / (maxS - minS);
-		return drawableStartX + (normalized * drawableWidth);
-	};
-
-	float activeMin = 0.0f, activeMax = 1.0f;
-	if (layerChanges.find(context.selectedLayer) != layerChanges.end()) {
-		auto scale = calcScale(layerChanges[context.selectedLayer]);
-		activeMin = scale.first;
-		activeMax = scale.second;
-	} else {
-		std::vector<HiSpeedChange> dummy;
-		auto scale = calcScale(dummy);
-		activeMin = scale.first;
-		activeMax = scale.second;
-	}
-
-	float baselineX = getX(0.0f, activeMin, activeMax);
-	ImU32 baselineColor = IM_COL32(255, 255, 255, 60);
-	drawList->AddLine(ImVec2(baselineX, position.y), ImVec2(baselineX, position.y + size.y), baselineColor, 1.0f);
-
-	ImVec2 mousePos = ImGui::GetMousePos();
-	bool isAnyNodeHovered = false;
-
-	ImU32 ghostLineColor = IM_COL32(150, 150, 150, 60);
-	ImU32 ghostPointColor = IM_COL32(150, 150, 150, 60);
-
-	for (const auto& [layer, changes] : layerChanges) {
-		if (layer == context.selectedLayer) continue;
-
-		auto ghostScale = calcScale(changes);
-		float gMin = ghostScale.first;
-		float gMax = ghostScale.second;
-
-		for (size_t i = 0; i < changes.size(); ++i) {
-			const auto& current = changes[i];
-			
-			// 大きさと色の判定
-			bool isLarge = (current.speed >= graphLimit || current.speed <= -graphLimit);
-			bool isUltraExtreme = (current.speed >= 1000.0f || current.speed <= -1000.0f);
-			
-			float cSpeed1 = std::clamp(current.speed, -graphLimit, graphLimit);
-			float y1 = position.y - tickToPosition(current.tick) + visualOffset;
-			float x1 = getX(cSpeed1, gMin, gMax);
-
-			if (i < changes.size() - 1) {
-				const auto& next = changes[i + 1];
-				float cSpeed2 = std::clamp(next.speed, -graphLimit, graphLimit);
-				float y2 = position.y - tickToPosition(next.tick) + visualOffset;
-				float x2 = getX(cSpeed2, gMin, gMax);
-
-				if (current.ease == HiSpeedEaseType::Linear) {
-					drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), ghostLineColor, 1.5f);
-				} else {
-					drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), ghostLineColor, 1.5f);
-					drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), ghostLineColor, 1.5f);
-				}
-			} else {
-				drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, position.y), ghostLineColor, 1.5f);
-			}
-			
-			float radius = isLarge ? 3.5f : 2.0f;
-			ImU32 pColor = isUltraExtreme ? IM_COL32(255, 120, 120, 80) : ghostPointColor;
-			drawList->AddCircleFilled(ImVec2(x1, y1), radius, pColor);
-		}
-	}
-
-	ImU32 lineColor = speedColor;
-	ImU32 pointColor = IM_COL32(255, 255, 255, 255); 
-	ImU32 hoverColor = IM_COL32(255, 150, 150, 255); 
-	ImU32 selectedColor = IM_COL32(255, 200, 100, 255); 
-
-	static id_t draggingNodeID = -1;
-	static bool nodeWasDragged = false;
-	static Score prevScoreForDrag;
-	static float dragAccumulatedSpeed = 0.0f;
-
-	std::vector<HiSpeedChange> hoveredTooltips;
-
-	if (layerChanges.find(context.selectedLayer) != layerChanges.end()) {
-		auto& activeChanges = layerChanges[context.selectedLayer];
-		
-		for (size_t i = 0; i < activeChanges.size(); ++i)
+		std::map<int, std::vector<HiSpeedChange>> layerChanges;
+		for (const auto& [id, hiSpeed] : context.score.hiSpeedChanges)
 		{
-			const auto& current = activeChanges[i];
-			
-			// 大きさと色の判定（アクティブレイヤーも確実に graphLimit に連動）
-			bool isLarge = (current.speed >= graphLimit || current.speed <= -graphLimit);
-			bool isUltraExtreme = (current.speed >= 1000.0f || current.speed <= -1000.0f);
-			
-			float cSpeed1 = std::clamp(current.speed, -graphLimit, graphLimit);
-			float y1 = position.y - tickToPosition(current.tick) + visualOffset;
-			float x1 = getX(cSpeed1, activeMin, activeMax);
+			if (context.score.layers[hiSpeed.layer].hidden)
+				continue;
+			layerChanges[hiSpeed.layer].push_back(hiSpeed);
+		}
 
-			if (i < activeChanges.size() - 1)
+		if (layerChanges.empty())
+			return;
+
+		for (auto& [layer, changes] : layerChanges)
+		{
+			std::sort(changes.begin(), changes.end(),
+			          [](const HiSpeedChange& a, const HiSpeedChange& b)
+			          { return a.tick < b.tick; });
+		}
+
+		float dpiScale = ImGui::GetMainViewport()->DpiScale;
+		float laneStartX = getTimelineEndX(context) + (10.0f * dpiScale);
+		float laneWidth = 100.0f * dpiScale;
+		float laneEndX = laneStartX + laneWidth;
+
+		// configの値 (0.0~1.0) を 0~255 に変換して適用
+		int bgAlpha = std::clamp((int)(config.hiSpeedGraphBgOpacity * 255.0f), 0, 255);
+		ImU32 bgColor = IM_COL32(31, 26, 28, bgAlpha);
+		drawList->AddRectFilled(ImVec2(laneStartX, position.y),
+		                        ImVec2(laneEndX, position.y + size.y), bgColor);
+
+		float padding = 15.0f * dpiScale;
+		float drawableStartX = laneStartX + padding;
+		float drawableWidth = laneWidth - (padding * 2);
+
+		// 設定画面で指定された上限・下限値を参照する
+		float graphLimit = config.hiSpeedGraphLimit;
+
+		// スケール計算（余計なマージンを廃止し、上限に達したらピッタリ壁に付くように修正）
+		auto calcScale = [&](const std::vector<HiSpeedChange>& changes)
+		{
+			float minS = 0.0f;
+			float maxS = 1.0f; // 最低でも 1.0x までは描画領域を確保
+			for (const auto& change : changes)
 			{
-				const auto& next = activeChanges[i + 1];
-				float cSpeed2 = std::clamp(next.speed, -graphLimit, graphLimit);
-				float y2 = position.y - tickToPosition(next.tick) + visualOffset;
-				float x2 = getX(cSpeed2, activeMin, activeMax);
+				float s = std::clamp(change.speed, -graphLimit, graphLimit);
+				if (s < minS)
+					minS = s;
+				if (s > maxS)
+					maxS = s;
+			}
+			// 0.0x の基準線が左壁にベタ付きにならないよう、マイナス側にだけ 25% の余白を設ける
+			// プラス側（右壁）には余白を足さないため、上限値はパディング位置にピッタリ張り付く
+			float requiredMin = -maxS * 0.25f;
+			if (minS > requiredMin)
+			{
+				minS = requiredMin;
+			}
+			return std::make_pair(minS, maxS);
+		};
 
-				if (current.ease == HiSpeedEaseType::Linear) {
+		auto getX = [&](float speed, float minS, float maxS)
+		{
+			float normalized = (speed - minS) / (maxS - minS);
+			return drawableStartX + (normalized * drawableWidth);
+		};
+
+		float activeMin = 0.0f, activeMax = 1.0f;
+		if (layerChanges.find(context.selectedLayer) != layerChanges.end())
+		{
+			auto scale = calcScale(layerChanges[context.selectedLayer]);
+			activeMin = scale.first;
+			activeMax = scale.second;
+		}
+		else
+		{
+			std::vector<HiSpeedChange> dummy;
+			auto scale = calcScale(dummy);
+			activeMin = scale.first;
+			activeMax = scale.second;
+		}
+
+		float baselineX = getX(0.0f, activeMin, activeMax);
+		ImU32 baselineColor = IM_COL32(255, 255, 255, 60);
+		drawList->AddLine(ImVec2(baselineX, position.y), ImVec2(baselineX, position.y + size.y),
+		                  baselineColor, 1.0f);
+
+		ImVec2 mousePos = ImGui::GetMousePos();
+		bool isAnyNodeHovered = false;
+
+		ImU32 ghostLineColor = IM_COL32(150, 150, 150, 60);
+		ImU32 ghostPointColor = IM_COL32(150, 150, 150, 60);
+
+		for (const auto& [layer, changes] : layerChanges)
+		{
+			if (layer == context.selectedLayer)
+				continue;
+
+			auto ghostScale = calcScale(changes);
+			float gMin = ghostScale.first;
+			float gMax = ghostScale.second;
+
+			for (size_t i = 0; i < changes.size(); ++i)
+			{
+				const auto& current = changes[i];
+
+				// 大きさと色の判定
+				bool isLarge = (current.speed >= graphLimit || current.speed <= -graphLimit);
+				bool isUltraExtreme = (current.speed >= 1000.0f || current.speed <= -1000.0f);
+
+				float cSpeed1 = std::clamp(current.speed, -graphLimit, graphLimit);
+				float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+				float x1 = getX(cSpeed1, gMin, gMax);
+
+				if (i < changes.size() - 1)
+				{
+					const auto& next = changes[i + 1];
+					float cSpeed2 = std::clamp(next.speed, -graphLimit, graphLimit);
+					float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+					float x2 = getX(cSpeed2, gMin, gMax);
+
+					if (current.ease == HiSpeedEaseType::Linear)
+					{
+						drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), ghostLineColor, 1.5f);
+					}
+					else
+					{
+						drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), ghostLineColor, 1.5f);
+						drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), ghostLineColor, 1.5f);
+					}
+				}
+				else
+				{
+					drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, position.y), ghostLineColor, 1.5f);
+				}
+
+				float radius = isLarge ? 3.5f : 2.0f;
+				ImU32 pColor = isUltraExtreme ? IM_COL32(255, 120, 120, 80) : ghostPointColor;
+				drawList->AddCircleFilled(ImVec2(x1, y1), radius, pColor);
+			}
+		}
+
+		ImU32 lineColor = speedColor;
+		ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+		ImU32 hoverColor = IM_COL32(255, 150, 150, 255);
+		ImU32 selectedColor = IM_COL32(255, 200, 100, 255);
+
+		static id_t draggingNodeID = -1;
+		static bool nodeWasDragged = false;
+		static Score prevScoreForDrag;
+		static float dragAccumulatedSpeed = 0.0f;
+
+		std::vector<HiSpeedChange> hoveredTooltips;
+
+		if (layerChanges.find(context.selectedLayer) != layerChanges.end())
+		{
+			auto& activeChanges = layerChanges[context.selectedLayer];
+
+			for (size_t i = 0; i < activeChanges.size(); ++i)
+			{
+				const auto& current = activeChanges[i];
+
+				// 大きさと色の判定（アクティブレイヤーも確実に graphLimit に連動）
+				bool isLarge = (current.speed >= graphLimit || current.speed <= -graphLimit);
+				bool isUltraExtreme = (current.speed >= 1000.0f || current.speed <= -1000.0f);
+
+				float cSpeed1 = std::clamp(current.speed, -graphLimit, graphLimit);
+				float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+				float x1 = getX(cSpeed1, activeMin, activeMax);
+
+				if (i < activeChanges.size() - 1)
+				{
+					const auto& next = activeChanges[i + 1];
+					float cSpeed2 = std::clamp(next.speed, -graphLimit, graphLimit);
+					float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+					float x2 = getX(cSpeed2, activeMin, activeMax);
+
+					if (current.ease == HiSpeedEaseType::Linear)
+					{
+						drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), lineColor, 2.0f);
+					}
+					else
+					{
+						drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), lineColor, 2.0f);
+						drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), lineColor, 2.0f);
+					}
+				}
+				else
+				{
+					drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, position.y), lineColor, 2.0f);
+				}
+
+				bool isSelected = context.selectedHiSpeedChanges.find(current.ID) !=
+				                  context.selectedHiSpeedChanges.end();
+				bool isHovered = false;
+				bool isDraggingThis = (draggingNodeID == current.ID);
+
+				if (abs(mousePos.x - x1) < 8.0f && abs(mousePos.y - y1) < 8.0f)
+				{
+					isHovered = true;
+					isAnyNodeHovered = true;
+				}
+
+				if (isHovered || isDraggingThis)
+				{
+					isHoveringNote = true;
+				}
+
+				ImU32 extremeNormalColor = IM_COL32(255, 140, 140, 255);
+				ImU32 extremeHoverColor = IM_COL32(255, 180, 180, 255);
+				ImU32 extremeSelectColor = IM_COL32(255, 150, 50, 255);
+
+				// 上限に達していたら大きくする
+				float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
+				if (isLarge)
+					radius += 2.0f;
+
+				ImU32 circleColor;
+				// 1000.0x以上なら色を赤っぽくする
+				if (isUltraExtreme)
+				{
+					circleColor = isSelected ? extremeSelectColor
+					                         : ((isHovered || isDraggingThis) ? extremeHoverColor
+					                                                          : extremeNormalColor);
+				}
+				else
+				{
+					circleColor = isSelected
+					                  ? selectedColor
+					                  : ((isHovered || isDraggingThis) ? hoverColor : pointColor);
+				}
+				drawList->AddCircleFilled(ImVec2(x1, y1), radius, circleColor);
+
+				if (isHovered && draggingNodeID == -1)
+				{
+					hoveredTooltips.push_back(current);
+
+					if (ImGui::IsMouseClicked(0))
+					{
+						if (ImGui::GetIO().KeyCtrl)
+						{
+							if (isSelected)
+							{
+								context.selectedHiSpeedChanges.erase(current.ID);
+							}
+							else
+							{
+								context.selectedHiSpeedChanges.insert(current.ID);
+							}
+						}
+						else
+						{
+							if (!isSelected)
+							{
+								context.selectedHiSpeedChanges.clear();
+								context.selectedHiSpeedChanges.insert(current.ID);
+							}
+						}
+
+						draggingNodeID = current.ID;
+						nodeWasDragged = false;
+						prevScoreForDrag = context.score;
+						dragAccumulatedSpeed = current.speed;
+					}
+
+					if (ImGui::IsMouseClicked(1))
+					{
+						if (current.tick != 0)
+						{
+							Score prev = context.score;
+
+							std::unordered_set<id_t> deleteIds;
+							if (context.selectedHiSpeedChanges.find(current.ID) !=
+							    context.selectedHiSpeedChanges.end())
+							{
+								deleteIds = context.selectedHiSpeedChanges;
+							}
+							else
+							{
+								deleteIds.insert(current.ID);
+							}
+
+							for (auto id : deleteIds)
+							{
+								if (context.score.hiSpeedChanges[id].tick != 0)
+								{
+									context.score.hiSpeedChanges.erase(id);
+								}
+							}
+							context.pushHistory("Delete hi-speed", prev, context.score);
+						}
+					}
+				}
+
+				if (isDraggingThis)
+				{
+					if (ImGui::IsMouseDragging(0, 2.0f))
+					{
+						nodeWasDragged = true;
+					}
+
+					if (nodeWasDragged)
+					{
+						float speedPerPixel = (activeMax - activeMin) / drawableWidth;
+						if (speedPerPixel < 0.01f)
+							speedPerPixel = 0.01f;
+
+						dragAccumulatedSpeed += ImGui::GetIO().MouseDelta.x * speedPerPixel;
+
+						float newSpeed = std::round(dragAccumulatedSpeed * 4.0f) / 4.0f;
+
+						int originalTick = prevScoreForDrag.hiSpeedChanges[current.ID].tick;
+						float originalSpeed = prevScoreForDrag.hiSpeedChanges[current.ID].speed;
+
+						int newTick = std::max(0, hoverTick);
+						if (originalTick == 0)
+							newTick = 0;
+
+						int tickDelta = newTick - originalTick;
+						float speedDelta = newSpeed - originalSpeed;
+
+						if (ImGui::GetIO().KeyShift)
+						{
+							speedDelta = 0.0f;
+						}
+
+						std::unordered_set<id_t> moveIds;
+						if (context.selectedHiSpeedChanges.find(current.ID) !=
+						    context.selectedHiSpeedChanges.end())
+						{
+							moveIds = context.selectedHiSpeedChanges;
+						}
+						else
+						{
+							moveIds.insert(current.ID);
+						}
+
+						for (auto id : moveIds)
+						{
+							if (prevScoreForDrag.hiSpeedChanges[id].tick + tickDelta < 0)
+							{
+								tickDelta = -prevScoreForDrag.hiSpeedChanges[id].tick;
+							}
+						}
+
+						for (auto id : moveIds)
+						{
+							if (prevScoreForDrag.hiSpeedChanges[id].tick == 0)
+							{
+								tickDelta = 0;
+							}
+						}
+
+						bool canMoveTime = true;
+						if (tickDelta != 0)
+						{
+							for (auto id : moveIds)
+							{
+								int targetT = prevScoreForDrag.hiSpeedChanges[id].tick + tickDelta;
+								int targetL = prevScoreForDrag.hiSpeedChanges[id].layer;
+								for (const auto& [otherId, hsc] : prevScoreForDrag.hiSpeedChanges)
+								{
+									if (moveIds.find(otherId) == moveIds.end() &&
+									    hsc.tick == targetT && hsc.layer == targetL)
+									{
+										canMoveTime = false;
+										break;
+									}
+								}
+								if (!canMoveTime)
+									break;
+							}
+						}
+						else
+						{
+							canMoveTime = true;
+						}
+
+						if (!canMoveTime)
+							tickDelta = 0;
+
+						for (auto id : moveIds)
+						{
+							auto& editingNode = context.score.hiSpeedChanges[id];
+							const auto& prevNode = prevScoreForDrag.hiSpeedChanges[id];
+							editingNode.tick = prevNode.tick + tickDelta;
+							editingNode.speed = prevNode.speed + speedDelta;
+						}
+
+						ImGui::BeginTooltip();
+						ImGui::Text("Speed: %.2fx", context.score.hiSpeedChanges[current.ID].speed);
+						ImGui::Text("Tick: %d", context.score.hiSpeedChanges[current.ID].tick);
+						if (moveIds.size() > 1)
+						{
+							ImGui::Text("(%zu items moving)", moveIds.size());
+						}
+						ImGui::EndTooltip();
+					}
+
+					if (ImGui::IsMouseReleased(0))
+					{
+						if (nodeWasDragged)
+						{
+							context.pushHistory("Drag hi-speed node", prevScoreForDrag,
+							                    context.score);
+						}
+						else
+						{
+							if (!ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift)
+							{
+								eventEdit.editId = current.ID;
+								eventEdit.editHiSpeed = current.speed;
+								eventEdit.editHiSpeedEase = current.ease;
+								eventEdit.editHiSpeedSkip = current.skips;
+								eventEdit.editHiSpeedHideNote = current.hideNotes;
+								eventEdit.type = EventType::HiSpeed;
+								ImGui::OpenPopup("edit_event");
+							}
+						}
+						draggingNodeID = -1;
+					}
+				}
+			}
+		}
+
+		if (!hoveredTooltips.empty() && draggingNodeID == -1)
+		{
+			ImGui::BeginTooltip();
+			for (const auto& node : hoveredTooltips)
+			{
+				ImGui::Text("%.2fx", node.speed);
+				ImGui::SameLine();
+				ImGui::TextDisabled("Tick: %d", node.tick);
+				if (node.skips > 0.0f)
+				{
+					ImGui::SameLine();
+					ImGui::TextDisabled("| Skip: %.2f", node.skips);
+				}
+			}
+			ImGui::EndTooltip();
+		}
+
+		if (!isAnyNodeHovered && mouseInTimeline && mousePos.x >= laneStartX &&
+		    mousePos.x <= laneEndX)
+		{
+			if (ImGui::IsMouseDoubleClicked(0))
+			{
+				float normalizedX =
+				    std::clamp((mousePos.x - drawableStartX) / drawableWidth, 0.0f, 1.0f);
+				float newSpeed = activeMin + (normalizedX * (activeMax - activeMin));
+				newSpeed = std::round(newSpeed * 4.0f) / 4.0f;
+
+				bool canAdd = true;
+				for (const auto& [id, hsc] : context.score.hiSpeedChanges)
+				{
+					if (hsc.tick == hoverTick && hsc.layer == context.selectedLayer)
+					{
+						canAdd = false;
+						break;
+					}
+				}
+
+				if (canAdd)
+				{
+					Score prev = context.score;
+					id_t newId = getNextHiSpeedID();
+					context.score.hiSpeedChanges[newId] = { newId,    hoverTick,
+						                                    newSpeed, context.selectedLayer,
+						                                    0.0f,     HiSpeedEaseType::None,
+						                                    false };
+					context.pushHistory("Add hi-speed", prev, context.score);
+				}
+			}
+		}
+	}
+
+	void ScoreEditorTimeline::drawStageMaskGraph(ScoreContext& context)
+	{
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		if (!drawList)
+			return;
+
+		if (context.selectedStage == NO_ID)
+			return;
+
+		auto laneToScreenX = [&](float lane)
+		{ return getTimelineStartX(context) + lane * laneWidth; };
+		auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
+
+		std::vector<StageMaskChangeEvent*> changes;
+		for (auto& [id, mask] : context.score.stageMaskChanges)
+			if (mask.stageID == context.selectedStage)
+				changes.push_back(&mask);
+
+		std::sort(changes.begin(), changes.end(),
+		          [](const StageMaskChangeEvent* a, const StageMaskChangeEvent* b)
+		          { return a->tick < b->tick; });
+
+		ImVec2 mousePos = ImGui::GetMousePos();
+		bool isAnyNodeHovered = false;
+
+		ImU32 lineColor = maskGraphColor;
+		ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+		ImU32 hoverColor = IM_COL32(128, 255, 128, 255);
+
+		static id_t draggingNodeID = NO_ID;
+		static bool nodeWasDragged = false;
+		static Score prevScoreForDrag;
+		static float dragGrabLane = 0.0f;
+
+		const StageMaskChangeEvent* hoveredTooltip = nullptr;
+
+		for (size_t i = 0; i < changes.size(); ++i)
+		{
+			StageMaskChangeEvent& current = *changes[i];
+			float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+			float xLeft1 = laneToScreenX(current.left);
+			float xRight1 = laneToScreenX(current.left + current.size);
+
+			drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xRight1, y1), lineColor, 2.0f);
+
+			if (i + 1 < changes.size())
+			{
+				StageMaskChangeEvent& next = *changes[i + 1];
+				float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+				float xLeft2 = laneToScreenX(next.left);
+				float xRight2 = laneToScreenX(next.left + next.size);
+
+				if (current.ease == EaseType::Linear)
+				{
+					drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft2, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight2, y2), lineColor, 2.0f);
+				}
+				else
+				{
+					drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft1, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(xLeft1, y2), ImVec2(xLeft2, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight1, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(xRight1, y2), ImVec2(xRight2, y2), lineColor, 2.0f);
+				}
+			}
+
+			bool isDraggingThis = (draggingNodeID == current.ID);
+			bool isHoveredLeft =
+			    std::abs(mousePos.x - xLeft1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+			bool isHoveredRight =
+			    std::abs(mousePos.x - xRight1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+			bool isHovered = isHoveredLeft || isHoveredRight;
+
+			if (isHovered)
+				isAnyNodeHovered = true;
+			if (isHovered || isDraggingThis)
+				isHoveringNote = true;
+
+			float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
+			ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
+			drawList->AddCircleFilled(ImVec2(xLeft1, y1), radius, circleColor);
+			drawList->AddCircleFilled(ImVec2(xRight1, y1), radius, circleColor);
+
+			if (isHovered && draggingNodeID == NO_ID)
+			{
+				hoveredTooltip = &current;
+
+				if (ImGui::IsMouseClicked(0))
+				{
+					draggingNodeID = current.ID;
+					nodeWasDragged = false;
+					prevScoreForDrag = context.score;
+					dragGrabLane = screenXToLane(mousePos.x);
+				}
+
+				if (ImGui::IsMouseClicked(1))
+				{
+					Score prev = context.score;
+					context.score.stageMaskChanges.erase(current.ID);
+					context.pushHistory("Remove stage mask change", prev, context.score);
+				}
+			}
+
+			if (isDraggingThis)
+			{
+				if (ImGui::IsMouseDragging(0, 2.0f))
+					nodeWasDragged = true;
+
+				if (nodeWasDragged)
+				{
+					const auto& prevMask = prevScoreForDrag.stageMaskChanges.at(current.ID);
+					float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
+
+					auto& editingMask = context.score.stageMaskChanges[current.ID];
+					editingMask.left = prevMask.left + laneDelta;
+					editingMask.tick = std::max(0, hoverTick);
+
+					ImGui::BeginTooltip();
+					ImGui::Text("Left: %.2f", editingMask.left);
+					ImGui::Text("Size: %.2f", editingMask.size);
+					ImGui::Text("Tick: %d", editingMask.tick);
+					ImGui::EndTooltip();
+				}
+
+				if (ImGui::IsMouseReleased(0))
+				{
+					if (nodeWasDragged)
+					{
+						context.pushHistory("Drag stage mask change", prevScoreForDrag,
+						                    context.score);
+					}
+					else
+					{
+						eventEdit.editId = current.ID;
+						eventEdit.editMask = current;
+						eventEdit.type = EventType::StageMaskChange;
+						ImGui::OpenPopup("edit_event");
+					}
+					draggingNodeID = NO_ID;
+				}
+			}
+		}
+
+		if (hoveredTooltip && draggingNodeID == NO_ID)
+		{
+			ImGui::BeginTooltip();
+			ImGui::Text("Left: %.2f  Size: %.2f", hoveredTooltip->left, hoveredTooltip->size);
+			ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
+			ImGui::EndTooltip();
+		}
+
+		if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+		{
+			bool duplicate = false;
+			for (const auto* mask : changes)
+				if (mask->tick == hoverTick)
+					duplicate = true;
+
+			if (!duplicate)
+			{
+				Score prev = context.score;
+				id_t newId = getNextStageMaskChangeID();
+				StageMaskChangeEvent mask{};
+				mask.ID = newId;
+				mask.stageID = context.selectedStage;
+				mask.tick = hoverTick;
+				context.score.stageMaskChanges[newId] = mask;
+				context.pushHistory("Add stage mask change", prev, context.score);
+			}
+		}
+	}
+
+	void ScoreEditorTimeline::drawCameraShiftGraph(ScoreContext& context)
+	{
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		if (!drawList)
+			return;
+
+		auto laneToScreenX = [&](float lane)
+		{ return getTimelineStartX(context) + lane * laneWidth; };
+		auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
+
+		std::vector<CameraChangeEvent*> changes;
+		for (auto& [id, camera] : context.score.cameraChanges)
+			changes.push_back(&camera);
+
+		std::sort(changes.begin(), changes.end(),
+		          [](const CameraChangeEvent* a, const CameraChangeEvent* b)
+		          { return a->tick < b->tick; });
+
+		ImVec2 mousePos = ImGui::GetMousePos();
+		bool isAnyNodeHovered = false;
+
+		ImU32 lineColor = cameraGraphColor;
+		ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+		ImU32 hoverColor = IM_COL32(255, 102, 102, 255);
+
+		static id_t draggingNodeID = NO_ID;
+		static bool nodeWasDragged = false;
+		static Score prevScoreForDrag;
+		static float dragGrabLane = 0.0f;
+
+		const CameraChangeEvent* hoveredTooltip = nullptr;
+
+		for (size_t i = 0; i < changes.size(); ++i)
+		{
+			CameraChangeEvent& current = *changes[i];
+			float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+			float xLeft1 = laneToScreenX(current.left);
+			float xRight1 = laneToScreenX(current.left + current.size);
+
+			drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xRight1, y1), lineColor, 2.0f);
+
+			if (i + 1 < changes.size())
+			{
+				CameraChangeEvent& next = *changes[i + 1];
+				float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+				float xLeft2 = laneToScreenX(next.left);
+				float xRight2 = laneToScreenX(next.left + next.size);
+
+				if (current.ease == EaseType::Linear)
+				{
+					drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft2, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight2, y2), lineColor, 2.0f);
+				}
+				else
+				{
+					drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft1, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(xLeft1, y2), ImVec2(xLeft2, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight1, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(xRight1, y2), ImVec2(xRight2, y2), lineColor, 2.0f);
+				}
+			}
+
+			bool isDraggingThis = (draggingNodeID == current.ID);
+			bool isHoveredLeft =
+			    std::abs(mousePos.x - xLeft1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+			bool isHoveredRight =
+			    std::abs(mousePos.x - xRight1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
+			bool isHovered = isHoveredLeft || isHoveredRight;
+
+			if (isHovered)
+				isAnyNodeHovered = true;
+			if (isHovered || isDraggingThis)
+				isHoveringNote = true;
+
+			float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
+			ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
+			drawList->AddCircleFilled(ImVec2(xLeft1, y1), radius, circleColor);
+			drawList->AddCircleFilled(ImVec2(xRight1, y1), radius, circleColor);
+
+			if (isHovered && draggingNodeID == NO_ID)
+			{
+				hoveredTooltip = &current;
+
+				if (ImGui::IsMouseClicked(0))
+				{
+					draggingNodeID = current.ID;
+					nodeWasDragged = false;
+					prevScoreForDrag = context.score;
+					dragGrabLane = screenXToLane(mousePos.x);
+				}
+
+				if (ImGui::IsMouseClicked(1))
+				{
+					Score prev = context.score;
+					context.score.cameraChanges.erase(current.ID);
+					context.pushHistory("Remove camera change", prev, context.score);
+				}
+			}
+
+			if (isDraggingThis)
+			{
+				if (ImGui::IsMouseDragging(0, 2.0f))
+					nodeWasDragged = true;
+
+				if (nodeWasDragged)
+				{
+					const auto& prevCamera = prevScoreForDrag.cameraChanges.at(current.ID);
+					float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
+
+					auto& editingCamera = context.score.cameraChanges[current.ID];
+					editingCamera.left = prevCamera.left + laneDelta;
+					editingCamera.tick = std::max(0, hoverTick);
+
+					ImGui::BeginTooltip();
+					ImGui::Text("Left: %.2f", editingCamera.left);
+					ImGui::Text("Size: %.2f", editingCamera.size);
+					ImGui::Text("Tick: %d", editingCamera.tick);
+					ImGui::EndTooltip();
+				}
+
+				if (ImGui::IsMouseReleased(0))
+				{
+					if (nodeWasDragged)
+					{
+						context.pushHistory("Drag camera change", prevScoreForDrag, context.score);
+					}
+					else
+					{
+						eventEdit.editId = current.ID;
+						eventEdit.editCamera = current;
+						eventEdit.type = EventType::CameraChange;
+						ImGui::OpenPopup("edit_event");
+					}
+					draggingNodeID = NO_ID;
+				}
+			}
+		}
+
+		if (hoveredTooltip && draggingNodeID == NO_ID)
+		{
+			ImGui::BeginTooltip();
+			ImGui::Text("Left: %.2f  Size: %.2f", hoveredTooltip->left, hoveredTooltip->size);
+			ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
+			ImGui::EndTooltip();
+		}
+
+		if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+		{
+			bool duplicate = false;
+			for (const auto* camera : changes)
+				if (camera->tick == hoverTick)
+					duplicate = true;
+
+			if (!duplicate)
+			{
+				Score prev = context.score;
+				id_t newId = getNextCameraChangeID();
+				CameraChangeEvent camera{};
+				camera.ID = newId;
+				camera.tick = hoverTick;
+				context.score.cameraChanges[newId] = camera;
+				context.pushHistory("Add camera change", prev, context.score);
+			}
+		}
+	}
+
+	void ScoreEditorTimeline::drawStagePivotGraph(ScoreContext& context)
+	{
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		if (!drawList)
+			return;
+
+		if (context.selectedStage == NO_ID)
+			return;
+
+		auto laneToScreenX = [&](float lane)
+		{ return getTimelineStartX(context) + lane * laneWidth; };
+		auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
+
+		std::vector<StagePivotChangeEvent*> changes;
+		for (auto& [id, pivot] : context.score.stagePivotChanges)
+			if (pivot.stageID == context.selectedStage)
+				changes.push_back(&pivot);
+
+		std::sort(changes.begin(), changes.end(),
+		          [](const StagePivotChangeEvent* a, const StagePivotChangeEvent* b)
+		          { return a->tick < b->tick; });
+
+		ImVec2 mousePos = ImGui::GetMousePos();
+		bool isAnyNodeHovered = false;
+
+		ImU32 lineColor = pivotGraphColor;
+		ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+		ImU32 hoverColor = IM_COL32(128, 191, 255, 255);
+
+		static id_t draggingNodeID = NO_ID;
+		static bool nodeWasDragged = false;
+		static Score prevScoreForDrag;
+		static float dragGrabLane = 0.0f;
+
+		const StagePivotChangeEvent* hoveredTooltip = nullptr;
+
+		for (size_t i = 0; i < changes.size(); ++i)
+		{
+			StagePivotChangeEvent& current = *changes[i];
+			float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+			float x1 = laneToScreenX(current.lane);
+
+			if (i + 1 < changes.size())
+			{
+				StagePivotChangeEvent& next = *changes[i + 1];
+				float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+				float x2 = laneToScreenX(next.lane);
+
+				if (current.ease == EaseType::Linear)
+				{
 					drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), lineColor, 2.0f);
-				} else {
+				}
+				else
+				{
 					drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), lineColor, 2.0f);
 					drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), lineColor, 2.0f);
 				}
 			}
-			else
-			{
-				drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, position.y), lineColor, 2.0f);
-			}
 
-			bool isSelected = context.selectedHiSpeedChanges.find(current.ID) != context.selectedHiSpeedChanges.end();
-			bool isHovered = false;
 			bool isDraggingThis = (draggingNodeID == current.ID);
+			bool isHovered = std::abs(mousePos.x - x1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
 
-			if (abs(mousePos.x - x1) < 8.0f && abs(mousePos.y - y1) < 8.0f) {
-				isHovered = true;
+			if (isHovered)
 				isAnyNodeHovered = true;
-			}
+			if (isHovered || isDraggingThis)
+				isHoveringNote = true;
 
-			if (isHovered || isDraggingThis) {
-				isHoveringNote = true; 
-			}
-
-			ImU32 extremeNormalColor = IM_COL32(255, 140, 140, 255); 
-			ImU32 extremeHoverColor  = IM_COL32(255, 180, 180, 255);
-			ImU32 extremeSelectColor = IM_COL32(255, 150, 50, 255);
-
-			// 上限に達していたら大きくする
 			float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
-			if (isLarge) radius += 2.0f;
-
-			ImU32 circleColor;
-			// 1000.0x以上なら色を赤っぽくする
-			if (isUltraExtreme) {
-				circleColor = isSelected ? extremeSelectColor : ((isHovered || isDraggingThis) ? extremeHoverColor : extremeNormalColor);
-			} else {
-				circleColor = isSelected ? selectedColor : ((isHovered || isDraggingThis) ? hoverColor : pointColor);
-			}
+			ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
 			drawList->AddCircleFilled(ImVec2(x1, y1), radius, circleColor);
 
-			if (isHovered && draggingNodeID == -1) {
-				hoveredTooltips.push_back(current);
+			if (isHovered && draggingNodeID == NO_ID)
+			{
+				hoveredTooltip = &current;
 
-				if (ImGui::IsMouseClicked(0)) {
-					if (ImGui::GetIO().KeyCtrl) {
-						if (isSelected) {
-							context.selectedHiSpeedChanges.erase(current.ID);
-						} else {
-							context.selectedHiSpeedChanges.insert(current.ID);
-						}
-					} else {
-						if (!isSelected) {
-							context.selectedHiSpeedChanges.clear();
-							context.selectedHiSpeedChanges.insert(current.ID);
-						}
-					}
-
+				if (ImGui::IsMouseClicked(0))
+				{
 					draggingNodeID = current.ID;
 					nodeWasDragged = false;
 					prevScoreForDrag = context.score;
-					dragAccumulatedSpeed = current.speed;
+					dragGrabLane = screenXToLane(mousePos.x);
 				}
 
-				if (ImGui::IsMouseClicked(1)) {
-					if (current.tick != 0) {
-						Score prev = context.score;
-						
-						std::unordered_set<id_t> deleteIds;
-						if (context.selectedHiSpeedChanges.find(current.ID) != context.selectedHiSpeedChanges.end()) {
-							deleteIds = context.selectedHiSpeedChanges;
-						} else {
-							deleteIds.insert(current.ID);
-						}
-
-						for (auto id : deleteIds) {
-							if (context.score.hiSpeedChanges[id].tick != 0) { 
-								context.score.hiSpeedChanges.erase(id);
-							}
-						}
-						context.pushHistory("Delete hi-speed", prev, context.score);
-					}
+				if (ImGui::IsMouseClicked(1))
+				{
+					Score prev = context.score;
+					context.score.stagePivotChanges.erase(current.ID);
+					context.pushHistory("Remove stage pivot change", prev, context.score);
 				}
 			}
 
-			if (isDraggingThis) {
-				if (ImGui::IsMouseDragging(0, 2.0f)) {
+			if (isDraggingThis)
+			{
+				if (ImGui::IsMouseDragging(0, 2.0f))
 					nodeWasDragged = true;
-				}
 
-				if (nodeWasDragged) {
-					float speedPerPixel = (activeMax - activeMin) / drawableWidth;
-					if (speedPerPixel < 0.01f) speedPerPixel = 0.01f;
+				if (nodeWasDragged)
+				{
+					const auto& prevPivot = prevScoreForDrag.stagePivotChanges.at(current.ID);
+					float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
 
-					dragAccumulatedSpeed += ImGui::GetIO().MouseDelta.x * speedPerPixel;
-					
-					float newSpeed = std::round(dragAccumulatedSpeed * 4.0f) / 4.0f;
-
-					int originalTick = prevScoreForDrag.hiSpeedChanges[current.ID].tick;
-					float originalSpeed = prevScoreForDrag.hiSpeedChanges[current.ID].speed;
-
-					int newTick = std::max(0, hoverTick);
-					if (originalTick == 0) newTick = 0; 
-
-					int tickDelta = newTick - originalTick;
-					float speedDelta = newSpeed - originalSpeed;
-
-					if (ImGui::GetIO().KeyShift) {
-						speedDelta = 0.0f;
-					}
-
-					std::unordered_set<id_t> moveIds;
-					if (context.selectedHiSpeedChanges.find(current.ID) != context.selectedHiSpeedChanges.end()) {
-						moveIds = context.selectedHiSpeedChanges;
-					} else {
-						moveIds.insert(current.ID);
-					}
-
-					for (auto id : moveIds) {
-						if (prevScoreForDrag.hiSpeedChanges[id].tick + tickDelta < 0) {
-							tickDelta = -prevScoreForDrag.hiSpeedChanges[id].tick;
-						}
-					}
-
-					for (auto id : moveIds) {
-						if (prevScoreForDrag.hiSpeedChanges[id].tick == 0) {
-							tickDelta = 0;
-						}
-					}
-
-					bool canMoveTime = true;
-					if (tickDelta != 0) {
-						for (auto id : moveIds) {
-							int targetT = prevScoreForDrag.hiSpeedChanges[id].tick + tickDelta;
-							int targetL = prevScoreForDrag.hiSpeedChanges[id].layer;
-							for (const auto& [otherId, hsc] : prevScoreForDrag.hiSpeedChanges) {
-								if (moveIds.find(otherId) == moveIds.end() && hsc.tick == targetT && hsc.layer == targetL) {
-									canMoveTime = false; break;
-								}
-							}
-							if (!canMoveTime) break;
-						}
-					} else {
-						canMoveTime = true;
-					}
-
-					if (!canMoveTime) tickDelta = 0; 
-
-					for (auto id : moveIds) {
-						auto& editingNode = context.score.hiSpeedChanges[id];
-						const auto& prevNode = prevScoreForDrag.hiSpeedChanges[id];
-						editingNode.tick = prevNode.tick + tickDelta;
-						editingNode.speed = prevNode.speed + speedDelta;
-					}
+					auto& editingPivot = context.score.stagePivotChanges[current.ID];
+					editingPivot.lane = std::round((prevPivot.lane + laneDelta) * 2.0f) / 2.0f;
+					editingPivot.tick = std::max(0, hoverTick);
 
 					ImGui::BeginTooltip();
-					ImGui::Text("Speed: %.2fx", context.score.hiSpeedChanges[current.ID].speed);
-					ImGui::Text("Tick: %d", context.score.hiSpeedChanges[current.ID].tick);
-					if (moveIds.size() > 1) {
-						ImGui::Text("(%zu items moving)", moveIds.size());
-					}
+					ImGui::Text("Lane: %.2f", editingPivot.lane);
+					ImGui::Text("Tick: %d", editingPivot.tick);
 					ImGui::EndTooltip();
 				}
 
-				if (ImGui::IsMouseReleased(0)) {
-					if (nodeWasDragged) {
-						context.pushHistory("Drag hi-speed node", prevScoreForDrag, context.score);
-					} else {
-						if (!ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) {
-							eventEdit.editId = current.ID;
-							eventEdit.editHiSpeed = current.speed;
-							eventEdit.editHiSpeedEase = current.ease;
-							eventEdit.editHiSpeedSkip = current.skips;
-							eventEdit.editHiSpeedHideNote = current.hideNotes;
-							eventEdit.type = EventType::HiSpeed;
-							ImGui::OpenPopup("edit_event");
-						}
+				if (ImGui::IsMouseReleased(0))
+				{
+					if (nodeWasDragged)
+					{
+						context.pushHistory("Drag stage pivot change", prevScoreForDrag,
+						                    context.score);
 					}
-					draggingNodeID = -1;
+					else
+					{
+						eventEdit.editId = current.ID;
+						eventEdit.editPivot = current;
+						eventEdit.type = EventType::StagePivotChange;
+						ImGui::OpenPopup("edit_event");
+					}
+					draggingNodeID = NO_ID;
 				}
 			}
 		}
-	}
 
-	if (!hoveredTooltips.empty() && draggingNodeID == -1) {
-		ImGui::BeginTooltip();
-		for (const auto& node : hoveredTooltips) {
-			ImGui::Text("%.2fx", node.speed);
-			ImGui::SameLine();
-			ImGui::TextDisabled("Tick: %d", node.tick);
-			if (node.skips > 0.0f) {
-				ImGui::SameLine();
-				ImGui::TextDisabled("| Skip: %.2f", node.skips);
-			}
-		}
-		ImGui::EndTooltip();
-	}
-
-	if (!isAnyNodeHovered && mouseInTimeline && mousePos.x >= laneStartX && mousePos.x <= laneEndX) {
-		if (ImGui::IsMouseDoubleClicked(0)) {
-			float normalizedX = std::clamp((mousePos.x - drawableStartX) / drawableWidth, 0.0f, 1.0f);
-			float newSpeed = activeMin + (normalizedX * (activeMax - activeMin));
-			newSpeed = std::round(newSpeed * 4.0f) / 4.0f;
-
-			bool canAdd = true;
-			for (const auto& [id, hsc] : context.score.hiSpeedChanges) {
-				if (hsc.tick == hoverTick && hsc.layer == context.selectedLayer) {
-					canAdd = false; break;
-				}
-			}
-
-			if (canAdd) {
-				Score prev = context.score;
-				id_t newId = getNextHiSpeedID();
-				context.score.hiSpeedChanges[newId] = {
-					newId,
-					hoverTick,
-					newSpeed,
-					context.selectedLayer,
-					0.0f, 
-					HiSpeedEaseType::None,
-					false
-				};
-				context.pushHistory("Add hi-speed", prev, context.score);
-			}
-		}
-	}
-}
-
-	void ScoreEditorTimeline::drawStageMaskGraph(ScoreContext& context)
-{
-	ImDrawList* drawList = ImGui::GetWindowDrawList();
-	if (!drawList)
-		return;
-
-	if (context.selectedStage == NO_ID)
-		return;
-
-	auto laneToScreenX = [&](float lane) { return getTimelineStartX(context) + lane * laneWidth; };
-	auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
-
-	std::vector<StageMaskChangeEvent*> changes;
-	for (auto& [id, mask] : context.score.stageMaskChanges)
-		if (mask.stageID == context.selectedStage)
-			changes.push_back(&mask);
-
-	std::sort(changes.begin(), changes.end(),
-		      [](const StageMaskChangeEvent* a, const StageMaskChangeEvent* b)
-		      { return a->tick < b->tick; });
-
-	ImVec2 mousePos = ImGui::GetMousePos();
-	bool isAnyNodeHovered = false;
-
-	ImU32 lineColor = maskGraphColor;
-	ImU32 pointColor = IM_COL32(255, 255, 255, 255);
-	ImU32 hoverColor = IM_COL32(128, 255, 128, 255);
-
-	static id_t draggingNodeID = NO_ID;
-	static bool nodeWasDragged = false;
-	static Score prevScoreForDrag;
-	static float dragGrabLane = 0.0f;
-
-	const StageMaskChangeEvent* hoveredTooltip = nullptr;
-
-	for (size_t i = 0; i < changes.size(); ++i)
-	{
-		StageMaskChangeEvent& current = *changes[i];
-		float y1 = position.y - tickToPosition(current.tick) + visualOffset;
-		float xLeft1 = laneToScreenX(current.left);
-		float xRight1 = laneToScreenX(current.left + current.size);
-
-		drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xRight1, y1), lineColor, 2.0f);
-
-		if (i + 1 < changes.size())
+		if (hoveredTooltip && draggingNodeID == NO_ID)
 		{
-			StageMaskChangeEvent& next = *changes[i + 1];
-			float y2 = position.y - tickToPosition(next.tick) + visualOffset;
-			float xLeft2 = laneToScreenX(next.left);
-			float xRight2 = laneToScreenX(next.left + next.size);
-
-			if (current.ease == EaseType::Linear)
-			{
-				drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft2, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight2, y2), lineColor, 2.0f);
-			}
-			else
-			{
-				drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft1, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(xLeft1, y2), ImVec2(xLeft2, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight1, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(xRight1, y2), ImVec2(xRight2, y2), lineColor, 2.0f);
-			}
+			ImGui::BeginTooltip();
+			ImGui::Text("Lane: %.2f", hoveredTooltip->lane);
+			ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
+			ImGui::EndTooltip();
 		}
 
-		bool isDraggingThis = (draggingNodeID == current.ID);
-		bool isHoveredLeft =
-			std::abs(mousePos.x - xLeft1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
-		bool isHoveredRight =
-			std::abs(mousePos.x - xRight1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
-		bool isHovered = isHoveredLeft || isHoveredRight;
-
-		if (isHovered)
-			isAnyNodeHovered = true;
-		if (isHovered || isDraggingThis)
-			isHoveringNote = true;
-
-		float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
-		ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
-		drawList->AddCircleFilled(ImVec2(xLeft1, y1), radius, circleColor);
-		drawList->AddCircleFilled(ImVec2(xRight1, y1), radius, circleColor);
-
-		if (isHovered && draggingNodeID == NO_ID)
+		if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
 		{
-			hoveredTooltip = &current;
+			bool duplicate = false;
+			for (const auto* pivot : changes)
+				if (pivot->tick == hoverTick)
+					duplicate = true;
 
-			if (ImGui::IsMouseClicked(0))
-			{
-				draggingNodeID = current.ID;
-				nodeWasDragged = false;
-				prevScoreForDrag = context.score;
-				dragGrabLane = screenXToLane(mousePos.x);
-			}
-
-			if (ImGui::IsMouseClicked(1))
+			if (!duplicate)
 			{
 				Score prev = context.score;
-				context.score.stageMaskChanges.erase(current.ID);
-				context.pushHistory("Remove stage mask change", prev, context.score);
-			}
-		}
-
-		if (isDraggingThis)
-		{
-			if (ImGui::IsMouseDragging(0, 2.0f))
-				nodeWasDragged = true;
-
-			if (nodeWasDragged)
-			{
-				const auto& prevMask = prevScoreForDrag.stageMaskChanges.at(current.ID);
-				float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
-
-				auto& editingMask = context.score.stageMaskChanges[current.ID];
-				editingMask.left = prevMask.left + laneDelta;
-				editingMask.tick = std::max(0, hoverTick);
-
-				ImGui::BeginTooltip();
-				ImGui::Text("Left: %.2f", editingMask.left);
-				ImGui::Text("Size: %.2f", editingMask.size);
-				ImGui::Text("Tick: %d", editingMask.tick);
-				ImGui::EndTooltip();
-			}
-
-			if (ImGui::IsMouseReleased(0))
-			{
-				if (nodeWasDragged)
-				{
-					context.pushHistory("Drag stage mask change", prevScoreForDrag, context.score);
-				}
-				else
-				{
-					eventEdit.editId = current.ID;
-					eventEdit.editMask = current;
-					eventEdit.type = EventType::StageMaskChange;
-					ImGui::OpenPopup("edit_event");
-				}
-				draggingNodeID = NO_ID;
+				id_t newId = getNextStagePivotChangeID();
+				StagePivotChangeEvent pivot{};
+				pivot.ID = newId;
+				pivot.stageID = context.selectedStage;
+				pivot.tick = hoverTick;
+				pivot.lane = std::round(screenXToLane(mousePos.x) * 2.0f) / 2.0f;
+				context.score.stagePivotChanges[newId] = pivot;
+				context.pushHistory("Add stage pivot change", prev, context.score);
 			}
 		}
 	}
-
-	if (hoveredTooltip && draggingNodeID == NO_ID)
-	{
-		ImGui::BeginTooltip();
-		ImGui::Text("Left: %.2f  Size: %.2f", hoveredTooltip->left, hoveredTooltip->size);
-		ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
-		ImGui::EndTooltip();
-	}
-
-	if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
-	{
-		bool duplicate = false;
-		for (const auto* mask : changes)
-			if (mask->tick == hoverTick)
-				duplicate = true;
-
-		if (!duplicate)
-		{
-			Score prev = context.score;
-			id_t newId = getNextStageMaskChangeID();
-			StageMaskChangeEvent mask{};
-			mask.ID = newId;
-			mask.stageID = context.selectedStage;
-			mask.tick = hoverTick;
-			context.score.stageMaskChanges[newId] = mask;
-			context.pushHistory("Add stage mask change", prev, context.score);
-		}
-	}
-}
-
-	void ScoreEditorTimeline::drawCameraShiftGraph(ScoreContext& context)
-{
-	ImDrawList* drawList = ImGui::GetWindowDrawList();
-	if (!drawList)
-		return;
-
-	auto laneToScreenX = [&](float lane) { return getTimelineStartX(context) + lane * laneWidth; };
-	auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
-
-	std::vector<CameraChangeEvent*> changes;
-	for (auto& [id, camera] : context.score.cameraChanges)
-		changes.push_back(&camera);
-
-	std::sort(changes.begin(), changes.end(),
-		      [](const CameraChangeEvent* a, const CameraChangeEvent* b)
-		      { return a->tick < b->tick; });
-
-	ImVec2 mousePos = ImGui::GetMousePos();
-	bool isAnyNodeHovered = false;
-
-	ImU32 lineColor = cameraGraphColor;
-	ImU32 pointColor = IM_COL32(255, 255, 255, 255);
-	ImU32 hoverColor = IM_COL32(255, 102, 102, 255);
-
-
-	static id_t draggingNodeID = NO_ID;
-	static bool nodeWasDragged = false;
-	static Score prevScoreForDrag;
-	static float dragGrabLane = 0.0f;
-
-	const CameraChangeEvent* hoveredTooltip = nullptr;
-
-	for (size_t i = 0; i < changes.size(); ++i)
-	{
-		CameraChangeEvent& current = *changes[i];
-		float y1 = position.y - tickToPosition(current.tick) + visualOffset;
-		float xLeft1 = laneToScreenX(current.left);
-		float xRight1 = laneToScreenX(current.left + current.size);
-
-		drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xRight1, y1), lineColor, 2.0f);
-
-		if (i + 1 < changes.size())
-		{
-			CameraChangeEvent& next = *changes[i + 1];
-			float y2 = position.y - tickToPosition(next.tick) + visualOffset;
-			float xLeft2 = laneToScreenX(next.left);
-			float xRight2 = laneToScreenX(next.left + next.size);
-
-			if (current.ease == EaseType::Linear)
-			{
-				drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft2, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight2, y2), lineColor, 2.0f);
-			}
-			else
-			{
-				drawList->AddLine(ImVec2(xLeft1, y1), ImVec2(xLeft1, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(xLeft1, y2), ImVec2(xLeft2, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(xRight1, y1), ImVec2(xRight1, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(xRight1, y2), ImVec2(xRight2, y2), lineColor, 2.0f);
-			}
-		}
-
-		bool isDraggingThis = (draggingNodeID == current.ID);
-		bool isHoveredLeft =
-			std::abs(mousePos.x - xLeft1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
-		bool isHoveredRight =
-			std::abs(mousePos.x - xRight1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
-		bool isHovered = isHoveredLeft || isHoveredRight;
-
-		if (isHovered)
-			isAnyNodeHovered = true;
-		if (isHovered || isDraggingThis)
-			isHoveringNote = true;
-
-		float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
-		ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
-		drawList->AddCircleFilled(ImVec2(xLeft1, y1), radius, circleColor);
-		drawList->AddCircleFilled(ImVec2(xRight1, y1), radius, circleColor);
-
-		if (isHovered && draggingNodeID == NO_ID)
-		{
-			hoveredTooltip = &current;
-
-			if (ImGui::IsMouseClicked(0))
-			{
-				draggingNodeID = current.ID;
-				nodeWasDragged = false;
-				prevScoreForDrag = context.score;
-				dragGrabLane = screenXToLane(mousePos.x);
-			}
-
-			if (ImGui::IsMouseClicked(1))
-			{
-				Score prev = context.score;
-				context.score.cameraChanges.erase(current.ID);
-				context.pushHistory("Remove camera change", prev, context.score);
-			}
-		}
-
-		if (isDraggingThis)
-		{
-			if (ImGui::IsMouseDragging(0, 2.0f))
-				nodeWasDragged = true;
-
-			if (nodeWasDragged)
-			{
-				const auto& prevCamera = prevScoreForDrag.cameraChanges.at(current.ID);
-				float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
-
-				auto& editingCamera = context.score.cameraChanges[current.ID];
-				editingCamera.left = prevCamera.left + laneDelta;
-				editingCamera.tick = std::max(0, hoverTick);
-
-				ImGui::BeginTooltip();
-				ImGui::Text("Left: %.2f", editingCamera.left);
-				ImGui::Text("Size: %.2f", editingCamera.size);
-				ImGui::Text("Tick: %d", editingCamera.tick);
-				ImGui::EndTooltip();
-			}
-
-			if (ImGui::IsMouseReleased(0))
-			{
-				if (nodeWasDragged)
-				{
-					context.pushHistory("Drag camera change", prevScoreForDrag, context.score);
-				}
-				else
-				{
-					eventEdit.editId = current.ID;
-					eventEdit.editCamera = current;
-					eventEdit.type = EventType::CameraChange;
-					ImGui::OpenPopup("edit_event");
-				}
-				draggingNodeID = NO_ID;
-			}
-		}
-	}
-
-	if (hoveredTooltip && draggingNodeID == NO_ID)
-	{
-		ImGui::BeginTooltip();
-		ImGui::Text("Left: %.2f  Size: %.2f", hoveredTooltip->left, hoveredTooltip->size);
-		ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
-		ImGui::EndTooltip();
-	}
-
-	if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
-	{
-		bool duplicate = false;
-		for (const auto* camera : changes)
-			if (camera->tick == hoverTick)
-				duplicate = true;
-
-		if (!duplicate)
-		{
-			Score prev = context.score;
-			id_t newId = getNextCameraChangeID();
-			CameraChangeEvent camera{};
-			camera.ID = newId;
-			camera.tick = hoverTick;
-			context.score.cameraChanges[newId] = camera;
-			context.pushHistory("Add camera change", prev, context.score);
-		}
-	}
-}
-
-	void ScoreEditorTimeline::drawStagePivotGraph(ScoreContext& context)
-{
-	ImDrawList* drawList = ImGui::GetWindowDrawList();
-	if (!drawList)
-		return;
-
-	if (context.selectedStage == NO_ID)
-		return;
-
-	auto laneToScreenX = [&](float lane) { return getTimelineStartX(context) + lane * laneWidth; };
-	auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
-
-	std::vector<StagePivotChangeEvent*> changes;
-	for (auto& [id, pivot] : context.score.stagePivotChanges)
-		if (pivot.stageID == context.selectedStage)
-			changes.push_back(&pivot);
-
-	std::sort(changes.begin(), changes.end(),
-		      [](const StagePivotChangeEvent* a, const StagePivotChangeEvent* b)
-		      { return a->tick < b->tick; });
-
-	ImVec2 mousePos = ImGui::GetMousePos();
-	bool isAnyNodeHovered = false;
-
-	ImU32 lineColor = pivotGraphColor;
-	ImU32 pointColor = IM_COL32(255, 255, 255, 255);
-	ImU32 hoverColor = IM_COL32(128, 191, 255, 255);
-
-	static id_t draggingNodeID = NO_ID;
-	static bool nodeWasDragged = false;
-	static Score prevScoreForDrag;
-	static float dragGrabLane = 0.0f;
-
-	const StagePivotChangeEvent* hoveredTooltip = nullptr;
-
-	for (size_t i = 0; i < changes.size(); ++i)
-	{
-		StagePivotChangeEvent& current = *changes[i];
-		float y1 = position.y - tickToPosition(current.tick) + visualOffset;
-		float x1 = laneToScreenX(current.lane);
-
-		if (i + 1 < changes.size())
-		{
-			StagePivotChangeEvent& next = *changes[i + 1];
-			float y2 = position.y - tickToPosition(next.tick) + visualOffset;
-			float x2 = laneToScreenX(next.lane);
-
-			if (current.ease == EaseType::Linear)
-			{
-				drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), lineColor, 2.0f);
-			}
-			else
-			{
-				drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), lineColor, 2.0f);
-			}
-		}
-
-		bool isDraggingThis = (draggingNodeID == current.ID);
-		bool isHovered = std::abs(mousePos.x - x1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
-
-		if (isHovered)
-			isAnyNodeHovered = true;
-		if (isHovered || isDraggingThis)
-			isHoveringNote = true;
-
-		float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
-		ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
-		drawList->AddCircleFilled(ImVec2(x1, y1), radius, circleColor);
-
-		if (isHovered && draggingNodeID == NO_ID)
-		{
-			hoveredTooltip = &current;
-
-			if (ImGui::IsMouseClicked(0))
-			{
-				draggingNodeID = current.ID;
-				nodeWasDragged = false;
-				prevScoreForDrag = context.score;
-				dragGrabLane = screenXToLane(mousePos.x);
-			}
-
-			if (ImGui::IsMouseClicked(1))
-			{
-				Score prev = context.score;
-				context.score.stagePivotChanges.erase(current.ID);
-				context.pushHistory("Remove stage pivot change", prev, context.score);
-			}
-		}
-
-		if (isDraggingThis)
-		{
-			if (ImGui::IsMouseDragging(0, 2.0f))
-				nodeWasDragged = true;
-
-			if (nodeWasDragged)
-			{
-				const auto& prevPivot = prevScoreForDrag.stagePivotChanges.at(current.ID);
-				float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
-
-				auto& editingPivot = context.score.stagePivotChanges[current.ID];
-				editingPivot.lane = std::round((prevPivot.lane + laneDelta) * 2.0f) / 2.0f;
-				editingPivot.tick = std::max(0, hoverTick);
-
-				ImGui::BeginTooltip();
-				ImGui::Text("Lane: %.2f", editingPivot.lane);
-				ImGui::Text("Tick: %d", editingPivot.tick);
-				ImGui::EndTooltip();
-			}
-
-			if (ImGui::IsMouseReleased(0))
-			{
-				if (nodeWasDragged)
-				{
-					context.pushHistory("Drag stage pivot change", prevScoreForDrag, context.score);
-				}
-				else
-				{
-					eventEdit.editId = current.ID;
-					eventEdit.editPivot = current;
-					eventEdit.type = EventType::StagePivotChange;
-					ImGui::OpenPopup("edit_event");
-				}
-				draggingNodeID = NO_ID;
-			}
-		}
-	}
-
-	if (hoveredTooltip && draggingNodeID == NO_ID)
-	{
-		ImGui::BeginTooltip();
-		ImGui::Text("Lane: %.2f", hoveredTooltip->lane);
-		ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
-		ImGui::EndTooltip();
-	}
-
-	if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
-	{
-		bool duplicate = false;
-		for (const auto* pivot : changes)
-			if (pivot->tick == hoverTick)
-				duplicate = true;
-
-		if (!duplicate)
-		{
-			Score prev = context.score;
-			id_t newId = getNextStagePivotChangeID();
-			StagePivotChangeEvent pivot{};
-			pivot.ID = newId;
-			pivot.stageID = context.selectedStage;
-			pivot.tick = hoverTick;
-			pivot.lane = std::round(screenXToLane(mousePos.x) * 2.0f) / 2.0f;
-			context.score.stagePivotChanges[newId] = pivot;
-			context.pushHistory("Add stage pivot change", prev, context.score);
-		}
-	}
-}
 
 	void ScoreEditorTimeline::drawStageTransformGraph(ScoreContext& context)
-{
-	ImDrawList* drawList = ImGui::GetWindowDrawList();
-	if (!drawList)
-		return;
-
-	if (context.selectedStage == NO_ID)
-		return;
-
-	// x-axis represents xLaneTranslate; rotate/yLaneTranslate/anchor are popup-only, same
-	// convention as CameraChange (zoom/rotate aren't draggable, only left/size are)
-	auto laneToScreenX = [&](float lane) { return getTimelineStartX(context) + lane * laneWidth; };
-	auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
-
-	std::vector<StageTransformEvent*> changes;
-	for (auto& [id, transform] : context.score.stageTransformChanges)
-		if (transform.stageID == context.selectedStage)
-			changes.push_back(&transform);
-
-	std::sort(changes.begin(), changes.end(),
-	          [](const StageTransformEvent* a, const StageTransformEvent* b)
-	          { return a->tick < b->tick; });
-
-	ImVec2 mousePos = ImGui::GetMousePos();
-	bool isAnyNodeHovered = false;
-
-	ImU32 lineColor = transformGraphColor;
-	ImU32 pointColor = IM_COL32(255, 255, 255, 255);
-	ImU32 hoverColor = IM_COL32(255, 180, 100, 255);
-
-	static id_t draggingNodeID = NO_ID;
-	static bool nodeWasDragged = false;
-	static Score prevScoreForDrag;
-	static float dragGrabLane = 0.0f;
-
-	const StageTransformEvent* hoveredTooltip = nullptr;
-
-	for (size_t i = 0; i < changes.size(); ++i)
 	{
-		StageTransformEvent& current = *changes[i];
-		float y1 = position.y - tickToPosition(current.tick) + visualOffset;
-		float x1 = laneToScreenX(current.xLaneTranslate);
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		if (!drawList)
+			return;
 
-		if (i + 1 < changes.size())
+		if (context.selectedStage == NO_ID)
+			return;
+
+		// x-axis represents xLaneTranslate; rotate/yLaneTranslate/anchor are popup-only, same
+		// convention as CameraChange (zoom/rotate aren't draggable, only left/size are)
+		auto laneToScreenX = [&](float lane)
+		{ return getTimelineStartX(context) + lane * laneWidth; };
+		auto screenXToLane = [&](float x) { return (x - getTimelineStartX(context)) / laneWidth; };
+
+		std::vector<StageTransformEvent*> changes;
+		for (auto& [id, transform] : context.score.stageTransformChanges)
+			if (transform.stageID == context.selectedStage)
+				changes.push_back(&transform);
+
+		std::sort(changes.begin(), changes.end(),
+		          [](const StageTransformEvent* a, const StageTransformEvent* b)
+		          { return a->tick < b->tick; });
+
+		ImVec2 mousePos = ImGui::GetMousePos();
+		bool isAnyNodeHovered = false;
+
+		ImU32 lineColor = transformGraphColor;
+		ImU32 pointColor = IM_COL32(255, 255, 255, 255);
+		ImU32 hoverColor = IM_COL32(255, 180, 100, 255);
+
+		static id_t draggingNodeID = NO_ID;
+		static bool nodeWasDragged = false;
+		static Score prevScoreForDrag;
+		static float dragGrabLane = 0.0f;
+
+		const StageTransformEvent* hoveredTooltip = nullptr;
+
+		for (size_t i = 0; i < changes.size(); ++i)
 		{
-			StageTransformEvent& next = *changes[i + 1];
-			float y2 = position.y - tickToPosition(next.tick) + visualOffset;
-			float x2 = laneToScreenX(next.xLaneTranslate);
+			StageTransformEvent& current = *changes[i];
+			float y1 = position.y - tickToPosition(current.tick) + visualOffset;
+			float x1 = laneToScreenX(current.xLaneTranslate);
 
-			if (current.ease == EaseType::Linear)
+			if (i + 1 < changes.size())
 			{
-				drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), lineColor, 2.0f);
-			}
-			else
-			{
-				drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), lineColor, 2.0f);
-				drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), lineColor, 2.0f);
-			}
-		}
+				StageTransformEvent& next = *changes[i + 1];
+				float y2 = position.y - tickToPosition(next.tick) + visualOffset;
+				float x2 = laneToScreenX(next.xLaneTranslate);
 
-		bool isDraggingThis = (draggingNodeID == current.ID);
-		bool isHovered = std::abs(mousePos.x - x1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
-
-		if (isHovered)
-			isAnyNodeHovered = true;
-		if (isHovered || isDraggingThis)
-			isHoveringNote = true;
-
-		float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
-		ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
-		drawList->AddCircleFilled(ImVec2(x1, y1), radius, circleColor);
-
-		if (isHovered && draggingNodeID == NO_ID)
-		{
-			hoveredTooltip = &current;
-
-			if (ImGui::IsMouseClicked(0))
-			{
-				draggingNodeID = current.ID;
-				nodeWasDragged = false;
-				prevScoreForDrag = context.score;
-				dragGrabLane = screenXToLane(mousePos.x);
-			}
-
-			if (ImGui::IsMouseClicked(1))
-			{
-				Score prev = context.score;
-				context.score.stageTransformChanges.erase(current.ID);
-				context.pushHistory("Remove stage transform change", prev, context.score);
-			}
-		}
-
-		if (isDraggingThis)
-		{
-			if (ImGui::IsMouseDragging(0, 2.0f))
-				nodeWasDragged = true;
-
-			if (nodeWasDragged)
-			{
-				const auto& prevTransform = prevScoreForDrag.stageTransformChanges.at(current.ID);
-				float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
-
-				auto& editingTransform = context.score.stageTransformChanges[current.ID];
-				editingTransform.xLaneTranslate =
-				    std::round((prevTransform.xLaneTranslate + laneDelta) * 2.0f) / 2.0f;
-				editingTransform.tick = std::max(0, hoverTick);
-
-				ImGui::BeginTooltip();
-				ImGui::Text("X Translate: %.2f", editingTransform.xLaneTranslate);
-				ImGui::Text("Rotate: %.2f", editingTransform.rotate);
-				ImGui::Text("Tick: %d", editingTransform.tick);
-				ImGui::EndTooltip();
-			}
-
-			if (ImGui::IsMouseReleased(0))
-			{
-				if (nodeWasDragged)
+				if (current.ease == EaseType::Linear)
 				{
-					context.pushHistory("Drag stage transform change", prevScoreForDrag,
-					                    context.score);
+					drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), lineColor, 2.0f);
 				}
 				else
 				{
-					eventEdit.editId = current.ID;
-					eventEdit.editTransform = current;
-					eventEdit.type = EventType::StageTransformChange;
-					ImGui::OpenPopup("edit_event");
+					drawList->AddLine(ImVec2(x1, y1), ImVec2(x1, y2), lineColor, 2.0f);
+					drawList->AddLine(ImVec2(x1, y2), ImVec2(x2, y2), lineColor, 2.0f);
 				}
-				draggingNodeID = NO_ID;
 			}
-		}
-	}
 
-	if (hoveredTooltip && draggingNodeID == NO_ID)
-	{
-		ImGui::BeginTooltip();
-		ImGui::Text("X Translate: %.2f  Rotate: %.2f", hoveredTooltip->xLaneTranslate,
-		           hoveredTooltip->rotate);
-		ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
-		ImGui::EndTooltip();
-	}
+			bool isDraggingThis = (draggingNodeID == current.ID);
+			bool isHovered = std::abs(mousePos.x - x1) < 8.0f && std::abs(mousePos.y - y1) < 8.0f;
 
-	if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
-	{
-		bool duplicate = false;
-		for (const auto* transform : changes)
-			if (transform->tick == hoverTick)
-				duplicate = true;
+			if (isHovered)
+				isAnyNodeHovered = true;
+			if (isHovered || isDraggingThis)
+				isHoveringNote = true;
 
-		if (!duplicate)
-		{
-			Score prev = context.score;
-			id_t newId = getNextStageTransformChangeID();
-			StageTransformEvent transform{};
-			transform.ID = newId;
-			transform.stageID = context.selectedStage;
-			transform.tick = hoverTick;
-			transform.xLaneTranslate = std::round(screenXToLane(mousePos.x) * 2.0f) / 2.0f;
-			context.score.stageTransformChanges[newId] = transform;
-			context.pushHistory("Add stage transform change", prev, context.score);
-		}
-	}
-}
+			float radius = (isHovered || isDraggingThis) ? 5.0f : 3.0f;
+			ImU32 circleColor = (isHovered || isDraggingThis) ? hoverColor : pointColor;
+			drawList->AddCircleFilled(ImVec2(x1, y1), radius, circleColor);
 
-	void ScoreEditorTimeline::drawStageStyleLine(ScoreContext& context)
-{
-	ImDrawList* drawList = ImGui::GetWindowDrawList();
-	if (!drawList)
-		return;
-
-	if (context.selectedStage == NO_ID)
-		return;
-
-	std::vector<StageStyleChangeEvent*> changes;
-	for (auto& [id, style] : context.score.stageStyleChanges)
-		if (style.stageID == context.selectedStage)
-			changes.push_back(&style);
-
-	std::sort(changes.begin(), changes.end(),
-		      [](const StageStyleChangeEvent* a, const StageStyleChangeEvent* b)
-		      { return a->tick < b->tick; });
-
-	ImVec2 mousePos = ImGui::GetMousePos();
-	bool isAnyLineHovered = false;
-
-	ImU32 lineColor = styleLineColor;
-	ImU32 hoverColor = IM_COL32(92, 0, 163, 255);
-
-	float xLeft = getTimelineStartX(context);
-	float xRight = getTimelineEndX(context);
-
-	const StageStyleChangeEvent* hoveredStyle = nullptr;
-
-	for (auto* stylePtr : changes)
-	{
-		StageStyleChangeEvent& current = *stylePtr;
-		float y = position.y - tickToPosition(current.tick) + visualOffset;
-
-		bool isHovered = mouseInTimeline && std::abs(mousePos.y - y) < 6.0f &&
-			             mousePos.x >= xLeft && mousePos.x <= xRight;
-		if (isHovered)
-		{
-			isAnyLineHovered = true;
-			isHoveringNote = true;
-		}
-
-		ImU32 color = isHovered ? hoverColor : lineColor;
-		drawList->AddLine(ImVec2(xLeft, y), ImVec2(xRight, y), color, isHovered ? 3.0f : 2.0f);
-
-		if (isHovered)
-		{
-			hoveredStyle = &current;
-
-			if (ImGui::IsMouseClicked(0))
+			if (isHovered && draggingNodeID == NO_ID)
 			{
-				eventEdit.editId = current.ID;
-				eventEdit.editStyle = current;
-				eventEdit.type = EventType::StageStyleChange;
-				ImGui::OpenPopup("edit_event");
+				hoveredTooltip = &current;
+
+				if (ImGui::IsMouseClicked(0))
+				{
+					draggingNodeID = current.ID;
+					nodeWasDragged = false;
+					prevScoreForDrag = context.score;
+					dragGrabLane = screenXToLane(mousePos.x);
+				}
+
+				if (ImGui::IsMouseClicked(1))
+				{
+					Score prev = context.score;
+					context.score.stageTransformChanges.erase(current.ID);
+					context.pushHistory("Remove stage transform change", prev, context.score);
+				}
 			}
 
-			if (ImGui::IsMouseClicked(1))
+			if (isDraggingThis)
+			{
+				if (ImGui::IsMouseDragging(0, 2.0f))
+					nodeWasDragged = true;
+
+				if (nodeWasDragged)
+				{
+					const auto& prevTransform =
+					    prevScoreForDrag.stageTransformChanges.at(current.ID);
+					float laneDelta = screenXToLane(mousePos.x) - dragGrabLane;
+
+					auto& editingTransform = context.score.stageTransformChanges[current.ID];
+					editingTransform.xLaneTranslate =
+					    std::round((prevTransform.xLaneTranslate + laneDelta) * 2.0f) / 2.0f;
+					editingTransform.tick = std::max(0, hoverTick);
+
+					ImGui::BeginTooltip();
+					ImGui::Text("X Translate: %.2f", editingTransform.xLaneTranslate);
+					ImGui::Text("Rotate: %.2f", editingTransform.rotate);
+					ImGui::Text("Tick: %d", editingTransform.tick);
+					ImGui::EndTooltip();
+				}
+
+				if (ImGui::IsMouseReleased(0))
+				{
+					if (nodeWasDragged)
+					{
+						context.pushHistory("Drag stage transform change", prevScoreForDrag,
+						                    context.score);
+					}
+					else
+					{
+						eventEdit.editId = current.ID;
+						eventEdit.editTransform = current;
+						eventEdit.type = EventType::StageTransformChange;
+						ImGui::OpenPopup("edit_event");
+					}
+					draggingNodeID = NO_ID;
+				}
+			}
+		}
+
+		if (hoveredTooltip && draggingNodeID == NO_ID)
+		{
+			ImGui::BeginTooltip();
+			ImGui::Text("X Translate: %.2f  Rotate: %.2f", hoveredTooltip->xLaneTranslate,
+			            hoveredTooltip->rotate);
+			ImGui::TextDisabled("Tick: %d", hoveredTooltip->tick);
+			ImGui::EndTooltip();
+		}
+
+		if (!isAnyNodeHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+		{
+			bool duplicate = false;
+			for (const auto* transform : changes)
+				if (transform->tick == hoverTick)
+					duplicate = true;
+
+			if (!duplicate)
 			{
 				Score prev = context.score;
-				context.score.stageStyleChanges.erase(current.ID);
-				context.pushHistory("Remove stage style change", prev, context.score);
+				id_t newId = getNextStageTransformChangeID();
+				StageTransformEvent transform{};
+				transform.ID = newId;
+				transform.stageID = context.selectedStage;
+				transform.tick = hoverTick;
+				transform.xLaneTranslate = std::round(screenXToLane(mousePos.x) * 2.0f) / 2.0f;
+				context.score.stageTransformChanges[newId] = transform;
+				context.pushHistory("Add stage transform change", prev, context.score);
 			}
 		}
 	}
 
-	if (hoveredStyle)
+	void ScoreEditorTimeline::drawStageStyleLine(ScoreContext& context)
 	{
-		ImGui::BeginTooltip();
-		ImGui::Text("Tick: %d", hoveredStyle->tick);
-		ImGui::EndTooltip();
-	}
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		if (!drawList)
+			return;
 
-	if (!isAnyLineHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
-	{
-		bool duplicate = false;
-		for (const auto* style : changes)
-			if (style->tick == hoverTick)
-				duplicate = true;
+		if (context.selectedStage == NO_ID)
+			return;
 
-		if (!duplicate)
+		std::vector<StageStyleChangeEvent*> changes;
+		for (auto& [id, style] : context.score.stageStyleChanges)
+			if (style.stageID == context.selectedStage)
+				changes.push_back(&style);
+
+		std::sort(changes.begin(), changes.end(),
+		          [](const StageStyleChangeEvent* a, const StageStyleChangeEvent* b)
+		          { return a->tick < b->tick; });
+
+		ImVec2 mousePos = ImGui::GetMousePos();
+		bool isAnyLineHovered = false;
+
+		ImU32 lineColor = styleLineColor;
+		ImU32 hoverColor = IM_COL32(92, 0, 163, 255);
+
+		float xLeft = getTimelineStartX(context);
+		float xRight = getTimelineEndX(context);
+
+		const StageStyleChangeEvent* hoveredStyle = nullptr;
+
+		for (auto* stylePtr : changes)
 		{
-			Score prev = context.score;
-			id_t newId = getNextStageStyleChangeID();
-			StageStyleChangeEvent style{};
-			style.ID = newId;
-			style.stageID = context.selectedStage;
-			style.tick = hoverTick;
-			context.score.stageStyleChanges[newId] = style;
-			context.pushHistory("Add stage style change", prev, context.score);
+			StageStyleChangeEvent& current = *stylePtr;
+			float y = position.y - tickToPosition(current.tick) + visualOffset;
+
+			bool isHovered = mouseInTimeline && std::abs(mousePos.y - y) < 6.0f &&
+			                 mousePos.x >= xLeft && mousePos.x <= xRight;
+			if (isHovered)
+			{
+				isAnyLineHovered = true;
+				isHoveringNote = true;
+			}
+
+			ImU32 color = isHovered ? hoverColor : lineColor;
+			drawList->AddLine(ImVec2(xLeft, y), ImVec2(xRight, y), color, isHovered ? 3.0f : 2.0f);
+
+			if (isHovered)
+			{
+				hoveredStyle = &current;
+
+				if (ImGui::IsMouseClicked(0))
+				{
+					eventEdit.editId = current.ID;
+					eventEdit.editStyle = current;
+					eventEdit.type = EventType::StageStyleChange;
+					ImGui::OpenPopup("edit_event");
+				}
+
+				if (ImGui::IsMouseClicked(1))
+				{
+					Score prev = context.score;
+					context.score.stageStyleChanges.erase(current.ID);
+					context.pushHistory("Remove stage style change", prev, context.score);
+				}
+			}
+		}
+
+		if (hoveredStyle)
+		{
+			ImGui::BeginTooltip();
+			ImGui::Text("Tick: %d", hoveredStyle->tick);
+			ImGui::EndTooltip();
+		}
+
+		if (!isAnyLineHovered && mouseInTimeline && ImGui::IsMouseDoubleClicked(0))
+		{
+			bool duplicate = false;
+			for (const auto* style : changes)
+				if (style->tick == hoverTick)
+					duplicate = true;
+
+			if (!duplicate)
+			{
+				Score prev = context.score;
+				id_t newId = getNextStageStyleChangeID();
+				StageStyleChangeEvent style{};
+				style.ID = newId;
+				style.stageID = context.selectedStage;
+				style.tick = hoverTick;
+				context.score.stageStyleChanges[newId] = style;
+				context.pushHistory("Add stage style change", prev, context.score);
+			}
 		}
 	}
-}
 
 }

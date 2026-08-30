@@ -180,6 +180,9 @@
     <ClCompile Include="ExtendedNativeScoreSerializer.cpp">
       <Filter>Score\Serialization</Filter>
     </ClCompile>
+    <ClCompile Include="PluginManager.cpp">
+      <Filter>Plugins</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
@@ -393,6 +396,9 @@
     <ClInclude Include="ExtendedNativeScoreSerializer.h">
       <Filter>Score\Serialization</Filter>
     </ClInclude>
+    <ClInclude Include="PluginManager.h">
+      <Filter>Plugins</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Imgui">
@@ -460,6 +466,9 @@
     </Filter>
     <Filter Include="DynamicStage">
       <UniqueIdentifier>{bcfa2fb2-fd8e-4729-afe5-cccbbb127ced}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Plugins">
+      <UniqueIdentifier>{e06337eb-346b-4a19-9726-968f9b4c9b33}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
